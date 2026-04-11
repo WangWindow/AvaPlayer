@@ -1,21 +1,74 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:AvaPlayer.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:views="using:AvaPlayer.Views"
+        xmlns:fi="using:FluentIcons.Avalonia"
         x:Class="AvaPlayer.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/logo.ico"
+        Width="1020"
+        Height="660"
+        MinWidth="820"
+        MinHeight="520"
         WindowStartupLocation="CenterScreen"
-        Title="AvaPlayer">
+        Title="AvaPlayer"
+        Background="{Binding PlayerBar.BackgroundBrush}">
+  <Panel>
+    <Grid ColumnDefinitions="46*,54*">
+      <Border Grid.Column="0"
+              Background="#08000000">
+        <views:PlayerBarView DataContext="{Binding PlayerBar}" />
+      </Border>
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-        to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
+      <Border Grid.Column="1"
+              Background="#04000000">
+        <views:LyricsView DataContext="{Binding PlayerBar.Lyrics}" />
+      </Border>
+    </Grid>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <Button Classes="ghost"
+            Width="40"
+            Height="40"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Margin="16,16,0,0"
+            Command="{Binding TogglePlaylistCommand}">
+      <fi:FluentIcon Icon="AppsList" FontSize="18" />
+    </Button>
 
+    <Grid IsVisible="{Binding IsPlaylistVisible}"
+          Background="#55000000">
+      <Grid ColumnDefinitions="380,*">
+        <Border Grid.Column="0"
+                Background="#E0140E1E"
+                BoxShadow="0 14 40 0 #70000000">
+          <Grid RowDefinitions="Auto,*">
+            <DockPanel Margin="16,16,16,12">
+              <TextBlock Text="播放列表"
+                         Foreground="White"
+                         FontSize="18"
+                         FontWeight="SemiBold"
+                         VerticalAlignment="Center" />
+
+              <Button DockPanel.Dock="Right"
+                      Classes="ghost"
+                      Width="36"
+                      Height="36"
+                      Command="{Binding ClosePlaylistCommand}">
+                <fi:FluentIcon Icon="Dismiss" FontSize="16" />
+              </Button>
+            </DockPanel>
+
+            <views:PlaylistView Grid.Row="1"
+                                DataContext="{Binding Playlist}" />
+          </Grid>
+        </Border>
+
+        <Border x:Name="OverlayDismissArea"
+                Grid.Column="1"
+                Background="Transparent"
+                PointerPressed="OnOverlayDismissPointerPressed" />
+      </Grid>
+    </Grid>
+  </Panel>
 </Window>

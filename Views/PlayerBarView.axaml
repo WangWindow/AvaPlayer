@@ -1,0 +1,133 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AvaPlayer.ViewModels"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             x:Class="AvaPlayer.Views.PlayerBarView"
+             x:DataType="vm:PlayerBarViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Hidden">
+    <Grid Margin="56,40,56,40">
+      <StackPanel HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Spacing="18">
+
+        <Border Width="260"
+                Height="260"
+                CornerRadius="18"
+                ClipToBounds="True"
+                BoxShadow="0 14 40 0 #70000000">
+          <Grid>
+            <Border Background="#20FFFFFF"
+                    IsVisible="{Binding ShowAlbumArtPlaceholder}" />
+            <fi:FluentIcon Icon="MusicNote2"
+                           FontSize="72"
+                           Foreground="#60FFFFFF"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding ShowAlbumArtPlaceholder}" />
+            <Image Source="{Binding AlbumArtBitmap}"
+                   Stretch="UniformToFill"
+                   IsVisible="{Binding HasAlbumArt}" />
+          </Grid>
+        </Border>
+
+        <StackPanel Spacing="6"
+                    HorizontalAlignment="Center"
+                    MaxWidth="340">
+          <TextBlock Text="{Binding TitleDisplay}"
+                     Foreground="White"
+                     FontSize="20"
+                     FontWeight="SemiBold"
+                     TextAlignment="Center"
+                     TextWrapping="Wrap" />
+          <TextBlock Text="{Binding ArtistDisplay}"
+                     Foreground="#A6FFFFFF"
+                     FontSize="14"
+                     TextAlignment="Center"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Grid Width="340"
+              ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0"
+                     Text="{Binding PositionText}"
+                     Foreground="#A6FFFFFF"
+                     FontSize="11"
+                     Margin="0,0,10,0"
+                     VerticalAlignment="Center" />
+
+          <Slider x:Name="ProgressSlider"
+                  Grid.Column="1"
+                  Classes="white"
+                  Minimum="0"
+                  Maximum="{Binding Duration}"
+                  Value="{Binding Position, Mode=TwoWay}" />
+
+          <TextBlock Grid.Column="2"
+                     Text="{Binding DurationText}"
+                     Foreground="#A6FFFFFF"
+                     FontSize="11"
+                     Margin="10,0,0,0"
+                     VerticalAlignment="Center" />
+        </Grid>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Spacing="6">
+          <Button Classes="ghost"
+                  Width="40"
+                  Height="40"
+                  ToolTip.Tip="{Binding PlaybackModeTooltip}"
+                  Command="{Binding TogglePlaybackModeCommand}">
+            <fi:FluentIcon Icon="{Binding PlaybackModeIcon}" FontSize="18" />
+          </Button>
+
+          <Button Classes="ghost"
+                  Width="40"
+                  Height="40"
+                  ToolTip.Tip="上一首"
+                  Command="{Binding PreviousCommand}">
+            <fi:FluentIcon Icon="Previous" FontSize="18" />
+          </Button>
+
+          <Button Classes="ghost-large"
+                  ToolTip.Tip="播放 / 暂停"
+                  Command="{Binding PlayPauseCommand}">
+            <fi:FluentIcon Icon="{Binding PlayPauseIcon}" FontSize="24" />
+          </Button>
+
+          <Button Classes="ghost"
+                  Width="40"
+                  Height="40"
+                  ToolTip.Tip="下一首"
+                  Command="{Binding NextCommand}">
+            <fi:FluentIcon Icon="Next" FontSize="18" />
+          </Button>
+
+          <Button Classes="ghost"
+                  Width="40"
+                  Height="40"
+                  ToolTip.Tip="{Binding PlaybackModeTooltip}"
+                  Command="{Binding TogglePlaybackModeCommand}">
+            <fi:FluentIcon Icon="ArrowShuffle" FontSize="18" />
+          </Button>
+        </StackPanel>
+
+        <Grid Width="220"
+              ColumnDefinitions="Auto,*">
+          <fi:FluentIcon Grid.Column="0"
+                         Icon="Speaker2"
+                         FontSize="16"
+                         Foreground="#A6FFFFFF"
+                         Margin="0,0,10,0"
+                         VerticalAlignment="Center" />
+          <Slider Grid.Column="1"
+                  Classes="white"
+                  Minimum="0"
+                  Maximum="100"
+                  Value="{Binding Volume, Mode=TwoWay}" />
+        </Grid>
+      </StackPanel>
+    </Grid>
+  </ScrollViewer>
+</UserControl>

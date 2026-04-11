@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AvaPlayer.ViewModels"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             x:Name="Root"
+             x:Class="AvaPlayer.Views.PlaylistView"
+             x:DataType="vm:PlaylistViewModel">
+  <Grid RowDefinitions="Auto,*"
+        Margin="16,0,16,16">
+    <Button Grid.Row="0"
+            Classes="ghost"
+            HorizontalAlignment="Left"
+            Padding="14,8"
+            Margin="0,0,0,12"
+            Command="{Binding AddFolderCommand}">
+      <StackPanel Orientation="Horizontal"
+                  Spacing="8">
+        <fi:FluentIcon Icon="FolderAdd" FontSize="16" />
+        <TextBlock Text="添加文件夹" Foreground="White" />
+      </StackPanel>
+    </Button>
+
+    <Grid Grid.Row="1">
+      <StackPanel HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Spacing="12"
+                  IsVisible="{Binding ShowEmptyState}">
+        <fi:FluentIcon Icon="MusicNote2"
+                       FontSize="44"
+                       Foreground="#55FFFFFF"
+                       HorizontalAlignment="Center" />
+        <TextBlock Text="还没有歌曲"
+                   Foreground="#75FFFFFF"
+                   FontSize="14"
+                   HorizontalAlignment="Center" />
+      </StackPanel>
+
+      <ScrollViewer IsVisible="{Binding HasTracks}"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <ItemsControl ItemsSource="{Binding Tracks}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:TrackItemViewModel">
+              <Button Classes="playlist-item"
+                      Classes.current="{Binding IsCurrent}"
+                      Command="{Binding #Root.DataContext.SelectTrackCommand}"
+                      CommandParameter="{Binding}">
+                <Grid ColumnDefinitions="Auto,*,Auto"
+                      ColumnSpacing="10">
+                  <fi:FluentIcon Grid.Column="0"
+                                 Icon="MusicNote2"
+                                 FontSize="16"
+                                 Foreground="#A6FFFFFF"
+                                 VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1"
+                              Spacing="2">
+                    <TextBlock Text="{Binding Title}"
+                               Foreground="White"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Artist}"
+                               Foreground="#99FFFFFF"
+                               FontSize="11"
+                               TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+
+                  <TextBlock Grid.Column="2"
+                             Text="{Binding DurationText}"
+                             Foreground="#80FFFFFF"
+                             FontSize="11"
+                             VerticalAlignment="Center"
+                             IsVisible="{Binding ShowDuration}" />
+
+                  <fi:FluentIcon Grid.Column="2"
+                                 Icon="Play"
+                                 FontSize="14"
+                                 Foreground="White"
+                                 VerticalAlignment="Center"
+                                 IsVisible="{Binding ShowCurrentGlyph}" />
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>

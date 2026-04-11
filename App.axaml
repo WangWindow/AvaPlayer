@@ -3,13 +3,36 @@
              x:Class="AvaPlayer.App"
              xmlns:local="using:AvaPlayer"
              RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
-
     <Application.DataTemplates>
-        <local:ViewLocator/>
+        <local:ViewLocator />
     </Application.DataTemplates>
-  
+
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://AvaPlayer/Resources/Styles.axaml" />
     </Application.Styles>
+
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/logo.ico"
+                      ToolTipText="AvaPlayer">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="显示窗口"
+                                        Click="OnShowWindowClick" />
+                        <NativeMenuItemSeparator />
+                        <NativeMenuItem Header="上一首"
+                                        Click="OnPreviousTrackClick" />
+                        <NativeMenuItem Header="播放 / 暂停"
+                                        Click="OnPlayPauseClick" />
+                        <NativeMenuItem Header="下一首"
+                                        Click="OnNextTrackClick" />
+                        <NativeMenuItemSeparator />
+                        <NativeMenuItem Header="退出"
+                                        Click="OnExitClick" />
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
 </Application>

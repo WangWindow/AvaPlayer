@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AvaPlayer.ViewModels"
+             x:Class="AvaPlayer.Views.LyricsView"
+             x:DataType="vm:LyricsViewModel">
+  <Grid Margin="24,40,48,40">
+    <TextBlock Text="加载歌词中..."
+               Foreground="#80FFFFFF"
+               FontSize="14"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               IsVisible="{Binding IsLoading}" />
+
+    <TextBlock Text="暂无歌词"
+               Foreground="#66FFFFFF"
+               FontSize="14"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               IsVisible="{Binding ShowEmptyState}" />
+
+    <ScrollViewer x:Name="LyricsScroller"
+                  IsVisible="{Binding HasLyrics}"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Hidden"
+                  Padding="30,120,30,120">
+      <ItemsControl ItemsSource="{Binding Lines}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:LyricLineViewModel">
+            <TextBlock Text="{Binding Text}"
+                       Classes="lyric-line"
+                       Classes.active="{Binding IsCurrent}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Grid>
+</UserControl>
