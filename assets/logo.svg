@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1E2E" />
+      <stop offset="100%" stop-color="#11111B" />
+    </linearGradient>
+    
+    <linearGradient id="accent-grad-1" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#89B4FA" />
+      <stop offset="100%" stop-color="#CBA6F7" />
+    </linearGradient>
+
+    <linearGradient id="accent-grad-2" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#F5C2E7" />
+      <stop offset="100%" stop-color="#CBA6F7" stop-opacity="0.8" />
+    </linearGradient>
+
+    <filter id="drop-shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="116" fill="url(#bg-grad)" />
+
+  <g filter="url(#drop-shadow)">
+    <circle cx="256" cy="256" r="140" fill="none" stroke="url(#accent-grad-1)" stroke-width="24" stroke-dasharray="200 40 100 80" stroke-linecap="round" transform="rotate(-45 256 256)" />
+    <circle cx="256" cy="256" r="100" fill="none" stroke="url(#accent-grad-2)" stroke-width="16" stroke-dasharray="80 30 150 40" stroke-linecap="round" transform="rotate(60 256 256)" />
+    
+    <path d="M216 186 C216 174 229 168 238 175 L328 245 C336 251 336 261 328 267 L238 337 C229 344 216 338 216 326 Z" fill="#FFFFFF" />
+  </g>
+</svg>
