@@ -89,66 +89,41 @@
                        VerticalAlignment="Center" />
           </Grid>
 
-          <StackPanel Orientation="Horizontal"
-                      HorizontalAlignment="Center"
-                      Spacing="10">
-            <Button Classes="ghost"
-                    Width="40"
-                    Height="40"
-                    ToolTip.Tip="{Binding PlaybackModeTooltip}"
-                    Command="{Binding TogglePlaybackModeCommand}">
-              <fi:FluentIcon Icon="{Binding PlaybackModeIcon}" FontSize="18" />
-            </Button>
+          <Grid RowDefinitions="Auto,Auto"
+                HorizontalAlignment="Center">
+            <StackPanel Grid.Row="0"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Spacing="10">
+              <Button Classes="ghost"
+                      Width="40"
+                      Height="40"
+                      ToolTip.Tip="{Binding PlaybackModeTooltip}"
+                      Command="{Binding TogglePlaybackModeCommand}">
+                <fi:FluentIcon Icon="{Binding PlaybackModeIcon}" FontSize="18" />
+              </Button>
 
-            <Button Classes="ghost"
-                    Width="40"
-                    Height="40"
-                    ToolTip.Tip="上一首"
-                    Command="{Binding PreviousCommand}">
-              <fi:FluentIcon Icon="Previous" FontSize="18" />
-            </Button>
+              <Button Classes="ghost"
+                      Width="40"
+                      Height="40"
+                      ToolTip.Tip="上一首"
+                      Command="{Binding PreviousCommand}">
+                <fi:FluentIcon Icon="Previous" FontSize="18" />
+              </Button>
 
-            <Button Classes="ghost-large"
-                    ToolTip.Tip="播放 / 暂停"
-                    Command="{Binding PlayPauseCommand}">
-              <fi:FluentIcon Icon="{Binding PlayPauseIcon}" FontSize="24" />
-            </Button>
+              <Button Classes="ghost-large"
+                      ToolTip.Tip="播放 / 暂停"
+                      Command="{Binding PlayPauseCommand}">
+                <fi:FluentIcon Icon="{Binding PlayPauseIcon}" FontSize="24" />
+              </Button>
 
-            <Button Classes="ghost"
-                    Width="40"
-                    Height="40"
-                    ToolTip.Tip="下一首"
-                    Command="{Binding NextCommand}">
-              <fi:FluentIcon Icon="Next" FontSize="18" />
-            </Button>
-
-            <Grid ClipToBounds="False">
-              <Border x:Name="VolumePopoverCard"
-                      Classes="volume-popover-surface"
-                      HorizontalAlignment="Center"
-                      VerticalAlignment="Top"
-                      Margin="0,-150,0,0"
-                      IsHitTestVisible="False">
-                <StackPanel Spacing="8"
-                            HorizontalAlignment="Center">
-                  <TextBlock Text="{Binding VolumeText}"
-                             Foreground="#F2FFFFFF"
-                             FontSize="13"
-                             FontWeight="SemiBold"
-                             HorizontalAlignment="Center" />
-                  <Grid Width="20"
-                        HorizontalAlignment="Center">
-                    <Slider Classes="volume-slider"
-                            Orientation="Vertical"
-                            Width="20"
-                            Height="110"
-                            Minimum="0"
-                            Maximum="100"
-                            HorizontalAlignment="Center"
-                            Value="{Binding Volume, Mode=TwoWay}" />
-                  </Grid>
-                </StackPanel>
-              </Border>
+              <Button Classes="ghost"
+                      Width="40"
+                      Height="40"
+                      ToolTip.Tip="下一首"
+                      Command="{Binding NextCommand}">
+                <fi:FluentIcon Icon="Next" FontSize="18" />
+              </Button>
 
               <Button x:Name="VolumeButton"
                       Classes="ghost volume-toggle"
@@ -156,10 +131,49 @@
                       Height="40"
                       ToolTip.Tip="音量"
                       Click="OnVolumeButtonClick">
-                <fi:FluentIcon Icon="Speaker2" FontSize="18" />
+                <fi:FluentIcon Icon="{Binding VolumeIcon}" FontSize="18" />
               </Button>
-            </Grid>
-          </StackPanel>
+            </StackPanel>
+
+            <Border x:Name="VolumeInlinePanel"
+                    Grid.Row="1"
+                    Classes="volume-inline-host"
+                    HorizontalAlignment="Center"
+                    ClipToBounds="True"
+                    IsHitTestVisible="False">
+              <Border Classes="volume-inline-surface"
+                      Width="292"
+                      Margin="0,10,0,0"
+                      HorizontalAlignment="Center">
+                <Grid Height="44"
+                      ColumnDefinitions="Auto,*,Auto"
+                      ColumnSpacing="14"
+                      VerticalAlignment="Center">
+                  <fi:FluentIcon Icon="{Binding VolumeIcon}"
+                                 FontSize="16"
+                                 Foreground="#F2FFFFFF"
+                                 VerticalAlignment="Center" />
+
+                  <Slider Grid.Column="1"
+                          Classes="volume-slider"
+                          Orientation="Horizontal"
+                          Minimum="0"
+                          Maximum="100"
+                          VerticalAlignment="Center"
+                          Value="{Binding Volume, Mode=TwoWay}" />
+
+                  <TextBlock Grid.Column="2"
+                             Text="{Binding VolumeText}"
+                             Foreground="#F2FFFFFF"
+                             FontSize="12"
+                             FontWeight="SemiBold"
+                             MinWidth="38"
+                             TextAlignment="Right"
+                             VerticalAlignment="Center" />
+                </Grid>
+              </Border>
+            </Border>
+          </Grid>
         </StackPanel>
 
         <Border x:Name="SettingsContent"

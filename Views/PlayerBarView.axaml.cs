@@ -11,12 +11,12 @@ namespace AvaPlayer.Views;
 
 public partial class PlayerBarView : UserControl
 {
-    private const int VolumePopoverAnimationDurationMs = 180;
+    private const int VolumeInlineAnimationDurationMs = 200;
 
     private TopLevel? _topLevel;
     private PlayerBarViewModel? _viewModel;
-    private bool _isVolumePopoverOpen;
-    private CancellationTokenSource? _volumePopoverAnimationCts;
+    private bool _isVolumeInlinePanelOpen;
+    private CancellationTokenSource? _volumeInlineAnimationCts;
 
     public PlayerBarView()
     {
@@ -50,49 +50,49 @@ public partial class PlayerBarView : UserControl
     {
         e.Handled = true;
 
-        if (_isVolumePopoverOpen)
+        if (_isVolumeInlinePanelOpen)
         {
-            await CloseVolumePopoverAsync();
+            await CloseVolumeInlinePanelAsync();
         }
         else
         {
-            await OpenVolumePopoverAsync();
+            await OpenVolumeInlinePanelAsync();
         }
     }
 
-    private async Task OpenVolumePopoverAsync()
+    private async Task OpenVolumeInlinePanelAsync()
     {
-        CancelVolumePopoverAnimation();
+        CancelVolumeInlineAnimation();
 
-        VolumePopoverCard.Classes.Remove("open");
+        VolumeInlinePanel.Classes.Remove("open");
         VolumeButton.Classes.Add("open");
-        VolumePopoverCard.IsHitTestVisible = true;
-        _isVolumePopoverOpen = true;
+        VolumeInlinePanel.IsHitTestVisible = true;
+        _isVolumeInlinePanelOpen = true;
 
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-        VolumePopoverCard.Classes.Add("open");
+        VolumeInlinePanel.Classes.Add("open");
     }
 
-    private async Task CloseVolumePopoverAsync()
+    private async Task CloseVolumeInlinePanelAsync()
     {
-        if (!_isVolumePopoverOpen)
+        if (!_isVolumeInlinePanelOpen)
         {
             return;
         }
 
-        CancelVolumePopoverAnimation();
+        CancelVolumeInlineAnimation();
 
         var animationCts = new CancellationTokenSource();
-        _volumePopoverAnimationCts = animationCts;
+        _volumeInlineAnimationCts = animationCts;
         var token = animationCts.Token;
 
-        _isVolumePopoverOpen = false;
+        _isVolumeInlinePanelOpen = false;
         VolumeButton.Classes.Remove("open");
-        VolumePopoverCard.Classes.Remove("open");
+        VolumeInlinePanel.Classes.Remove("open");
 
         try
         {
-            await Task.Delay(VolumePopoverAnimationDurationMs, token);
+            await Task.Delay(VolumeInlineAnimationDurationMs, token);
         }
         catch (OperationCanceledException)
         {
@@ -100,10 +100,10 @@ public partial class PlayerBarView : UserControl
         }
         finally
         {
-            if (ReferenceEquals(_volumePopoverAnimationCts, animationCts))
+            if (ReferenceEquals(_volumeInlineAnimationCts, animationCts))
             {
-                _volumePopoverAnimationCts.Dispose();
-                _volumePopoverAnimationCts = null;
+                _volumeInlineAnimationCts.Dispose();
+                _volumeInlineAnimationCts = null;
             }
             else
             {
@@ -111,28 +111,28 @@ public partial class PlayerBarView : UserControl
             }
         }
 
-        VolumePopoverCard.IsHitTestVisible = false;
+        VolumeInlinePanel.IsHitTestVisible = false;
     }
 
     private async void OnTopLevelPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (!_isVolumePopoverOpen || IsWithinVolumeControls(e.Source))
+        if (!_isVolumeInlinePanelOpen || IsWithinVolumeControls(e.Source))
         {
             return;
         }
 
-        await CloseVolumePopoverAsync();
+        await CloseVolumeInlinePanelAsync();
     }
 
     private async void OnTopLevelKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Escape || !_isVolumePopoverOpen)
+        if (e.Key != Key.Escape || !_isVolumeInlinePanelOpen)
         {
             return;
         }
 
         e.Handled = true;
-        await CloseVolumePopoverAsync();
+        await CloseVolumeInlinePanelAsync();
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -154,9 +154,9 @@ public partial class PlayerBarView : UserControl
     {
         if (e.PropertyName == nameof(PlayerBarViewModel.IsSettingsVisible) &&
             _viewModel?.IsSettingsVisible == true &&
-            _isVolumePopoverOpen)
+            _isVolumeInlinePanelOpen)
         {
-            _ = CloseVolumePopoverAsync();
+            _ = CloseVolumeInlinePanelAsync();
         }
     }
 
@@ -177,10 +177,10 @@ public partial class PlayerBarView : UserControl
 
     private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
-        CancelVolumePopoverAnimation();
-        _isVolumePopoverOpen = false;
-        VolumePopoverCard.IsHitTestVisible = false;
-        VolumePopoverCard.Classes.Remove("open");
+        CancelVolumeInlineAnimation();
+        _isVolumeInlinePanelOpen = false;
+        VolumeInlinePanel.IsHitTestVisible = false;
+        VolumeInlinePanel.Classes.Remove("open");
         VolumeButton.Classes.Remove("open");
         if (_viewModel is not null)
         {
@@ -202,15 +202,15 @@ public partial class PlayerBarView : UserControl
         _topLevel = null;
     }
 
-    private void CancelVolumePopoverAnimation()
+    private void CancelVolumeInlineAnimation()
     {
-        _volumePopoverAnimationCts?.Cancel();
-        _volumePopoverAnimationCts?.Dispose();
-        _volumePopoverAnimationCts = null;
+        _volumeInlineAnimationCts?.Cancel();
+        _volumeInlineAnimationCts?.Dispose();
+        _volumeInlineAnimationCts = null;
     }
 
     private bool IsWithinVolumeControls(object? source) =>
-        IsDescendantOrSelf(source, VolumeButton) || IsDescendantOrSelf(source, VolumePopoverCard);
+        IsDescendantOrSelf(source, VolumeButton) || IsDescendantOrSelf(source, VolumeInlinePanel);
 
     private static bool IsDescendantOrSelf(object? source, Visual target)
     {

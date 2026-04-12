@@ -118,6 +118,14 @@ public partial class PlayerBarViewModel : ViewModelBase
 
     public string VolumeText => $"{Math.Round(Volume):0}%";
 
+    public Icon VolumeIcon => Volume switch
+    {
+        <= 0.5 => Icon.SpeakerMute,
+        < 30 => Icon.Speaker0,
+        < 70 => Icon.Speaker1,
+        _ => Icon.Speaker2
+    };
+
     public Icon SettingsToggleIcon => IsSettingsVisible ? Icon.ChevronLeft : Icon.Settings;
 
     public string SettingsToggleToolTip => IsSettingsVisible ? "返回播放界面" : "打开设置";
@@ -270,6 +278,7 @@ public partial class PlayerBarViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(VolumeText));
+        OnPropertyChanged(nameof(VolumeIcon));
     }
 
     partial void OnPositionChanged(double value)
