@@ -14,7 +14,7 @@
 
   <TrayIcon.Icons>
     <TrayIcons>
-      <TrayIcon Icon="/Resources/logo.ico"
+      <TrayIcon Icon="/Resources/logo-tray.ico"
                 ToolTipText="AvaPlayer">
         <TrayIcon.Menu>
           <NativeMenu>

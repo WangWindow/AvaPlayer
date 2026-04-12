@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v5/wxs">
+  <Package Name="AvaPlayer"
+           Manufacturer="AvaPlayer"
+           Version="$(var.Version)"
+           UpgradeCode="30BF3680-D1A8-4B6A-B5DE-C2EE04A4EC16"
+           Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of AvaPlayer is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="MainFeature" Title="AvaPlayer" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="AvaPlayer" />
+    </StandardDirectory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**" />
+    </ComponentGroup>
+  </Fragment>
+</Wix>

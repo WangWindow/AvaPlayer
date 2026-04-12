@@ -178,6 +178,59 @@ dotnet publish -c Release -r win-x64 --self-contained true -p:EnableWindowsTarge
 bin/Release/<TargetFramework>/<RID>/publish/
 ```
 
+## 打包脚本
+
+仓库内置了两套打包脚本，优先覆盖你现在最需要的格式：
+
+- `scripts/package-linux.sh`
+  - 生成 `tar.gz`
+  - 如果系统安装了 `zip`，额外生成 `zip`
+  - 如果提供了 `appimagetool`，额外生成 `AppImage`
+
+- `scripts/package-windows.ps1`
+  - 生成 `zip`
+  - 如果安装了 **Inno Setup**，额外生成安装器 `exe`
+  - 如果安装了 **WiX CLI**，额外生成 `msi`
+
+### Linux
+
+```bash
+scripts/package-linux.sh
+```
+
+如果你希望额外生成 `AppImage`，先准备 `appimagetool`：
+
+```bash
+mkdir -p tools
+curl -L https://github.com/AppImage/appimagetool/releases/latest/download/appimagetool-x86_64.AppImage -o tools/appimagetool-x86_64.AppImage
+chmod +x tools/appimagetool-x86_64.AppImage
+APPIMAGE_TOOL_PATH="$PWD/tools/appimagetool-x86_64.AppImage" scripts/package-linux.sh
+```
+
+### Windows
+
+在 Windows PowerShell 中执行：
+
+```powershell
+.\scripts\package-windows.ps1
+```
+
+可选外部组件：
+
+- **Inno Setup**
+  - 下载地址：<https://jrsoftware.org/isinfo.php>
+  - 用于生成安装器 `exe`
+
+- **WiX CLI**
+  - 安装命令：`dotnet tool install --global wix`
+  - 用于生成 `msi`
+
+打包产物统一输出到：
+
+```text
+artifacts/package/<RID>/<Version>/
+```
+
 ## 数据与缓存目录
 
 应用会把数据写到系统本地数据目录下的 `AvaPlayer`：
