@@ -101,6 +101,7 @@ public sealed class MpvPlayerService : IPlayerService
 
         ExecuteCommand("loadfile", filePath, "replace");
         Check(MpvInterop.SetPropertyString(_handle, "pause", "no"), "pause=no");
+        SetPlaybackState(isPlaying: true, publishWhenUnchanged: true);
         return Task.CompletedTask;
     }
 
@@ -112,6 +113,7 @@ public sealed class MpvPlayerService : IPlayerService
         }
 
         Check(MpvInterop.SetPropertyString(_handle, "pause", "yes"), "pause=yes");
+        SetPlaybackState(isPlaying: false, publishWhenUnchanged: true);
     }
 
     public void Resume()
@@ -122,6 +124,7 @@ public sealed class MpvPlayerService : IPlayerService
         }
 
         Check(MpvInterop.SetPropertyString(_handle, "pause", "no"), "pause=no");
+        SetPlaybackState(isPlaying: true, publishWhenUnchanged: true);
     }
 
     public void Stop()
@@ -132,6 +135,7 @@ public sealed class MpvPlayerService : IPlayerService
         }
 
         ExecuteCommand("stop");
+        SetPlaybackState(isPlaying: false, publishWhenUnchanged: true);
     }
 
     public void Seek(double seconds)
@@ -179,6 +183,7 @@ public sealed class MpvPlayerService : IPlayerService
                     var endFile = Marshal.PtrToStructure<MpvEventEndFile>(mpvEvent.Data);
                     if (endFile.Reason == MpvEndFileReason.Eof)
                     {
+                        SetPlaybackState(isPlaying: false, publishWhenUnchanged: true);
                         Dispatcher.UIThread.Post(() => TrackEnded?.Invoke(this, EventArgs.Empty));
                     }
 
@@ -221,10 +226,28 @@ public sealed class MpvPlayerService : IPlayerService
 
             case "pause" when property.Format == MpvFormat.Flag:
                 var paused = *(int*)property.Data != 0;
-                IsPlaying = !paused;
-                Dispatcher.UIThread.Post(() => PlaybackStateChanged?.Invoke(this, IsPlaying));
+                SetPlaybackState(isPlaying: !paused, publishWhenUnchanged: false);
                 break;
         }
+    }
+
+    private void SetPlaybackState(bool isPlaying, bool publishWhenUnchanged)
+    {
+        var hasChanged = IsPlaying != isPlaying;
+        IsPlaying = isPlaying;
+
+        if (!hasChanged && !publishWhenUnchanged)
+        {
+            return;
+        }
+
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            PlaybackStateChanged?.Invoke(this, IsPlaying);
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() => PlaybackStateChanged?.Invoke(this, IsPlaying));
     }
 
     private unsafe void ExecuteCommand(params string[] arguments)

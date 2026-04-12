@@ -9,19 +9,34 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <PublishAot>true</PublishAot>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+  </PropertyGroup>
+
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <DefineConstants>$(DefineConstants);LINUX_MPRIS</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <DefineConstants>$(DefineConstants);WINDOWS_SMTC</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <MpvRuntimeRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</MpvRuntimeRid>
+    <MpvRuntimeRid Condition="'$(MpvRuntimeRid)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</MpvRuntimeRid>
   </PropertyGroup>
 
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
-    <None Include="runtimes\**\*" CopyToOutputDirectory="PreserveNewest" Condition="Exists('runtimes')" />
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('runtimes') and '$(MpvRuntimeRid)' != ''">
+    <None Include="runtimes\$(MpvRuntimeRid)\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
