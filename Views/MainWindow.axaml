@@ -5,7 +5,7 @@
         xmlns:fi="using:FluentIcons.Avalonia"
         x:Class="AvaPlayer.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/logo.ico"
+        Icon="/Resources/logo.ico"
         Width="1020"
         Height="660"
         MinWidth="820"
@@ -68,9 +68,9 @@
         </Border>
 
         <Border x:Name="OverlayDismissArea"
-                 Grid.Column="1"
-                 Background="Transparent"
-                 PointerPressed="OnOverlayDismissPointerPressed" />
+                Grid.Column="1"
+                Background="Transparent"
+                PointerPressed="OnOverlayDismissPointerPressed" />
       </Grid>
     </Grid>
   </Panel>

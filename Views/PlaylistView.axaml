@@ -214,57 +214,57 @@
                Classes="playlist-list"
                ItemsSource="{Binding Tracks}">
         <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:TrackItemViewModel">
-              <Button Classes="playlist-item"
-                      Classes.current="{Binding IsCurrent}"
-                      Command="{Binding #Root((vm:PlaylistViewModel)DataContext).SelectTrackCommand}"
-                      CommandParameter="{Binding}">
-                <Grid ColumnDefinitions="32,*,Auto"
-                       ColumnSpacing="12">
-                  <Grid Grid.Column="0"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center">
-                    <CheckBox Classes="playlist-select"
-                              IsVisible="{Binding #Root((vm:PlaylistViewModel)DataContext).ShowEditToolbar}"
-                              IsChecked="{Binding IsSelectedForRemoval, Mode=TwoWay}" />
+          <DataTemplate x:DataType="vm:TrackItemViewModel">
+            <Button Classes="playlist-item"
+                    Classes.current="{Binding IsCurrent}"
+                    Command="{Binding #Root((vm:PlaylistViewModel)DataContext).SelectTrackCommand}"
+                    CommandParameter="{Binding}">
+              <Grid ColumnDefinitions="32,*,Auto"
+                    ColumnSpacing="12">
+                <Grid Grid.Column="0"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center">
+                  <CheckBox Classes="playlist-select"
+                            IsVisible="{Binding #Root((vm:PlaylistViewModel)DataContext).ShowEditToolbar}"
+                            IsChecked="{Binding IsSelectedForRemoval, Mode=TwoWay}" />
 
-                    <Grid IsVisible="{Binding #Root((vm:PlaylistViewModel)DataContext).ShowNormalToolbar}">
-                      <fi:FluentIcon Icon="Play"
-                                     FontSize="14"
-                                     Foreground="White"
-                                     IsVisible="{Binding ShowCurrentGlyph}" />
+                  <Grid IsVisible="{Binding #Root((vm:PlaylistViewModel)DataContext).ShowNormalToolbar}">
+                    <fi:FluentIcon Icon="Play"
+                                   FontSize="14"
+                                   Foreground="White"
+                                   IsVisible="{Binding ShowCurrentGlyph}" />
 
-                      <fi:FluentIcon Icon="MusicNote2"
-                                     FontSize="16"
-                                     Foreground="#8CFFFFFF"
-                                     IsVisible="{Binding ShowIdleGlyph}" />
-                    </Grid>
+                    <fi:FluentIcon Icon="MusicNote2"
+                                   FontSize="16"
+                                   Foreground="#8CFFFFFF"
+                                   IsVisible="{Binding ShowIdleGlyph}" />
                   </Grid>
-
-                  <StackPanel Grid.Column="1"
-                              Spacing="4"
-                              HorizontalAlignment="Stretch"
-                              VerticalAlignment="Center">
-                    <TextBlock Classes="playlist-title"
-                               Text="{Binding Title}"
-                               MaxWidth="220"
-                               TextAlignment="Left"
-                               TextTrimming="CharacterEllipsis" />
-                    <TextBlock Classes="playlist-subtitle"
-                               Text="{Binding Artist}"
-                               MaxWidth="220"
-                               TextAlignment="Left"
-                               TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-
-                  <TextBlock Grid.Column="2"
-                             Classes="playlist-duration"
-                             Text="{Binding DurationText}"
-                             VerticalAlignment="Center"
-                             TextAlignment="Right" />
                 </Grid>
-              </Button>
-            </DataTemplate>
+
+                <StackPanel Grid.Column="1"
+                            Spacing="4"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Center">
+                  <TextBlock Classes="playlist-title"
+                             Text="{Binding Title}"
+                             MaxWidth="220"
+                             TextAlignment="Left"
+                             TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="playlist-subtitle"
+                             Text="{Binding Artist}"
+                             MaxWidth="220"
+                             TextAlignment="Left"
+                             TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="2"
+                           Classes="playlist-duration"
+                           Text="{Binding DurationText}"
+                           VerticalAlignment="Center"
+                           TextAlignment="Right" />
+              </Grid>
+            </Button>
+          </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
     </Grid>
