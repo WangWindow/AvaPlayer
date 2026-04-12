@@ -1,0 +1,130 @@
+name: Release Linux Artifacts
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to create/update. Leave empty to only upload workflow artifacts."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    env:
+      RID: linux-x64
+      LIBMPV_RUNTIME_URL: https://github.com/WangWindow/AvaPlayer/releases/download/v1.0.0/linux-x64.zip
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Determine build metadata
+        id: meta
+        shell: bash
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          VERSION="$(sed -n 's:.*<AssemblyVersion>\(.*\)</AssemblyVersion>.*:\1:p' AvaPlayer.csproj | head -n 1)"
+          VERSION="${VERSION:-1.0.0}"
+
+          RELEASE_TAG="${INPUT_RELEASE_TAG}"
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
+            RELEASE_TAG="${GITHUB_REF_NAME}"
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "artifact_dir=artifacts/package/${RID}/${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Linux packaging dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev curl unzip zip desktop-file-utils
+
+      - name: Download linux-x64 libmpv bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf runtimes/linux-x64
+          mkdir -p runtimes
+          curl -L "${LIBMPV_RUNTIME_URL}" -o /tmp/linux-x64.zip
+          unzip -o /tmp/linux-x64.zip -d "${GITHUB_WORKSPACE}/runtimes"
+          test -f runtimes/linux-x64/native/libmpv.so.2
+
+      - name: Download appimagetool
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          curl -L https://github.com/AppImage/appimagetool/releases/latest/download/appimagetool-x86_64.AppImage -o artifacts/appimagetool-x86_64.AppImage
+          chmod +x artifacts/appimagetool-x86_64.AppImage
+
+      - name: Package Linux artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/package-linux.sh
+          CONFIGURATION=Release ./scripts/package-linux.sh
+
+      - name: Generate checksums
+        shell: bash
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          ARTIFACT_DIR: ${{ steps.meta.outputs.artifact_dir }}
+        run: |
+          set -euo pipefail
+          cd "${ARTIFACT_DIR}"
+          sha256sum \
+            "AvaPlayer-${VERSION}-linux-x64.tar.gz" \
+            "AvaPlayer-${VERSION}-linux-x64.zip" \
+            "AvaPlayer-${VERSION}-linux-x64.AppImage" \
+            > SHA256SUMS.txt
+          ls -lah
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: avaplayer-linux-x64-${{ steps.meta.outputs.version }}
+          path: |
+            ${{ steps.meta.outputs.artifact_dir }}/AvaPlayer-${{ steps.meta.outputs.version }}-linux-x64.tar.gz
+            ${{ steps.meta.outputs.artifact_dir }}/AvaPlayer-${{ steps.meta.outputs.version }}-linux-x64.zip
+            ${{ steps.meta.outputs.artifact_dir }}/AvaPlayer-${{ steps.meta.outputs.version }}-linux-x64.AppImage
+            ${{ steps.meta.outputs.artifact_dir }}/SHA256SUMS.txt
+
+      - name: Publish GitHub release assets
+        if: steps.meta.outputs.release_tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.meta.outputs.release_tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          ARTIFACT_DIR: ${{ steps.meta.outputs.artifact_dir }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release create "${RELEASE_TAG}" \
+              --target "${GITHUB_SHA}" \
+              --title "${RELEASE_TAG}" \
+              --notes "Automated Linux release for AvaPlayer."
+          fi
+
+          gh release upload "${RELEASE_TAG}" \
+            "${ARTIFACT_DIR}/AvaPlayer-${VERSION}-linux-x64.tar.gz" \
+            "${ARTIFACT_DIR}/AvaPlayer-${VERSION}-linux-x64.zip" \
+            "${ARTIFACT_DIR}/AvaPlayer-${VERSION}-linux-x64.AppImage" \
+            "${ARTIFACT_DIR}/SHA256SUMS.txt" \
+            --clobber

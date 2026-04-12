@@ -231,6 +231,26 @@ APPIMAGE_TOOL_PATH="$PWD/tools/appimagetool-x86_64.AppImage" scripts/package-lin
 artifacts/package/<RID>/<Version>/
 ```
 
+### GitHub Actions
+
+仓库内置了 Linux 发布工作流：
+
+- `.github/workflows/release-linux.yml`
+
+它会在 **tag push** 或手动触发时：
+
+1. 安装 Linux 打包依赖
+2. 从下面的 release 下载 `linux-x64` 的 `libmpv` 运行时包
+3. 调用 `scripts/package-linux.sh`
+4. 上传 `tar.gz` / `zip` / `AppImage` / `SHA256SUMS.txt`
+5. 如果提供了 release tag，则自动发布到 GitHub Release
+
+当前使用的运行时下载地址：
+
+```text
+https://github.com/WangWindow/AvaPlayer/releases/download/v1.0.0/linux-x64.zip
+```
+
 ## 数据与缓存目录
 
 应用会把数据写到系统本地数据目录下的 `AvaPlayer`：

@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using AvaPlayer.Helpers;
 using AvaPlayer.Services.AlbumArt;
 using AvaPlayer.Services.Audio;
 using AvaPlayer.Services.Cache;
@@ -29,6 +30,7 @@ public partial class App : Application
     private NativeMenuItem? _lightweightModeMenuItem;
     private IMediaTransportService? _mediaTransportService;
     private IPlayerService? _playerService;
+    private SingleInstanceManager? _singleInstanceManager;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
     private bool _isExiting;
     private bool _isLightweightModeEnabled;
@@ -50,6 +52,7 @@ public partial class App : Application
             _mainWindowViewModel = _services.GetRequiredService<MainWindowViewModel>();
             _mediaTransportService = _services.GetRequiredService<IMediaTransportService>();
             _playerService = _services.GetRequiredService<IPlayerService>();
+            _singleInstanceManager = Program.SingleInstance;
 
             _isLightweightModeEnabled = LoadLightweightModeSetting();
             if (!_isLightweightModeEnabled)
@@ -62,6 +65,7 @@ public partial class App : Application
 
             WireTrayMenu();
             WireMediaTransport();
+            WireSingleInstanceActivation();
 
             _ = InitializeApplicationAsync();
         }
@@ -231,6 +235,22 @@ public partial class App : Application
         _mediaTransportService.UpdatePlaybackMode(_mainWindowViewModel.PlayerBar.PlaybackMode);
     }
 
+    private void WireSingleInstanceActivation()
+    {
+        if (_singleInstanceManager is null)
+        {
+            return;
+        }
+
+        _singleInstanceManager.ActivationRequested += OnSingleInstanceActivationRequested;
+
+        var pendingRequests = _singleInstanceManager.ConsumePendingActivationRequests();
+        for (var index = 0; index < pendingRequests; index++)
+        {
+            Dispatcher.UIThread.Post(ShowMainWindow);
+        }
+    }
+
     private void OnPlayerBarPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_mediaTransportService is null || sender is not PlayerBarViewModel playerBar)
@@ -344,6 +364,12 @@ public partial class App : Application
 
         mainWindow.WindowState = WindowState.Normal;
         mainWindow.Activate();
+    }
+
+    private void OnSingleInstanceActivationRequested(object? sender, EventArgs e)
+    {
+        Console.Error.WriteLine("[SingleInstance] 收到新的启动请求，激活现有窗口。");
+        Dispatcher.UIThread.Post(ShowMainWindow);
     }
 
     private async Task SetLightweightModeEnabledAsync(bool isEnabled)
@@ -488,6 +514,11 @@ public partial class App : Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
+        if (_singleInstanceManager is not null)
+        {
+            _singleInstanceManager.ActivationRequested -= OnSingleInstanceActivationRequested;
+        }
+
         if (_mainWindowViewModel is not null)
         {
             _mainWindowViewModel.PlayerBar.PropertyChanged -= OnPlayerBarPropertyChanged;
