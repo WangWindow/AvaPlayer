@@ -4,6 +4,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using AvaPlayer.Helpers;
 using AvaPlayer.Services.AlbumArt;
@@ -22,6 +24,8 @@ namespace AvaPlayer;
 public partial class App : Application
 {
     private const string LightweightModeSettingKey = "lightweight-mode-enabled";
+    private const string DarkTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray-light.ico";
+    private const string LightTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray.ico";
 
     private ServiceProvider? _services;
     private IDatabaseService? _databaseService;
@@ -31,9 +35,12 @@ public partial class App : Application
     private IMediaTransportService? _mediaTransportService;
     private IPlayerService? _playerService;
     private SingleInstanceManager? _singleInstanceManager;
+    private WindowIcon? _darkTrayIcon;
+    private WindowIcon? _lightTrayIcon;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
     private bool _isExiting;
     private bool _isLightweightModeEnabled;
+    private bool _isApplyingLightweightMode;
     private bool _isReleasingMainWindow;
 
     public override void Initialize()
@@ -64,6 +71,7 @@ public partial class App : Application
             desktop.ShutdownRequested += OnDesktopShutdownRequested;
 
             WireTrayMenu();
+            WireTrayIconTheme();
             WireMediaTransport();
             WireSingleInstanceActivation();
 
@@ -204,10 +212,15 @@ public partial class App : Application
             .SelectMany(menu => menu.Items.OfType<NativeMenuItem>())
             .FirstOrDefault(item => string.Equals(item.Header?.ToString(), "轻量模式", StringComparison.Ordinal));
 
-        if (_lightweightModeMenuItem is not null)
-        {
-            _lightweightModeMenuItem.IsChecked = _isLightweightModeEnabled;
-        }
+        SyncLightweightModeMenuState();
+    }
+
+    private void WireTrayIconTheme()
+    {
+        _darkTrayIcon = LoadWindowIcon(DarkTrayIconResourceUri);
+        _lightTrayIcon = LoadWindowIcon(LightTrayIconResourceUri);
+        ActualThemeVariantChanged += OnActualThemeVariantChanged;
+        UpdateTrayIconTheme();
     }
 
     private void WireMediaTransport()
@@ -297,13 +310,12 @@ public partial class App : Application
 
     private async void OnLightweightModeClick(object? sender, EventArgs e)
     {
-        if (sender is not NativeMenuItem menuItem)
+        if (sender is NativeMenuItem menuItem)
         {
-            return;
+            _lightweightModeMenuItem ??= menuItem;
         }
 
-        _lightweightModeMenuItem ??= menuItem;
-        await SetLightweightModeEnabledAsync(menuItem.IsChecked);
+        await SetLightweightModeEnabledAsync(!_isLightweightModeEnabled);
     }
 
     private void OnPreviousTrackClick(object? sender, EventArgs e)
@@ -338,7 +350,9 @@ public partial class App : Application
         _desktop?.Shutdown();
     }
 
-    private async void ShowMainWindow()
+    private async void ShowMainWindow() => await ShowMainWindowAsync();
+
+    private async Task ShowMainWindowAsync()
     {
         if (_mainWindowViewModel is null)
         {
@@ -374,35 +388,75 @@ public partial class App : Application
 
     private async Task SetLightweightModeEnabledAsync(bool isEnabled)
     {
+        if (_isApplyingLightweightMode)
+        {
+            return;
+        }
+
         var previousState = _isLightweightModeEnabled;
+        if (previousState == isEnabled)
+        {
+            SyncLightweightModeMenuState();
+            return;
+        }
+
+        _isApplyingLightweightMode = true;
         _isLightweightModeEnabled = isEnabled;
-        if (_lightweightModeMenuItem is not null)
-        {
-            _lightweightModeMenuItem.IsChecked = isEnabled;
-        }
+        SyncLightweightModeMenuState();
 
-        if (_databaseService is not null)
+        Console.Error.WriteLine($"[LightweightMode] 切换到{(isEnabled ? "轻量" : "正常")}模式。");
+
+        try
         {
-            try
+            if (_databaseService is not null)
             {
-                await _databaseService.SaveSettingAsync(LightweightModeSettingKey, isEnabled.ToString());
-            }
-            catch (Exception ex)
-            {
-                _isLightweightModeEnabled = previousState;
-                if (_lightweightModeMenuItem is not null)
+                try
                 {
-                    _lightweightModeMenuItem.IsChecked = previousState;
+                    await _databaseService.SaveSettingAsync(LightweightModeSettingKey, isEnabled.ToString());
                 }
-                Console.Error.WriteLine($"[App] 保存轻量模式设置失败: {ex.Message}");
-                return;
+                catch (Exception ex)
+                {
+                    _isLightweightModeEnabled = previousState;
+                    SyncLightweightModeMenuState();
+                    Console.Error.WriteLine($"[LightweightMode] 保存设置失败: {ex.Message}");
+                    return;
+                }
+            }
+
+            if (isEnabled)
+            {
+                await EnterLightweightModeAsync();
+            }
+            else
+            {
+                await ExitLightweightModeAsync();
             }
         }
-
-        if (isEnabled)
+        finally
         {
-            await CloseMainWindowAsync();
+            _isApplyingLightweightMode = false;
         }
+    }
+
+    private async Task EnterLightweightModeAsync()
+    {
+        Console.Error.WriteLine("[LightweightMode] 正在释放主窗口并保留托盘。");
+
+        if (_mainWindow is null)
+        {
+            await PersistPlaybackSessionAsync();
+            _mainWindowViewModel?.ReleaseWindowState();
+            TrimLightweightMemory();
+            return;
+        }
+
+        await CloseMainWindowAsync();
+    }
+
+    private async Task ExitLightweightModeAsync()
+    {
+        Console.Error.WriteLine("[LightweightMode] 正在恢复主窗口。");
+        await ShowMainWindowAsync();
     }
 
     private async Task CloseMainWindowAsync()
@@ -514,6 +568,8 @@ public partial class App : Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
+        ActualThemeVariantChanged -= OnActualThemeVariantChanged;
+
         if (_singleInstanceManager is not null)
         {
             _singleInstanceManager.ActivationRequested -= OnSingleInstanceActivationRequested;
@@ -552,5 +608,44 @@ public partial class App : Application
         GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
         GC.WaitForPendingFinalizers();
         GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
+    }
+
+    private void SyncLightweightModeMenuState()
+    {
+        if (_lightweightModeMenuItem is not null)
+        {
+            _lightweightModeMenuItem.IsChecked = _isLightweightModeEnabled;
+        }
+    }
+
+    private void OnActualThemeVariantChanged(object? sender, EventArgs e) => UpdateTrayIconTheme();
+
+    private void UpdateTrayIconTheme()
+    {
+        var trayIcons = TrayIcon.GetIcons(this);
+        if (trayIcons is null)
+        {
+            return;
+        }
+
+        var selectedIcon = ActualThemeVariant == ThemeVariant.Light
+            ? _lightTrayIcon ?? _darkTrayIcon
+            : _darkTrayIcon ?? _lightTrayIcon;
+
+        if (selectedIcon is null)
+        {
+            return;
+        }
+
+        foreach (var trayIcon in trayIcons)
+        {
+            trayIcon.Icon = selectedIcon;
+        }
+    }
+
+    private static WindowIcon LoadWindowIcon(string resourceUri)
+    {
+        using var iconStream = AssetLoader.Open(new Uri(resourceUri));
+        return new WindowIcon(iconStream);
     }
 }
