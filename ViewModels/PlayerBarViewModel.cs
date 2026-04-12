@@ -25,6 +25,11 @@ public partial class PlayerBarViewModel : ViewModelBase
     private readonly ILyricsService _lyricsService;
 
     private CancellationTokenSource? _lyricsCts;
+    private bool _isInitialized;
+    private bool _isVisualHydrationEnabled = true;
+    private int _visualHydrationVersion;
+    private string? _hydratedTrackPath;
+
     public PlayerBarViewModel(
         IPlayerService player,
         IPlaylistService playlist,
@@ -113,12 +118,65 @@ public partial class PlayerBarViewModel : ViewModelBase
 
     public string VolumeText => $"{Math.Round(Volume):0}%";
 
-    public string SettingsToggleText => IsSettingsVisible ? "返回" : "设置";
+    public Icon SettingsToggleIcon => IsSettingsVisible ? Icon.ChevronLeft : Icon.Settings;
 
-    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    public string SettingsToggleToolTip => IsSettingsVisible ? "返回播放界面" : "打开设置";
+
+    public async Task InitializeAsync(bool hydrateVisuals = true, CancellationToken cancellationToken = default)
     {
+        if (!hydrateVisuals)
+        {
+            SuspendVisualHydration();
+        }
+        else
+        {
+            _isVisualHydrationEnabled = true;
+        }
+
+        if (_isInitialized)
+        {
+            if (hydrateVisuals)
+            {
+                await EnsureVisualHydrationAsync(cancellationToken);
+            }
+
+            return;
+        }
+
         await Lyrics.InitializeAsync(cancellationToken);
         await RestorePlaybackSessionAsync(cancellationToken);
+        _isInitialized = true;
+    }
+
+    public Task EnsureVisualHydrationAsync(CancellationToken cancellationToken = default)
+    {
+        _isVisualHydrationEnabled = true;
+
+        if (CurrentTrack is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (string.Equals(_hydratedTrackPath, CurrentTrack.FilePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.CompletedTask;
+        }
+
+        StartVisualHydration(CurrentTrack, cancellationToken);
+        return Task.CompletedTask;
+    }
+
+    public void SuspendVisualHydration()
+    {
+        _isVisualHydrationEnabled = false;
+        Interlocked.Increment(ref _visualHydrationVersion);
+        _hydratedTrackPath = null;
+        CancelLyricsLoading();
+        ReplaceAlbumArt(null);
+        HasAlbumArt = false;
+        ShowAlbumArtPlaceholder = true;
+        BackgroundBrush = ColorExtractor.DefaultBackground();
+        Lyrics.ClearLyrics();
     }
 
     public Task PersistSessionAsync(CancellationToken cancellationToken = default) =>
@@ -226,7 +284,8 @@ public partial class PlayerBarViewModel : ViewModelBase
 
     partial void OnIsSettingsVisibleChanged(bool value)
     {
-        OnPropertyChanged(nameof(SettingsToggleText));
+        OnPropertyChanged(nameof(SettingsToggleIcon));
+        OnPropertyChanged(nameof(SettingsToggleToolTip));
     }
 
     private void OnPlaybackStateChanged(object? sender, bool isPlaying)
@@ -243,14 +302,20 @@ public partial class PlayerBarViewModel : ViewModelBase
         }
 
         Position = position;
-        Lyrics.UpdatePosition(position);
+        if (_isVisualHydrationEnabled)
+        {
+            Lyrics.UpdatePosition(position);
+        }
     }
 
     private void OnTrackLoaded(object? sender, EventArgs e)
     {
         Duration = Math.Max(_player.Duration, 1);
         Position = Math.Clamp(Position, 0, Duration);
-        Lyrics.UpdatePosition(Position);
+        if (_isVisualHydrationEnabled)
+        {
+            Lyrics.UpdatePosition(Position);
+        }
     }
 
     private async void OnTrackEnded(object? sender, EventArgs e)
@@ -308,12 +373,22 @@ public partial class PlayerBarViewModel : ViewModelBase
         Duration = Math.Max(Math.Max(track.DurationSeconds, initialPositionSeconds), 1);
         Position = Math.Clamp(initialPositionSeconds, 0, Duration);
 
-        Lyrics.BeginLoading();
         TrackChanged?.Invoke(this, track);
         _ = PersistPlaybackPositionAsync(Position);
 
-        _ = LoadAlbumArtAsync(track);
-        _ = LoadLyricsAsync(track);
+        if (_isVisualHydrationEnabled)
+        {
+            StartVisualHydration(track);
+        }
+        else
+        {
+            _hydratedTrackPath = null;
+            Lyrics.ClearLyrics();
+            ReplaceAlbumArt(null);
+            HasAlbumArt = false;
+            ShowAlbumArtPlaceholder = true;
+            BackgroundBrush = ColorExtractor.DefaultBackground();
+        }
     }
 
     private async Task<bool> TryStartTrackAsync(Track track, string reason)
@@ -334,38 +409,71 @@ public partial class PlayerBarViewModel : ViewModelBase
         return true;
     }
 
-    private async Task LoadAlbumArtAsync(Track track)
+    private void StartVisualHydration(Track track, CancellationToken cancellationToken = default)
     {
+        if (!_isVisualHydrationEnabled)
+        {
+            return;
+        }
+
+        var hydrationVersion = Interlocked.Increment(ref _visualHydrationVersion);
+        _hydratedTrackPath = track.FilePath;
+        Lyrics.BeginLoading();
+        _ = LoadAlbumArtAsync(track, hydrationVersion, cancellationToken);
+        _ = LoadLyricsAsync(track, hydrationVersion, cancellationToken);
+    }
+
+    private async Task LoadAlbumArtAsync(Track track, int hydrationVersion, CancellationToken cancellationToken = default)
+    {
+        Bitmap? bitmap = null;
         try
         {
-            var bitmap = await _albumArtService.GetAlbumArtAsync(track);
-            AlbumArtBitmap = bitmap;
+            bitmap = await _albumArtService.GetAlbumArtAsync(track, cancellationToken);
+            if (!CanApplyVisualResult(track, hydrationVersion))
+            {
+                bitmap?.Dispose();
+                return;
+            }
+
+            ReplaceAlbumArt(bitmap);
             HasAlbumArt = bitmap is not null;
             ShowAlbumArtPlaceholder = bitmap is null;
             BackgroundBrush = bitmap is null
                 ? ColorExtractor.DefaultBackground()
                 : ColorExtractor.ExtractBackground(bitmap);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            bitmap?.Dispose();
+        }
         catch (Exception ex)
         {
+            bitmap?.Dispose();
+            if (!CanApplyVisualResult(track, hydrationVersion))
+            {
+                return;
+            }
+
             Console.Error.WriteLine($"[AlbumArt] 加载封面失败: {ex.Message}");
-            AlbumArtBitmap = null;
+            ReplaceAlbumArt(null);
             HasAlbumArt = false;
             ShowAlbumArtPlaceholder = true;
             BackgroundBrush = ColorExtractor.DefaultBackground();
         }
     }
 
-    private async Task LoadLyricsAsync(Track track)
+    private async Task LoadLyricsAsync(Track track, int hydrationVersion, CancellationToken cancellationToken = default)
     {
-        _lyricsCts?.Cancel();
-        _lyricsCts?.Dispose();
-        _lyricsCts = new CancellationTokenSource();
+        CancelLyricsLoading();
+        _lyricsCts = cancellationToken.CanBeCanceled
+            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+            : new CancellationTokenSource();
+        var lyricsToken = _lyricsCts.Token;
 
         try
         {
-            var lines = await _lyricsService.GetLyricsAsync(track, _lyricsCts.Token);
-            if (_lyricsCts.IsCancellationRequested)
+            var lines = await _lyricsService.GetLyricsAsync(track, lyricsToken);
+            if (lyricsToken.IsCancellationRequested || !CanApplyVisualResult(track, hydrationVersion))
             {
                 return;
             }
@@ -380,11 +488,16 @@ public partial class PlayerBarViewModel : ViewModelBase
                 Lyrics.ClearLyrics();
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (lyricsToken.IsCancellationRequested || cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception ex)
         {
+            if (!CanApplyVisualResult(track, hydrationVersion))
+            {
+                return;
+            }
+
             Console.Error.WriteLine($"[Lyrics] 加载失败: {ex.Message}");
             Lyrics.ClearLyrics();
         }
@@ -446,6 +559,29 @@ public partial class PlayerBarViewModel : ViewModelBase
         }
     }
 
+    private bool CanApplyVisualResult(Track track, int hydrationVersion) =>
+        _isVisualHydrationEnabled &&
+        CurrentTrack is not null &&
+        string.Equals(CurrentTrack.FilePath, track.FilePath, StringComparison.OrdinalIgnoreCase) &&
+        hydrationVersion == _visualHydrationVersion;
+
+    private void ReplaceAlbumArt(Bitmap? bitmap)
+    {
+        var previous = AlbumArtBitmap;
+        AlbumArtBitmap = bitmap;
+        if (previous is not null && !ReferenceEquals(previous, bitmap))
+        {
+            previous.Dispose();
+        }
+    }
+
+    private void CancelLyricsLoading()
+    {
+        _lyricsCts?.Cancel();
+        _lyricsCts?.Dispose();
+        _lyricsCts = null;
+    }
+
     private static string FormatTime(double seconds)
     {
         var time = TimeSpan.FromSeconds(Math.Max(0, seconds));
@@ -461,8 +597,8 @@ public partial class PlayerBarViewModel : ViewModelBase
             return;
         }
 
-        _lyricsCts?.Cancel();
-        _lyricsCts?.Dispose();
+        CancelLyricsLoading();
+        ReplaceAlbumArt(null);
 
         _player.PlaybackStateChanged -= OnPlaybackStateChanged;
         _player.PositionChanged -= OnPositionChanged;

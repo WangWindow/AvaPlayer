@@ -36,12 +36,15 @@
       <fi:FluentIcon Icon="AppsList" FontSize="18" />
     </Button>
 
-    <Grid IsVisible="{Binding IsPlaylistVisible}"
-          Background="#55000000">
+    <Grid Classes="playlist-drawer-host"
+          Classes.open="{Binding IsPlaylistVisible}">
+      <Border Classes="playlist-drawer-scrim"
+              Classes.open="{Binding IsPlaylistVisible}" />
+
       <Grid ColumnDefinitions="380,*">
         <Border Grid.Column="0"
-                Background="#E0140E1E"
-                BoxShadow="0 14 40 0 #70000000">
+                Classes="playlist-drawer-panel"
+                Classes.open="{Binding IsPlaylistVisible}">
           <Grid RowDefinitions="Auto,*">
             <DockPanel Margin="16,16,16,12">
               <TextBlock Text="播放列表"
@@ -65,9 +68,9 @@
         </Border>
 
         <Border x:Name="OverlayDismissArea"
-                Grid.Column="1"
-                Background="Transparent"
-                PointerPressed="OnOverlayDismissPointerPressed" />
+                 Grid.Column="1"
+                 Background="Transparent"
+                 PointerPressed="OnOverlayDismissPointerPressed" />
       </Grid>
     </Grid>
   </Panel>

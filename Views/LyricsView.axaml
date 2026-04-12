@@ -24,7 +24,8 @@
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Hidden"
                   Padding="0,160,0,160">
-      <ItemsControl ItemsSource="{Binding Lines}"
+      <ItemsControl x:Name="LyricsItems"
+                    ItemsSource="{Binding Lines}"
                     Width="{Binding #LyricsScroller.Viewport.Width}"
                     MaxWidth="560"
                     HorizontalAlignment="Center">

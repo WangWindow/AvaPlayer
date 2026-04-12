@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Runtime;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -124,7 +125,7 @@ public partial class App : Application
 
         try
         {
-            await _mainWindowViewModel.InitializeAsync();
+            await _mainWindowViewModel.InitializeAsync(hydrateVisuals: !_isLightweightModeEnabled);
         }
         catch (Exception ex)
         {
@@ -317,8 +318,23 @@ public partial class App : Application
         _desktop?.Shutdown();
     }
 
-    private void ShowMainWindow()
+    private async void ShowMainWindow()
     {
+        if (_mainWindowViewModel is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _mainWindowViewModel.EnsureWindowStateAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[App] 恢复主窗口视觉状态失败: {ex.Message}");
+            return;
+        }
+
         var mainWindow = EnsureMainWindow();
 
         if (!mainWindow.IsVisible)
@@ -451,6 +467,17 @@ public partial class App : Application
         {
             _mainWindow = null;
         }
+
+        if (_desktop is not null && ReferenceEquals(_desktop.MainWindow, window))
+        {
+            _desktop.MainWindow = null;
+        }
+
+        if (_isLightweightModeEnabled || _isReleasingMainWindow)
+        {
+            _mainWindowViewModel?.ReleaseWindowState();
+            TrimLightweightMemory();
+        }
     }
 
     private void OnDesktopShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
@@ -486,5 +513,13 @@ public partial class App : Application
 
         _mediaTransportService?.Dispose();
         _services?.Dispose();
+    }
+
+    private static void TrimLightweightMemory()
+    {
+        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
+        GC.WaitForPendingFinalizers();
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
     }
 }

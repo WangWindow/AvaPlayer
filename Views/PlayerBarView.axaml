@@ -10,15 +10,15 @@
     <Grid Margin="56,28,56,32">
       <Button Classes="ghost settings-toggle"
               Classes.open="{Binding IsSettingsVisible}"
+              Width="40"
+              Height="40"
               HorizontalAlignment="Right"
               VerticalAlignment="Top"
+              Margin="0,-12,0,0"
+              ToolTip.Tip="{Binding SettingsToggleToolTip}"
               Command="{Binding ToggleSettingsCommand}">
-        <StackPanel Orientation="Horizontal"
-                    Spacing="8">
-          <fi:FluentIcon Icon="Settings"
-                         FontSize="14" />
-          <TextBlock Text="{Binding SettingsToggleText}" />
-        </StackPanel>
+        <fi:FluentIcon Icon="{Binding SettingsToggleIcon}"
+                       FontSize="18" />
       </Button>
 
       <Grid Margin="0,30,0,0"
@@ -170,11 +170,11 @@
                         HorizontalAlignment="Stretch"
                         Spacing="18">
               <StackPanel Spacing="6">
-                <TextBlock Text="歌词设置"
+                <TextBlock Text="设置"
                            Foreground="White"
                            FontSize="22"
                            FontWeight="SemiBold" />
-                <TextBlock Text="先把歌词相关选项收进这里，播放界面保持沉浸，设置也会继续自动保存。"
+                <TextBlock Text="设置会自动保存。"
                            Foreground="#A6FFFFFF"
                            FontSize="13"
                            TextWrapping="Wrap" />

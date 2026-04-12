@@ -8,6 +8,7 @@ namespace AvaPlayer.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IPlaylistService _playlistService;
+    private bool _isInitialized;
 
     public MainWindowViewModel(
         PlayerBarViewModel playerBar,
@@ -35,12 +36,42 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void ClosePlaylist() => IsPlaylistVisible = false;
 
-    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    public async Task InitializeAsync(bool hydrateVisuals = true, CancellationToken cancellationToken = default)
     {
-        await _playlistService.LoadAsync(cancellationToken);
-        await PlayerBar.InitializeAsync(cancellationToken);
-        Playlist.RefreshFromQueue();
-        Playlist.MarkCurrentTrack(_playlistService.CurrentTrack);
+        if (!_isInitialized)
+        {
+            await _playlistService.LoadAsync(cancellationToken);
+            await PlayerBar.InitializeAsync(hydrateVisuals, cancellationToken);
+            _isInitialized = true;
+        }
+        else if (hydrateVisuals)
+        {
+            await PlayerBar.EnsureVisualHydrationAsync(cancellationToken);
+        }
+        else
+        {
+            PlayerBar.SuspendVisualHydration();
+        }
+
+        if (hydrateVisuals)
+        {
+            Playlist.Activate();
+            Playlist.MarkCurrentTrack(_playlistService.CurrentTrack);
+        }
+        else
+        {
+            Playlist.Deactivate();
+        }
+    }
+
+    public Task EnsureWindowStateAsync(CancellationToken cancellationToken = default) =>
+        InitializeAsync(hydrateVisuals: true, cancellationToken);
+
+    public void ReleaseWindowState()
+    {
+        IsPlaylistVisible = false;
+        Playlist.Deactivate();
+        PlayerBar.SuspendVisualHydration();
     }
 
     private void OnTrackSelected(object? sender, Track track)

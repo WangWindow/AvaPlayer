@@ -40,12 +40,55 @@
   </Style>
 
   <Style Selector="Button.settings-toggle">
-    <Setter Property="Padding" Value="12,6" />
-    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Width" Value="40" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="CornerRadius" Value="20" />
   </Style>
 
   <Style Selector="Button.settings-toggle.open">
     <Setter Property="Background" Value="#1CFFFFFF" />
+  </Style>
+
+  <Style Selector="Grid.playlist-drawer-host">
+    <Setter Property="IsHitTestVisible" Value="False" />
+  </Style>
+
+  <Style Selector="Grid.playlist-drawer-host.open">
+    <Setter Property="IsHitTestVisible" Value="True" />
+  </Style>
+
+  <Style Selector="Border.playlist-drawer-scrim">
+    <Setter Property="Background" Value="#55000000" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.22" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="Border.playlist-drawer-scrim.open">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+
+  <Style Selector="Border.playlist-drawer-panel">
+    <Setter Property="Background" Value="#E0140E1E" />
+    <Setter Property="BoxShadow" Value="0 14 40 0 #70000000" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="RenderTransformOrigin" Value="0,0.5" />
+    <Setter Property="RenderTransform" Value="translate(-36px, 0px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.24" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.26" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="Border.playlist-drawer-panel.open">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
   </Style>
 
   <Style Selector="Button.playlist-item">

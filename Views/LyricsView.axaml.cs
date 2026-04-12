@@ -11,9 +11,12 @@ namespace AvaPlayer.Views;
 public partial class LyricsView : UserControl
 {
     private const double MinimumVerticalPadding = 120;
+    private const double DirectSnapThreshold = 1.2;
 
     private LyricsViewModel? _viewModel;
     private CancellationTokenSource? _scrollAnimationCts;
+    private int _lastCenteredLineIndex = -1;
+    private double _lastTargetOffset;
 
     public LyricsView()
     {
@@ -58,6 +61,8 @@ public partial class LyricsView : UserControl
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
         var targetOffset = CalculateTargetOffset(lineIndex);
         await AnimateScrollToAsync(targetOffset);
+        _lastCenteredLineIndex = lineIndex;
+        _lastTargetOffset = targetOffset;
     }
 
     private double CalculateTargetOffset(int lineIndex)
@@ -67,26 +72,21 @@ public partial class LyricsView : UserControl
             return 0;
         }
 
-        var targetLine = _viewModel.Lines[lineIndex];
-        var lineButton = LyricsScroller
-            .GetVisualDescendants()
-            .OfType<Button>()
-            .FirstOrDefault(button => ReferenceEquals(button.DataContext, targetLine));
-
-        if (lineButton is not null)
+        var lineHeight = _viewModel.EstimatedLineHeight;
+        if (_lastCenteredLineIndex >= 0)
         {
-            var lineCenter = lineButton.TranslatePoint(
-                new Point(lineButton.Bounds.Width / 2d, lineButton.Bounds.Height / 2d),
-                LyricsScroller);
-
-            if (lineCenter.HasValue)
+            var lineDelta = lineIndex - _lastCenteredLineIndex;
+            if (Math.Abs(lineDelta) <= 2)
             {
-                return ClampOffset(
-                    LyricsScroller.Offset.Y + lineCenter.Value.Y - LyricsScroller.Viewport.Height / 2d);
+                return ClampOffset(_lastTargetOffset + lineDelta * lineHeight);
             }
         }
 
-        var lineHeight = _viewModel.EstimatedLineHeight;
+        if (TryGetVisualTargetOffset(lineIndex) is { } visualTargetOffset)
+        {
+            return visualTargetOffset;
+        }
+
         var target = LyricsScroller.Padding.Top + lineIndex * lineHeight - LyricsScroller.Viewport.Height / 2d + lineHeight / 2d;
         return ClampOffset(target);
     }
@@ -94,7 +94,7 @@ public partial class LyricsView : UserControl
     private async Task AnimateScrollToAsync(double targetOffset)
     {
         var startOffset = LyricsScroller.Offset.Y;
-        if (Math.Abs(targetOffset - startOffset) < 0.5)
+        if (Math.Abs(targetOffset - startOffset) < DirectSnapThreshold)
         {
             LyricsScroller.Offset = LyricsScroller.Offset.WithY(targetOffset);
             return;
@@ -107,7 +107,7 @@ public partial class LyricsView : UserControl
         _scrollAnimationCts = animationCts;
         var token = animationCts.Token;
         var distance = Math.Abs(targetOffset - startOffset);
-        var durationMs = Math.Clamp(170 + (int)(distance * 0.18), 180, 320);
+        var durationMs = Math.Clamp(200 + (int)(distance * 0.22), 220, 420);
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -117,14 +117,14 @@ public partial class LyricsView : UserControl
                 token.ThrowIfCancellationRequested();
 
                 var progress = stopwatch.Elapsed.TotalMilliseconds / durationMs;
-                var easedProgress = 1d - Math.Pow(1d - progress, 3d);
+                var easedProgress = EaseInOutCubic(progress);
                 var currentOffset = startOffset + (targetOffset - startOffset) * easedProgress;
 
                 await Dispatcher.UIThread.InvokeAsync(
                     () => LyricsScroller.Offset = LyricsScroller.Offset.WithY(currentOffset),
                     DispatcherPriority.Render);
 
-                await Task.Delay(16, token);
+                await Task.Delay(10, token);
             }
         }
         catch (OperationCanceledException)
@@ -149,13 +149,19 @@ public partial class LyricsView : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(LyricsViewModel.EstimatedLineHeight))
+        if (e.PropertyName == nameof(LyricsViewModel.EstimatedLineHeight) ||
+            e.PropertyName == nameof(LyricsViewModel.HasLyrics))
         {
+            ResetScrollAnchor();
             UpdateScrollerPadding();
         }
     }
 
-    private void OnLyricsScrollerSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateScrollerPadding();
+    private void OnLyricsScrollerSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        ResetScrollAnchor();
+        UpdateScrollerPadding();
+    }
 
     private void UpdateScrollerPadding()
     {
@@ -179,11 +185,62 @@ public partial class LyricsView : UserControl
     private double ClampOffset(double offset) =>
         Math.Clamp(offset, 0, Math.Max(0, LyricsScroller.Extent.Height - LyricsScroller.Viewport.Height));
 
+    private double? TryGetVisualTargetOffset(int lineIndex)
+    {
+        if (_viewModel is null || lineIndex < 0 || lineIndex >= _viewModel.Lines.Count)
+        {
+            return null;
+        }
+
+        var targetLine = _viewModel.Lines[lineIndex];
+        var lineButton = LyricsItems
+            .GetVisualDescendants()
+            .OfType<Button>()
+            .FirstOrDefault(button => ReferenceEquals(button.DataContext, targetLine));
+
+        if (lineButton is null)
+        {
+            return null;
+        }
+
+        var lineCenter = lineButton.TranslatePoint(
+            new Point(lineButton.Bounds.Width / 2d, lineButton.Bounds.Height / 2d),
+            LyricsScroller);
+
+        return lineCenter.HasValue
+            ? ClampOffset(LyricsScroller.Offset.Y + lineCenter.Value.Y - LyricsScroller.Viewport.Height / 2d)
+            : null;
+    }
+
+    private void ResetScrollAnchor()
+    {
+        _lastCenteredLineIndex = -1;
+        _lastTargetOffset = LyricsScroller.Offset.Y;
+    }
+
+    private static double EaseInOutCubic(double progress)
+    {
+        if (progress <= 0)
+        {
+            return 0;
+        }
+
+        if (progress >= 1)
+        {
+            return 1;
+        }
+
+        return progress < 0.5
+            ? 4d * progress * progress * progress
+            : 1d - Math.Pow(-2d * progress + 2d, 3d) / 2d;
+    }
+
     private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
         _scrollAnimationCts?.Cancel();
         _scrollAnimationCts?.Dispose();
         _scrollAnimationCts = null;
+        ResetScrollAnchor();
 
         if (_viewModel is not null)
         {

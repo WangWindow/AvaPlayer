@@ -47,12 +47,12 @@ public partial class PlaylistViewModel : ViewModelBase
     private readonly IPlaylistService _playlistService;
     private readonly Dictionary<string, TrackItemViewModel> _trackCache = new(StringComparer.OrdinalIgnoreCase);
     private bool _refreshScheduled;
+    private bool _isUiActive;
 
     public PlaylistViewModel(IPlaylistService playlistService)
     {
         _playlistService = playlistService;
         _playlistService.Queue.CollectionChanged += OnQueueCollectionChanged;
-        RefreshTracks();
     }
 
     public ObservableCollection<TrackItemViewModel> Tracks { get; } = new();
@@ -147,12 +147,46 @@ public partial class PlaylistViewModel : ViewModelBase
 
     public void MarkCurrentTrack(Track? track)
     {
+        if (!_isUiActive)
+        {
+            CurrentTrack = null;
+            return;
+        }
+
         foreach (var item in Tracks)
         {
             item.IsCurrent = track is not null && item.Track.Id == track.Id;
         }
 
         CurrentTrack = Tracks.FirstOrDefault(static item => item.IsCurrent);
+    }
+
+    public void Activate()
+    {
+        if (_isUiActive)
+        {
+            return;
+        }
+
+        _isUiActive = true;
+        RefreshTracks();
+    }
+
+    public void Deactivate()
+    {
+        if (!_isUiActive && Tracks.Count == 0 && _trackCache.Count == 0)
+        {
+            return;
+        }
+
+        _isUiActive = false;
+        IsEditMode = false;
+        CurrentTrack = null;
+        ClearTrackSelection();
+        ClearTrackCache();
+        HasTracks = false;
+        ShowEmptyState = true;
+        UpdateSelectedTrackCount();
     }
 
     partial void OnIsEditModeChanged(bool value)
@@ -168,6 +202,11 @@ public partial class PlaylistViewModel : ViewModelBase
 
     private void RefreshTracks()
     {
+        if (!_isUiActive)
+        {
+            return;
+        }
+
         var desiredItems = new List<TrackItemViewModel>(_playlistService.Queue.Count);
         var desiredIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -203,6 +242,11 @@ public partial class PlaylistViewModel : ViewModelBase
 
     private void ScheduleRefresh()
     {
+        if (!_isUiActive)
+        {
+            return;
+        }
+
         if (_refreshScheduled)
         {
             return;
@@ -271,6 +315,17 @@ public partial class PlaylistViewModel : ViewModelBase
         OnPropertyChanged(nameof(EditSelectionText));
     }
 
+    private void ClearTrackCache()
+    {
+        foreach (var item in _trackCache.Values)
+        {
+            item.PropertyChanged -= OnTrackItemPropertyChanged;
+        }
+
+        _trackCache.Clear();
+        Tracks.Clear();
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (!disposing)
@@ -279,9 +334,6 @@ public partial class PlaylistViewModel : ViewModelBase
         }
 
         _playlistService.Queue.CollectionChanged -= OnQueueCollectionChanged;
-        foreach (var item in _trackCache.Values)
-        {
-            item.PropertyChanged -= OnTrackItemPropertyChanged;
-        }
+        ClearTrackCache();
     }
 }
