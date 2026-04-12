@@ -6,6 +6,8 @@ namespace AvaPlayer.Services.Playlist;
 
 public sealed class PlaylistService : IPlaylistService
 {
+    private const string CurrentTrackPathSettingKey = "current-track-path";
+
     private readonly IDatabaseService _databaseService;
     private readonly ITrackScannerService _trackScannerService;
     private readonly Random _random = new();
@@ -49,11 +51,20 @@ public sealed class PlaylistService : IPlaylistService
             Queue.Add(track);
         }
 
-        var currentTrackPath = await _databaseService.GetSettingAsync("current-track-path", cancellationToken);
+        var currentTrackPath = await _databaseService.GetSettingAsync(CurrentTrackPathSettingKey, cancellationToken);
         if (!string.IsNullOrWhiteSpace(currentTrackPath))
         {
             CurrentTrack = Queue.FirstOrDefault(track =>
                 string.Equals(track.FilePath, currentTrackPath, StringComparison.OrdinalIgnoreCase));
+
+            if (CurrentTrack is null)
+            {
+                CurrentTrack = Queue.FirstOrDefault();
+                await _databaseService.SaveSettingAsync(
+                    CurrentTrackPathSettingKey,
+                    CurrentTrack?.FilePath ?? string.Empty,
+                    cancellationToken);
+            }
         }
     }
 
@@ -80,13 +91,44 @@ public sealed class PlaylistService : IPlaylistService
         if (CurrentTrack is null && Queue.Count > 0)
         {
             CurrentTrack = Queue[0];
+            await _databaseService.SaveSettingAsync(CurrentTrackPathSettingKey, CurrentTrack.FilePath, cancellationToken);
+        }
+    }
+
+    public async Task RemoveTracksAsync(IEnumerable<Track> tracks, CancellationToken cancellationToken = default)
+    {
+        var removedPaths = tracks
+            .Select(static track => track.FilePath)
+            .Where(static path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (removedPaths.Count == 0)
+        {
+            return;
+        }
+
+        await _databaseService.DeleteTracksAsync(removedPaths, cancellationToken);
+
+        for (var i = Queue.Count - 1; i >= 0; i--)
+        {
+            if (removedPaths.Contains(Queue[i].FilePath))
+            {
+                Queue.RemoveAt(i);
+            }
+        }
+
+        if (CurrentTrack is not null && removedPaths.Contains(CurrentTrack.FilePath))
+        {
+            CurrentTrack = null;
+            await _databaseService.SaveSettingAsync(CurrentTrackPathSettingKey, string.Empty, cancellationToken);
         }
     }
 
     public void SetCurrentTrack(Track track)
     {
         CurrentTrack = track;
-        _ = _databaseService.SaveSettingAsync("current-track-path", track.FilePath);
+        _ = _databaseService.SaveSettingAsync(CurrentTrackPathSettingKey, track.FilePath);
     }
 
     public Track? GetNextTrack()

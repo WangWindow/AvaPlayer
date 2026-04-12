@@ -19,12 +19,19 @@ namespace AvaPlayer;
 
 public partial class App : Application
 {
+    private const string LightweightModeSettingKey = "lightweight-mode-enabled";
+
     private ServiceProvider? _services;
+    private IDatabaseService? _databaseService;
     private MainWindowViewModel? _mainWindowViewModel;
     private MainWindow? _mainWindow;
+    private NativeMenuItem? _lightweightModeMenuItem;
     private IMediaTransportService? _mediaTransportService;
     private IPlayerService? _playerService;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
+    private bool _isExiting;
+    private bool _isLightweightModeEnabled;
+    private bool _isReleasingMainWindow;
 
     public override void Initialize()
     {
@@ -36,24 +43,26 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             _desktop = desktop;
+            _desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _services = ConfigureServices();
+            _databaseService = _services.GetRequiredService<IDatabaseService>();
             _mainWindowViewModel = _services.GetRequiredService<MainWindowViewModel>();
             _mediaTransportService = _services.GetRequiredService<IMediaTransportService>();
             _playerService = _services.GetRequiredService<IPlayerService>();
 
-            _mainWindow = new MainWindow
+            _isLightweightModeEnabled = LoadLightweightModeSetting();
+            if (!_isLightweightModeEnabled)
             {
-                DataContext = _mainWindowViewModel
-            };
+                EnsureMainWindow();
+            }
 
-            desktop.MainWindow = _mainWindow;
             desktop.Exit += OnDesktopExit;
+            desktop.ShutdownRequested += OnDesktopShutdownRequested;
 
             WireTrayMenu();
             WireMediaTransport();
 
-            _ = _mainWindowViewModel.InitializeAsync();
-            _ = _mediaTransportService.InitializeAsync();
+            _ = InitializeApplicationAsync();
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -97,6 +106,85 @@ public partial class App : Application
         return services.BuildServiceProvider();
     }
 
+    private async Task InitializeApplicationAsync()
+    {
+        if (_mainWindowViewModel is null || _mediaTransportService is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _mediaTransportService.InitializeAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[App] 初始化系统媒体控制失败: {ex.Message}");
+        }
+
+        try
+        {
+            await _mainWindowViewModel.InitializeAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[App] 初始化主界面失败: {ex.Message}");
+            return;
+        }
+
+        await SyncMediaTransportAsync();
+    }
+
+    private bool LoadLightweightModeSetting()
+    {
+        if (_databaseService is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var setting = Task.Run(async () =>
+            {
+                await _databaseService.InitializeAsync();
+                return await _databaseService.GetSettingAsync(LightweightModeSettingKey);
+            }).GetAwaiter().GetResult();
+            return bool.TryParse(setting, out var isEnabled) && isEnabled;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[App] 读取轻量模式设置失败: {ex.Message}");
+            return false;
+        }
+    }
+
+    private MainWindow EnsureMainWindow()
+    {
+        if (_mainWindow is not null)
+        {
+            return _mainWindow;
+        }
+
+        if (_mainWindowViewModel is null)
+        {
+            throw new InvalidOperationException("主窗口视图模型尚未初始化。");
+        }
+
+        _mainWindow = new MainWindow
+        {
+            DataContext = _mainWindowViewModel
+        };
+        _mainWindow.Closing += OnMainWindowClosing;
+        _mainWindow.Closed += OnMainWindowClosed;
+
+        if (_desktop is not null)
+        {
+            _desktop.MainWindow = _mainWindow;
+        }
+
+        return _mainWindow;
+    }
+
     private void WireTrayMenu()
     {
         if (_mainWindowViewModel is null)
@@ -105,6 +193,16 @@ public partial class App : Application
         }
 
         _mainWindowViewModel.PlayerBar.PropertyChanged += OnPlayerBarPropertyChanged;
+        _lightweightModeMenuItem = TrayIcon.GetIcons(this)?
+            .Select(icon => icon.Menu)
+            .OfType<NativeMenu>()
+            .SelectMany(menu => menu.Items.OfType<NativeMenuItem>())
+            .FirstOrDefault(item => string.Equals(item.Header?.ToString(), "轻量模式", StringComparison.Ordinal));
+
+        if (_lightweightModeMenuItem is not null)
+        {
+            _lightweightModeMenuItem.IsChecked = _isLightweightModeEnabled;
+        }
     }
 
     private void WireMediaTransport()
@@ -176,6 +274,17 @@ public partial class App : Application
 
     private void OnShowWindowClick(object? sender, EventArgs e) => ShowMainWindow();
 
+    private async void OnLightweightModeClick(object? sender, EventArgs e)
+    {
+        if (sender is not NativeMenuItem menuItem)
+        {
+            return;
+        }
+
+        _lightweightModeMenuItem ??= menuItem;
+        await SetLightweightModeEnabledAsync(menuItem.IsChecked);
+    }
+
     private void OnPreviousTrackClick(object? sender, EventArgs e)
     {
         if (_mainWindowViewModel is null)
@@ -201,21 +310,153 @@ public partial class App : Application
         _ = _mainWindowViewModel.PlayerBar.NextCommand.ExecuteAsync(null);
     }
 
-    private void OnExitClick(object? sender, EventArgs e)
+    private async void OnExitClick(object? sender, EventArgs e)
     {
+        _isExiting = true;
+        await PersistPlaybackSessionAsync();
         _desktop?.Shutdown();
     }
 
     private void ShowMainWindow()
+    {
+        var mainWindow = EnsureMainWindow();
+
+        if (!mainWindow.IsVisible)
+        {
+            mainWindow.Show();
+        }
+
+        mainWindow.WindowState = WindowState.Normal;
+        mainWindow.Activate();
+    }
+
+    private async Task SetLightweightModeEnabledAsync(bool isEnabled)
+    {
+        var previousState = _isLightweightModeEnabled;
+        _isLightweightModeEnabled = isEnabled;
+        if (_lightweightModeMenuItem is not null)
+        {
+            _lightweightModeMenuItem.IsChecked = isEnabled;
+        }
+
+        if (_databaseService is not null)
+        {
+            try
+            {
+                await _databaseService.SaveSettingAsync(LightweightModeSettingKey, isEnabled.ToString());
+            }
+            catch (Exception ex)
+            {
+                _isLightweightModeEnabled = previousState;
+                if (_lightweightModeMenuItem is not null)
+                {
+                    _lightweightModeMenuItem.IsChecked = previousState;
+                }
+                Console.Error.WriteLine($"[App] 保存轻量模式设置失败: {ex.Message}");
+                return;
+            }
+        }
+
+        if (isEnabled)
+        {
+            await CloseMainWindowAsync();
+        }
+    }
+
+    private async Task CloseMainWindowAsync()
     {
         if (_mainWindow is null)
         {
             return;
         }
 
-        _mainWindow.Show();
-        _mainWindow.WindowState = WindowState.Normal;
-        _mainWindow.Activate();
+        await PersistPlaybackSessionAsync();
+
+        _isReleasingMainWindow = true;
+        try
+        {
+            _mainWindow.Close();
+        }
+        finally
+        {
+            _isReleasingMainWindow = false;
+        }
+    }
+
+    private async Task PersistPlaybackSessionAsync()
+    {
+        if (_mainWindowViewModel is null)
+        {
+            return;
+        }
+
+        await _mainWindowViewModel.PlayerBar.PersistSessionAsync();
+    }
+
+    private async Task SyncMediaTransportAsync()
+    {
+        if (_mainWindowViewModel is null || _mediaTransportService is null)
+        {
+            return;
+        }
+
+        await _mediaTransportService.UpdateTrackAsync(_mainWindowViewModel.PlayerBar.CurrentTrack);
+        _mediaTransportService.UpdatePlaybackMode(_mainWindowViewModel.PlayerBar.PlaybackMode);
+
+        if (_playerService is null)
+        {
+            return;
+        }
+
+        _mediaTransportService.UpdatePlaybackState(_playerService.IsPlaying);
+        _mediaTransportService.UpdatePosition(
+            TimeSpan.FromSeconds(Math.Max(0, _mainWindowViewModel.PlayerBar.Position)),
+            TimeSpan.FromSeconds(Math.Max(0, _mainWindowViewModel.PlayerBar.Duration)));
+    }
+
+    private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (_isExiting || _isReleasingMainWindow)
+        {
+            return;
+        }
+
+        if (_isLightweightModeEnabled)
+        {
+            _ = PersistPlaybackSessionAsync();
+            return;
+        }
+
+        e.Cancel = true;
+
+        if (sender is Window window)
+        {
+            window.Hide();
+        }
+
+        _ = PersistPlaybackSessionAsync();
+    }
+
+    private void OnMainWindowClosed(object? sender, EventArgs e)
+    {
+        if (sender is not MainWindow window)
+        {
+            return;
+        }
+
+        window.Closing -= OnMainWindowClosing;
+        window.Closed -= OnMainWindowClosed;
+
+        if (ReferenceEquals(_mainWindow, window))
+        {
+            _mainWindow = null;
+        }
+    }
+
+    private void OnDesktopShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
+    {
+        _isExiting = true;
+        Task.Run(PersistPlaybackSessionAsync).GetAwaiter().GetResult();
     }
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
@@ -230,6 +471,17 @@ public partial class App : Application
         {
             _playerService.PlaybackStateChanged -= OnPlaybackStateChanged;
             _playerService.PositionChanged -= OnPlayerPositionChanged;
+        }
+
+        if (_desktop is not null)
+        {
+            _desktop.ShutdownRequested -= OnDesktopShutdownRequested;
+        }
+
+        if (_mainWindow is not null)
+        {
+            _mainWindow.Closing -= OnMainWindowClosing;
+            _mainWindow.Closed -= OnMainWindowClosed;
         }
 
         _mediaTransportService?.Dispose();

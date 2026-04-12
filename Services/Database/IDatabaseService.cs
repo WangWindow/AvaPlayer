@@ -11,6 +11,7 @@ public interface IDatabaseService
     Task SaveLibraryFolderAsync(string folderPath, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Track>> GetTracksAsync(CancellationToken cancellationToken = default);
     Task SaveTracksAsync(IEnumerable<Track> tracks, CancellationToken cancellationToken = default);
+    Task DeleteTracksAsync(IEnumerable<string> filePaths, CancellationToken cancellationToken = default);
     Task SaveSettingAsync(string key, string value, CancellationToken cancellationToken = default);
     Task<string?> GetSettingAsync(string key, CancellationToken cancellationToken = default);
 }

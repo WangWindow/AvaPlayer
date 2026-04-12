@@ -1,9 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AvaPlayer.ViewModels"
+             x:Name="Root"
              x:Class="AvaPlayer.Views.LyricsView"
              x:DataType="vm:LyricsViewModel">
-  <Grid Margin="24,40,48,40">
+  <Grid Margin="36,40,36,40">
     <TextBlock Text="加载歌词中..."
                Foreground="#80FFFFFF"
                FontSize="14"
@@ -22,13 +23,31 @@
                   IsVisible="{Binding HasLyrics}"
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Hidden"
-                  Padding="30,120,30,120">
-      <ItemsControl ItemsSource="{Binding Lines}">
+                  Padding="0,160,0,160">
+      <ItemsControl ItemsSource="{Binding Lines}"
+                    Width="{Binding #LyricsScroller.Viewport.Width}"
+                    MaxWidth="560"
+                    HorizontalAlignment="Center">
+        <ItemsControl.Styles>
+          <Style Selector="ContentPresenter">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+          </Style>
+        </ItemsControl.Styles>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:LyricLineViewModel">
-            <TextBlock Text="{Binding Text}"
-                       Classes="lyric-line"
-                       Classes.active="{Binding IsCurrent}" />
+            <Button Classes="lyric-line-button"
+                    Classes.active="{Binding IsCurrent}"
+                    Classes.near="{Binding IsNearCurrent}"
+                    Command="{Binding #Root((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
+                    CommandParameter="{Binding}"
+                    HorizontalAlignment="Stretch">
+              <TextBlock Text="{Binding Text}"
+                         FontSize="{Binding DisplayFontSize}"
+                         Opacity="{Binding DisplayOpacity}"
+                         Classes="lyric-line"
+                         Classes.near="{Binding IsNearCurrent}"
+                         Classes.active="{Binding IsCurrent}" />
+            </Button>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

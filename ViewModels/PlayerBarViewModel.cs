@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -6,6 +7,7 @@ using AvaPlayer.Helpers;
 using AvaPlayer.Models;
 using AvaPlayer.Services.AlbumArt;
 using AvaPlayer.Services.Audio;
+using AvaPlayer.Services.Database;
 using AvaPlayer.Services.Lyrics;
 using AvaPlayer.Services.Playlist;
 using FluentIcons.Common;
@@ -14,6 +16,9 @@ namespace AvaPlayer.ViewModels;
 
 public partial class PlayerBarViewModel : ViewModelBase
 {
+    private const string PlaybackPositionSettingKey = "playback-position-seconds";
+
+    private readonly IDatabaseService _databaseService;
     private readonly IPlayerService _player;
     private readonly IPlaylistService _playlist;
     private readonly IAlbumArtService _albumArtService;
@@ -24,14 +29,16 @@ public partial class PlayerBarViewModel : ViewModelBase
         IPlayerService player,
         IPlaylistService playlist,
         IAlbumArtService albumArtService,
-        ILyricsService lyricsService)
+        ILyricsService lyricsService,
+        IDatabaseService databaseService)
     {
+        _databaseService = databaseService;
         _player = player;
         _playlist = playlist;
         _albumArtService = albumArtService;
         _lyricsService = lyricsService;
 
-        Lyrics = new LyricsViewModel();
+        Lyrics = new LyricsViewModel(databaseService);
         Volume = _player.Volume;
         PlaybackMode = _playlist.PlaybackMode;
         UpdatePlaybackModeDisplay();
@@ -40,6 +47,7 @@ public partial class PlayerBarViewModel : ViewModelBase
         _player.PositionChanged += OnPositionChanged;
         _player.TrackLoaded += OnTrackLoaded;
         _player.TrackEnded += OnTrackEnded;
+        Lyrics.SeekRequested += OnLyricsSeekRequested;
     }
 
     [ObservableProperty]
@@ -96,9 +104,25 @@ public partial class PlayerBarViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isUserSeeking;
 
+    [ObservableProperty]
+    private bool _isSettingsVisible;
+
     public LyricsViewModel Lyrics { get; }
 
     public event EventHandler<Track?>? TrackChanged;
+
+    public string VolumeText => $"{Math.Round(Volume):0}%";
+
+    public string SettingsToggleText => IsSettingsVisible ? "返回" : "设置";
+
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        await Lyrics.InitializeAsync(cancellationToken);
+        await RestorePlaybackSessionAsync(cancellationToken);
+    }
+
+    public Task PersistSessionAsync(CancellationToken cancellationToken = default) =>
+        PersistPlaybackPositionAsync(CurrentTrack is null ? 0 : Position, cancellationToken);
 
     [RelayCommand]
     private void PlayPause()
@@ -127,17 +151,12 @@ public partial class PlayerBarViewModel : ViewModelBase
 
         if (_playlist.CurrentTrack is not null)
         {
-            _ = PlayTrackAsync(_playlist.CurrentTrack);
+            _ = TryStartTrackAsync(_playlist.CurrentTrack, "恢复当前曲目");
         }
     }
 
     [RelayCommand]
-    private async Task PlayTrackAsync(Track track)
-    {
-        _playlist.SetCurrentTrack(track);
-        await _player.PlayAsync(track.FilePath);
-        UpdateTrackInfo(track);
-    }
+    private Task PlayTrackAsync(Track track) => TryStartTrackAsync(track, "播放指定曲目");
 
     [RelayCommand]
     private async Task PreviousAsync()
@@ -148,9 +167,7 @@ public partial class PlayerBarViewModel : ViewModelBase
             return;
         }
 
-        _playlist.SetCurrentTrack(previous);
-        await _player.PlayAsync(previous.FilePath);
-        UpdateTrackInfo(previous);
+        await TryStartTrackAsync(previous, "切换到上一首");
     }
 
     [RelayCommand]
@@ -162,9 +179,7 @@ public partial class PlayerBarViewModel : ViewModelBase
             return;
         }
 
-        _playlist.SetCurrentTrack(next);
-        await _player.PlayAsync(next.FilePath);
-        UpdateTrackInfo(next);
+        await TryStartTrackAsync(next, "切换到下一首");
     }
 
     [RelayCommand]
@@ -186,12 +201,17 @@ public partial class PlayerBarViewModel : ViewModelBase
     [RelayCommand]
     private void Seek(double seconds) => _player.Seek(seconds);
 
+    [RelayCommand]
+    private void ToggleSettings() => IsSettingsVisible = !IsSettingsVisible;
+
     partial void OnVolumeChanged(double value)
     {
         if (_player.IsReady)
         {
             _player.Volume = value;
         }
+
+        OnPropertyChanged(nameof(VolumeText));
     }
 
     partial void OnPositionChanged(double value)
@@ -202,6 +222,11 @@ public partial class PlayerBarViewModel : ViewModelBase
     partial void OnDurationChanged(double value)
     {
         DurationText = FormatTime(value);
+    }
+
+    partial void OnIsSettingsVisibleChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SettingsToggleText));
     }
 
     private void OnPlaybackStateChanged(object? sender, bool isPlaying)
@@ -224,34 +249,89 @@ public partial class PlayerBarViewModel : ViewModelBase
     private void OnTrackLoaded(object? sender, EventArgs e)
     {
         Duration = Math.Max(_player.Duration, 1);
+        Position = Math.Clamp(Position, 0, Duration);
+        Lyrics.UpdatePosition(Position);
     }
 
-    private void OnTrackEnded(object? sender, EventArgs e)
+    private async void OnTrackEnded(object? sender, EventArgs e)
     {
         var next = _playlist.GetNextTrack();
         if (next is null)
         {
+            Console.WriteLine("[Player] 当前曲目播放结束，没有可自动切换的下一首。");
             IsPlaying = false;
             PlayPauseIcon = Icon.Play;
             return;
         }
 
-        _ = PlayTrackAsync(next);
+        Console.WriteLine($"[Player] 当前曲目播放结束，准备自动切换到: {next.DisplayTitle}");
+        var started = await TryStartTrackAsync(next, "自动切换下一首");
+        if (!started)
+        {
+            IsPlaying = false;
+            PlayPauseIcon = Icon.Play;
+        }
     }
 
-    private void UpdateTrackInfo(Track track)
+    private async Task RestorePlaybackSessionAsync(CancellationToken cancellationToken)
+    {
+        if (_playlist.CurrentTrack is not Track track)
+        {
+            return;
+        }
+
+        var savedPosition = await LoadSavedPlaybackPositionAsync(cancellationToken);
+
+        try
+        {
+            await _player.PlayAsync(
+                track.FilePath,
+                startPaused: true,
+                startPositionSeconds: savedPosition,
+                cancellationToken: cancellationToken);
+            UpdateTrackInfo(track, savedPosition);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Player] 恢复播放会话失败: {ex.Message}");
+        }
+    }
+
+    private void UpdateTrackInfo(Track track, double initialPositionSeconds = 0)
     {
         CurrentTrack = track;
         TitleDisplay = track.DisplayTitle;
         ArtistDisplay = track.DisplayArtistAlbum;
-        Position = 0;
-        Duration = Math.Max(_player.Duration, 1);
+        Duration = Math.Max(Math.Max(track.DurationSeconds, initialPositionSeconds), 1);
+        Position = Math.Clamp(initialPositionSeconds, 0, Duration);
 
         Lyrics.BeginLoading();
         TrackChanged?.Invoke(this, track);
+        _ = PersistPlaybackPositionAsync(Position);
 
         _ = LoadAlbumArtAsync(track);
         _ = LoadLyricsAsync(track);
+    }
+
+    private async Task<bool> TryStartTrackAsync(Track track, string reason)
+    {
+        try
+        {
+            await _player.PlayAsync(track.FilePath);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Player] {reason}失败: {track.DisplayTitle} ({track.FilePath}) - {ex.Message}");
+            return false;
+        }
+
+        _playlist.SetCurrentTrack(track);
+        UpdateTrackInfo(track);
+        Console.WriteLine($"[Player] {reason}: {track.DisplayTitle}");
+        return true;
     }
 
     private async Task LoadAlbumArtAsync(Track track)
@@ -293,6 +373,7 @@ public partial class PlayerBarViewModel : ViewModelBase
             if (lines.Count > 0)
             {
                 Lyrics.LoadLyrics(lines);
+                Lyrics.UpdatePosition(Position);
             }
             else
             {
@@ -321,6 +402,50 @@ public partial class PlayerBarViewModel : ViewModelBase
         };
     }
 
+    private void OnLyricsSeekRequested(object? sender, TimeSpan time)
+    {
+        Position = Math.Clamp(time.TotalSeconds, 0, Duration);
+        _player.Seek(time.TotalSeconds);
+    }
+
+    private async Task<double> LoadSavedPlaybackPositionAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var savedPosition = await _databaseService.GetSettingAsync(PlaybackPositionSettingKey, cancellationToken);
+            return double.TryParse(savedPosition, NumberStyles.Float, CultureInfo.InvariantCulture, out var position)
+                ? Math.Max(0, position)
+                : 0;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Player] 读取播放进度失败: {ex.Message}");
+            return 0;
+        }
+    }
+
+    private async Task PersistPlaybackPositionAsync(double positionSeconds, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _databaseService.SaveSettingAsync(
+                PlaybackPositionSettingKey,
+                Math.Max(0, positionSeconds).ToString(CultureInfo.InvariantCulture),
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Player] 保存播放进度失败: {ex.Message}");
+        }
+    }
+
     private static string FormatTime(double seconds)
     {
         var time = TimeSpan.FromSeconds(Math.Max(0, seconds));
@@ -343,5 +468,6 @@ public partial class PlayerBarViewModel : ViewModelBase
         _player.PositionChanged -= OnPositionChanged;
         _player.TrackLoaded -= OnTrackLoaded;
         _player.TrackEnded -= OnTrackEnded;
+        Lyrics.SeekRequested -= OnLyricsSeekRequested;
     }
 }

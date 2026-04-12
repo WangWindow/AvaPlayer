@@ -5,22 +5,197 @@
              x:Name="Root"
              x:Class="AvaPlayer.Views.PlaylistView"
              x:DataType="vm:PlaylistViewModel">
-  <Grid RowDefinitions="Auto,*"
-        Margin="16,0,16,16">
-    <Button Grid.Row="0"
-            Classes="ghost"
-            HorizontalAlignment="Left"
-            Padding="14,8"
-            Margin="0,0,0,12"
-            Command="{Binding AddFolderCommand}">
-      <StackPanel Orientation="Horizontal"
-                  Spacing="8">
-        <fi:FluentIcon Icon="FolderAdd" FontSize="16" />
-        <TextBlock Text="添加文件夹" Foreground="White" />
-      </StackPanel>
-    </Button>
+  <UserControl.Resources>
+    <x:Double x:Key="CheckBoxMinHeight">20</x:Double>
+  </UserControl.Resources>
 
-    <Grid Grid.Row="1">
+  <UserControl.Styles>
+    <Style Selector="ListBox.playlist-list ListBoxItem">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+    <Style Selector="ListBox.playlist-list ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="ListBox.playlist-list ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="ListBox.playlist-list ListBoxItem:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="ListBox.playlist-list ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="ListBox.playlist-list ListBoxItem:selected:not(:focus) /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="ListBox.playlist-list ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="ListBox.playlist-list ListBoxItem:selected:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Button.playlist-item">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="MinWidth" Value="20" />
+      <Setter Property="MinHeight" Value="20" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select /template/ Border#PART_Border">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select:pointerover /template/ Border#PART_Border">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select:pressed /template/ Border#PART_Border">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select:checked /template/ Border#PART_Border">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select:checked:pointerover /template/ Border#PART_Border">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select:checked:pressed /template/ Border#PART_Border">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select /template/ Border#NormalRectangle">
+      <Setter Property="Background" Value="#10FFFFFF" />
+      <Setter Property="BorderBrush" Value="#55FFFFFF" />
+      <Setter Property="BorderThickness" Value="1.5" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select:pointerover /template/ Border#NormalRectangle">
+      <Setter Property="Background" Value="#18FFFFFF" />
+      <Setter Property="BorderBrush" Value="#80FFFFFF" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select:pressed /template/ Border#NormalRectangle">
+      <Setter Property="Background" Value="#22FFFFFF" />
+      <Setter Property="BorderBrush" Value="#99FFFFFF" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select:checked /template/ Border#NormalRectangle">
+      <Setter Property="Background" Value="#30FFFFFF" />
+      <Setter Property="BorderBrush" Value="#E6FFFFFF" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select:checked:pointerover /template/ Border#NormalRectangle">
+      <Setter Property="Background" Value="#3AFFFFFF" />
+      <Setter Property="BorderBrush" Value="White" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select:checked:pressed /template/ Border#NormalRectangle">
+      <Setter Property="Background" Value="#44FFFFFF" />
+      <Setter Property="BorderBrush" Value="White" />
+    </Style>
+
+    <Style Selector="CheckBox.playlist-select:checked /template/ Path#CheckGlyph">
+      <Setter Property="Fill" Value="White" />
+    </Style>
+
+    <Style Selector="Button.playlist-toolbar-icon">
+      <Setter Property="Width" Value="36" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="18" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,*"
+        Margin="16,0,16,16">
+    <Grid ColumnDefinitions="*,Auto"
+          ColumnSpacing="10">
+      <Button Grid.Column="0"
+              Classes="ghost"
+              HorizontalAlignment="Left"
+              Padding="14,8"
+              Command="{Binding AddFolderCommand}">
+        <StackPanel Orientation="Horizontal"
+                    Spacing="8">
+          <fi:FluentIcon Icon="FolderAdd" FontSize="16" />
+          <TextBlock Text="添加文件夹" Foreground="White" />
+        </StackPanel>
+      </Button>
+
+      <StackPanel Grid.Column="1"
+                  Orientation="Horizontal"
+                  Spacing="8"
+                  IsVisible="{Binding ShowNormalToolbar}">
+        <Button Classes="ghost playlist-toolbar-icon"
+                Command="{Binding BeginEditCommand}"
+                ToolTip.Tip="编辑播放列表">
+          <fi:FluentIcon Icon="Edit"
+                         FontSize="16" />
+        </Button>
+      </StackPanel>
+
+      <StackPanel Grid.Column="1"
+                  Orientation="Horizontal"
+                  Spacing="8"
+                  IsVisible="{Binding ShowEditToolbar}">
+        <Button Classes="ghost"
+                Padding="12,8"
+                Command="{Binding RemoveSelectedCommand}"
+                IsEnabled="{Binding CanRemoveSelected}">
+          <TextBlock Text="删除"
+                     Foreground="White" />
+        </Button>
+        <Button Classes="ghost"
+                Padding="12,8"
+                Command="{Binding CancelEditCommand}">
+          <TextBlock Text="取消"
+                     Foreground="White" />
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <TextBlock Grid.Row="1"
+               Margin="4,12,0,0"
+               Text="{Binding EditSelectionText}"
+               Foreground="#A6FFFFFF"
+               FontSize="12"
+               IsVisible="{Binding ShowEditToolbar}" />
+
+    <Grid Grid.Row="2"
+          Margin="0,12,0,0">
       <StackPanel HorizontalAlignment="Center"
                   VerticalAlignment="Center"
                   Spacing="12"
@@ -35,55 +210,63 @@
                    HorizontalAlignment="Center" />
       </StackPanel>
 
-      <ScrollViewer IsVisible="{Binding HasTracks}"
-                    HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto">
-        <ItemsControl ItemsSource="{Binding Tracks}">
-          <ItemsControl.ItemTemplate>
+      <ListBox IsVisible="{Binding HasTracks}"
+               Classes="playlist-list"
+               ItemsSource="{Binding Tracks}">
+        <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:TrackItemViewModel">
               <Button Classes="playlist-item"
                       Classes.current="{Binding IsCurrent}"
-                      Command="{Binding #Root.DataContext.SelectTrackCommand}"
+                      Command="{Binding #Root((vm:PlaylistViewModel)DataContext).SelectTrackCommand}"
                       CommandParameter="{Binding}">
-                <Grid ColumnDefinitions="Auto,*,Auto"
-                      ColumnSpacing="10">
-                  <fi:FluentIcon Grid.Column="0"
-                                 Icon="MusicNote2"
-                                 FontSize="16"
-                                 Foreground="#A6FFFFFF"
-                                 VerticalAlignment="Center" />
+                <Grid ColumnDefinitions="32,*,Auto"
+                       ColumnSpacing="12">
+                  <Grid Grid.Column="0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <CheckBox Classes="playlist-select"
+                              IsVisible="{Binding #Root((vm:PlaylistViewModel)DataContext).ShowEditToolbar}"
+                              IsChecked="{Binding IsSelectedForRemoval, Mode=TwoWay}" />
+
+                    <Grid IsVisible="{Binding #Root((vm:PlaylistViewModel)DataContext).ShowNormalToolbar}">
+                      <fi:FluentIcon Icon="Play"
+                                     FontSize="14"
+                                     Foreground="White"
+                                     IsVisible="{Binding ShowCurrentGlyph}" />
+
+                      <fi:FluentIcon Icon="MusicNote2"
+                                     FontSize="16"
+                                     Foreground="#8CFFFFFF"
+                                     IsVisible="{Binding ShowIdleGlyph}" />
+                    </Grid>
+                  </Grid>
+
                   <StackPanel Grid.Column="1"
-                              Spacing="2">
-                    <TextBlock Text="{Binding Title}"
-                               Foreground="White"
-                               FontSize="13"
-                               FontWeight="SemiBold"
+                              Spacing="4"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Center">
+                    <TextBlock Classes="playlist-title"
+                               Text="{Binding Title}"
+                               MaxWidth="220"
+                               TextAlignment="Left"
                                TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding Artist}"
-                               Foreground="#99FFFFFF"
-                               FontSize="11"
+                    <TextBlock Classes="playlist-subtitle"
+                               Text="{Binding Artist}"
+                               MaxWidth="220"
+                               TextAlignment="Left"
                                TextTrimming="CharacterEllipsis" />
                   </StackPanel>
 
                   <TextBlock Grid.Column="2"
+                             Classes="playlist-duration"
                              Text="{Binding DurationText}"
-                             Foreground="#80FFFFFF"
-                             FontSize="11"
                              VerticalAlignment="Center"
-                             IsVisible="{Binding ShowDuration}" />
-
-                  <fi:FluentIcon Grid.Column="2"
-                                 Icon="Play"
-                                 FontSize="14"
-                                 Foreground="White"
-                                 VerticalAlignment="Center"
-                                 IsVisible="{Binding ShowCurrentGlyph}" />
+                             TextAlignment="Right" />
                 </Grid>
               </Button>
             </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </ScrollViewer>
+        </ListBox.ItemTemplate>
+      </ListBox>
     </Grid>
   </Grid>
 </UserControl>

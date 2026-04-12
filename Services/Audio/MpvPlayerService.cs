@@ -9,11 +9,16 @@ public sealed class MpvPlayerService : IPlayerService
     private const ulong PositionReplyId = 1;
     private const ulong DurationReplyId = 2;
     private const ulong PauseReplyId = 3;
+    private const ulong EofReachedReplyId = 4;
 
     private readonly CancellationTokenSource _eventLoopCts = new();
+    private readonly object _restoreGate = new();
+    private readonly object _trackEndGate = new();
     private readonly Thread? _eventLoopThread;
     private IntPtr _handle;
+    private double _pendingStartPosition;
     private double _volume = 80;
+    private bool _trackEndSignaled;
 
     public MpvPlayerService()
     {
@@ -38,6 +43,7 @@ public sealed class MpvPlayerService : IPlayerService
             Check(MpvInterop.ObserveProperty(_handle, PositionReplyId, "time-pos", MpvFormat.Double), "observe time-pos");
             Check(MpvInterop.ObserveProperty(_handle, DurationReplyId, "duration", MpvFormat.Double), "observe duration");
             Check(MpvInterop.ObserveProperty(_handle, PauseReplyId, "pause", MpvFormat.Flag), "observe pause");
+            Check(MpvInterop.ObserveProperty(_handle, EofReachedReplyId, "eof-reached", MpvFormat.Flag), "observe eof-reached");
             Check(MpvInterop.SetPropertyString(_handle, "volume", _volume.ToString(CultureInfo.InvariantCulture)), "volume");
 
             IsReady = true;
@@ -89,7 +95,11 @@ public sealed class MpvPlayerService : IPlayerService
     public event EventHandler? TrackLoaded;
     public event EventHandler? TrackEnded;
 
-    public Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
+    public Task PlayAsync(
+        string filePath,
+        bool startPaused = false,
+        double startPositionSeconds = 0,
+        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -99,9 +109,24 @@ public sealed class MpvPlayerService : IPlayerService
             return Task.CompletedTask;
         }
 
-        ExecuteCommand("loadfile", filePath, "replace");
-        Check(MpvInterop.SetPropertyString(_handle, "pause", "no"), "pause=no");
-        SetPlaybackState(isPlaying: true, publishWhenUnchanged: true);
+        lock (_restoreGate)
+        {
+            _pendingStartPosition = Math.Max(0, startPositionSeconds);
+        }
+
+        Duration = 0;
+        if (startPaused)
+        {
+            Check(MpvInterop.SetPropertyString(_handle, "pause", "yes"), "pause=yes");
+            ExecuteCommand("loadfile", filePath, "replace");
+        }
+        else
+        {
+            ExecuteCommand("loadfile", filePath, "replace");
+            Check(MpvInterop.SetPropertyString(_handle, "pause", "no"), "pause=no");
+        }
+
+        SetPlaybackState(isPlaying: !startPaused, publishWhenUnchanged: true);
         return Task.CompletedTask;
     }
 
@@ -176,15 +201,17 @@ public sealed class MpvPlayerService : IPlayerService
             switch (mpvEvent.EventId)
             {
                 case MpvEventId.FileLoaded:
+                    ResetTrackEndSignal();
+                    ApplyPendingStartPosition();
                     Dispatcher.UIThread.Post(() => TrackLoaded?.Invoke(this, EventArgs.Empty));
                     break;
 
                 case MpvEventId.EndFile:
                     var endFile = Marshal.PtrToStructure<MpvEventEndFile>(mpvEvent.Data);
+                    Console.WriteLine($"[AvaPlayer] mpv EndFile: reason={endFile.Reason}");
                     if (endFile.Reason == MpvEndFileReason.Eof)
                     {
-                        SetPlaybackState(isPlaying: false, publishWhenUnchanged: true);
-                        Dispatcher.UIThread.Post(() => TrackEnded?.Invoke(this, EventArgs.Empty));
+                        SignalTrackEnded("end-file/eof");
                     }
 
                     break;
@@ -228,6 +255,15 @@ public sealed class MpvPlayerService : IPlayerService
                 var paused = *(int*)property.Data != 0;
                 SetPlaybackState(isPlaying: !paused, publishWhenUnchanged: false);
                 break;
+
+            case "eof-reached" when property.Format == MpvFormat.Flag:
+                var eofReached = *(int*)property.Data != 0;
+                if (eofReached)
+                {
+                    SignalTrackEnded("property/eof-reached");
+                }
+
+                break;
         }
     }
 
@@ -248,6 +284,55 @@ public sealed class MpvPlayerService : IPlayerService
         }
 
         Dispatcher.UIThread.Post(() => PlaybackStateChanged?.Invoke(this, IsPlaying));
+    }
+
+    private void ApplyPendingStartPosition()
+    {
+        double startPosition;
+        lock (_restoreGate)
+        {
+            startPosition = _pendingStartPosition;
+            _pendingStartPosition = 0;
+        }
+
+        if (startPosition <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            ExecuteCommand("seek", startPosition.ToString(CultureInfo.InvariantCulture), "absolute");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[AvaPlayer] 恢复播放位置失败: {ex.Message}");
+        }
+    }
+
+    private void ResetTrackEndSignal()
+    {
+        lock (_trackEndGate)
+        {
+            _trackEndSignaled = false;
+        }
+    }
+
+    private void SignalTrackEnded(string source)
+    {
+        lock (_trackEndGate)
+        {
+            if (_trackEndSignaled)
+            {
+                return;
+            }
+
+            _trackEndSignaled = true;
+        }
+
+        Console.WriteLine($"[AvaPlayer] 检测到曲目自然结束，来源: {source}");
+        SetPlaybackState(isPlaying: false, publishWhenUnchanged: true);
+        Dispatcher.UIThread.Post(() => TrackEnded?.Invoke(this, EventArgs.Empty));
     }
 
     private unsafe void ExecuteCommand(params string[] arguments)

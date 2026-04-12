@@ -2,132 +2,263 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AvaPlayer.ViewModels"
              xmlns:fi="using:FluentIcons.Avalonia"
+             x:Name="Root"
              x:Class="AvaPlayer.Views.PlayerBarView"
              x:DataType="vm:PlayerBarViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                VerticalScrollBarVisibility="Hidden">
-    <Grid Margin="56,40,56,40">
-      <StackPanel HorizontalAlignment="Center"
-                  VerticalAlignment="Center"
-                  Spacing="18">
-
-        <Border Width="260"
-                Height="260"
-                CornerRadius="18"
-                ClipToBounds="True"
-                BoxShadow="0 14 40 0 #70000000">
-          <Grid>
-            <Border Background="#20FFFFFF"
-                    IsVisible="{Binding ShowAlbumArtPlaceholder}" />
-            <fi:FluentIcon Icon="MusicNote2"
-                           FontSize="72"
-                           Foreground="#60FFFFFF"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           IsVisible="{Binding ShowAlbumArtPlaceholder}" />
-            <Image Source="{Binding AlbumArtBitmap}"
-                   Stretch="UniformToFill"
-                   IsVisible="{Binding HasAlbumArt}" />
-          </Grid>
-        </Border>
-
-        <StackPanel Spacing="6"
-                    HorizontalAlignment="Center"
-                    MaxWidth="340">
-          <TextBlock Text="{Binding TitleDisplay}"
-                     Foreground="White"
-                     FontSize="20"
-                     FontWeight="SemiBold"
-                     TextAlignment="Center"
-                     TextWrapping="Wrap" />
-          <TextBlock Text="{Binding ArtistDisplay}"
-                     Foreground="#A6FFFFFF"
-                     FontSize="14"
-                     TextAlignment="Center"
-                     TextWrapping="Wrap" />
-        </StackPanel>
-
-        <Grid Width="340"
-              ColumnDefinitions="Auto,*,Auto">
-          <TextBlock Grid.Column="0"
-                     Text="{Binding PositionText}"
-                     Foreground="#A6FFFFFF"
-                     FontSize="11"
-                     Margin="0,0,10,0"
-                     VerticalAlignment="Center" />
-
-          <Slider x:Name="ProgressSlider"
-                  Grid.Column="1"
-                  Classes="white"
-                  Minimum="0"
-                  Maximum="{Binding Duration}"
-                  Value="{Binding Position, Mode=TwoWay}" />
-
-          <TextBlock Grid.Column="2"
-                     Text="{Binding DurationText}"
-                     Foreground="#A6FFFFFF"
-                     FontSize="11"
-                     Margin="10,0,0,0"
-                     VerticalAlignment="Center" />
-        </Grid>
-
+                VerticalScrollBarVisibility="Auto">
+    <Grid Margin="56,28,56,32">
+      <Button Classes="ghost settings-toggle"
+              Classes.open="{Binding IsSettingsVisible}"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Top"
+              Command="{Binding ToggleSettingsCommand}">
         <StackPanel Orientation="Horizontal"
+                    Spacing="8">
+          <fi:FluentIcon Icon="Settings"
+                         FontSize="14" />
+          <TextBlock Text="{Binding SettingsToggleText}" />
+        </StackPanel>
+      </Button>
+
+      <Grid Margin="0,30,0,0"
+            ClipToBounds="True">
+        <StackPanel x:Name="PlaybackContent"
+                    Classes="player-stage"
+                    Classes.hidden="{Binding IsSettingsVisible}"
                     HorizontalAlignment="Center"
-                    Spacing="6">
-          <Button Classes="ghost"
-                  Width="40"
-                  Height="40"
-                  ToolTip.Tip="{Binding PlaybackModeTooltip}"
-                  Command="{Binding TogglePlaybackModeCommand}">
-            <fi:FluentIcon Icon="{Binding PlaybackModeIcon}" FontSize="18" />
-          </Button>
+                    VerticalAlignment="Center"
+                    Spacing="20">
+          <Border Width="260"
+                  Height="260"
+                  CornerRadius="18"
+                  ClipToBounds="True"
+                  BoxShadow="0 14 40 0 #70000000">
+            <Grid>
+              <Border Background="#20FFFFFF"
+                      IsVisible="{Binding ShowAlbumArtPlaceholder}" />
+              <fi:FluentIcon Icon="MusicNote2"
+                             FontSize="72"
+                             Foreground="#60FFFFFF"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"
+                             IsVisible="{Binding ShowAlbumArtPlaceholder}" />
+              <Image Source="{Binding AlbumArtBitmap}"
+                     Stretch="UniformToFill"
+                     IsVisible="{Binding HasAlbumArt}" />
+            </Grid>
+          </Border>
 
-          <Button Classes="ghost"
-                  Width="40"
-                  Height="40"
-                  ToolTip.Tip="上一首"
-                  Command="{Binding PreviousCommand}">
-            <fi:FluentIcon Icon="Previous" FontSize="18" />
-          </Button>
+          <StackPanel Spacing="8"
+                      HorizontalAlignment="Center"
+                      MaxWidth="360">
+            <TextBlock Text="{Binding TitleDisplay}"
+                       Foreground="White"
+                       FontSize="22"
+                       FontWeight="SemiBold"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap" />
+            <TextBlock Text="{Binding ArtistDisplay}"
+                       Foreground="#B3FFFFFF"
+                       FontSize="13"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap" />
+          </StackPanel>
 
-          <Button Classes="ghost-large"
-                  ToolTip.Tip="播放 / 暂停"
-                  Command="{Binding PlayPauseCommand}">
-            <fi:FluentIcon Icon="{Binding PlayPauseIcon}" FontSize="24" />
-          </Button>
+          <Grid Width="360"
+                ColumnDefinitions="Auto,*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding PositionText}"
+                       Foreground="#A6FFFFFF"
+                       FontSize="12"
+                       Margin="0,0,10,0"
+                       VerticalAlignment="Center" />
 
-          <Button Classes="ghost"
-                  Width="40"
-                  Height="40"
-                  ToolTip.Tip="下一首"
-                  Command="{Binding NextCommand}">
-            <fi:FluentIcon Icon="Next" FontSize="18" />
-          </Button>
+            <Slider x:Name="ProgressSlider"
+                    Grid.Column="1"
+                    Classes="white"
+                    Minimum="0"
+                    Maximum="{Binding Duration}"
+                    Value="{Binding Position, Mode=TwoWay}" />
 
-          <Button Classes="ghost"
-                  Width="40"
-                  Height="40"
-                  ToolTip.Tip="{Binding PlaybackModeTooltip}"
-                  Command="{Binding TogglePlaybackModeCommand}">
-            <fi:FluentIcon Icon="ArrowShuffle" FontSize="18" />
-          </Button>
+            <TextBlock Grid.Column="2"
+                       Text="{Binding DurationText}"
+                       Foreground="#A6FFFFFF"
+                       FontSize="12"
+                       Margin="10,0,0,0"
+                       VerticalAlignment="Center" />
+          </Grid>
+
+          <StackPanel Orientation="Horizontal"
+                      HorizontalAlignment="Center"
+                      Spacing="10">
+            <Button Classes="ghost"
+                    Width="40"
+                    Height="40"
+                    ToolTip.Tip="{Binding PlaybackModeTooltip}"
+                    Command="{Binding TogglePlaybackModeCommand}">
+              <fi:FluentIcon Icon="{Binding PlaybackModeIcon}" FontSize="18" />
+            </Button>
+
+            <Button Classes="ghost"
+                    Width="40"
+                    Height="40"
+                    ToolTip.Tip="上一首"
+                    Command="{Binding PreviousCommand}">
+              <fi:FluentIcon Icon="Previous" FontSize="18" />
+            </Button>
+
+            <Button Classes="ghost-large"
+                    ToolTip.Tip="播放 / 暂停"
+                    Command="{Binding PlayPauseCommand}">
+              <fi:FluentIcon Icon="{Binding PlayPauseIcon}" FontSize="24" />
+            </Button>
+
+            <Button Classes="ghost"
+                    Width="40"
+                    Height="40"
+                    ToolTip.Tip="下一首"
+                    Command="{Binding NextCommand}">
+              <fi:FluentIcon Icon="Next" FontSize="18" />
+            </Button>
+
+            <Grid ClipToBounds="False">
+              <Border x:Name="VolumePopoverCard"
+                      Classes="volume-popover-surface"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Top"
+                      Margin="0,-150,0,0"
+                      IsHitTestVisible="False">
+                <StackPanel Spacing="8"
+                            HorizontalAlignment="Center">
+                  <TextBlock Text="{Binding VolumeText}"
+                             Foreground="#F2FFFFFF"
+                             FontSize="13"
+                             FontWeight="SemiBold"
+                             HorizontalAlignment="Center" />
+                  <Grid Width="20"
+                        HorizontalAlignment="Center">
+                    <Slider Classes="volume-slider"
+                            Orientation="Vertical"
+                            Width="20"
+                            Height="110"
+                            Minimum="0"
+                            Maximum="100"
+                            HorizontalAlignment="Center"
+                            Value="{Binding Volume, Mode=TwoWay}" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <Button x:Name="VolumeButton"
+                      Classes="ghost volume-toggle"
+                      Width="40"
+                      Height="40"
+                      ToolTip.Tip="音量"
+                      Click="OnVolumeButtonClick">
+                <fi:FluentIcon Icon="Speaker2" FontSize="18" />
+              </Button>
+            </Grid>
+          </StackPanel>
         </StackPanel>
 
-        <Grid Width="220"
-              ColumnDefinitions="Auto,*">
-          <fi:FluentIcon Grid.Column="0"
-                         Icon="Speaker2"
-                         FontSize="16"
-                         Foreground="#A6FFFFFF"
-                         Margin="0,0,10,0"
-                         VerticalAlignment="Center" />
-          <Slider Grid.Column="1"
-                  Classes="white"
-                  Minimum="0"
-                  Maximum="100"
-                  Value="{Binding Volume, Mode=TwoWay}" />
-        </Grid>
-      </StackPanel>
+        <Border x:Name="SettingsContent"
+                Classes="settings-stage"
+                Classes.open="{Binding IsSettingsVisible}">
+          <Border Classes="settings-panel">
+            <StackPanel MaxWidth="360"
+                        HorizontalAlignment="Stretch"
+                        Spacing="18">
+              <StackPanel Spacing="6">
+                <TextBlock Text="歌词设置"
+                           Foreground="White"
+                           FontSize="22"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="先把歌词相关选项收进这里，播放界面保持沉浸，设置也会继续自动保存。"
+                           Foreground="#A6FFFFFF"
+                           FontSize="13"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+
+              <Border Classes="settings-section">
+                <StackPanel Spacing="14">
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="歌词字号"
+                               Foreground="White"
+                               FontSize="14"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="调整当前行与上下文歌词的整体字号层级。"
+                               Foreground="#8CFFFFFF"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+
+                  <StackPanel Orientation="Horizontal"
+                              Spacing="8">
+                    <Button Classes="settings-chip"
+                            Classes.selected="{Binding Lyrics.IsSmallFontPreset}"
+                            Command="{Binding Lyrics.UseSmallFontCommand}">
+                      <TextBlock Text="小" />
+                    </Button>
+                    <Button Classes="settings-chip"
+                            Classes.selected="{Binding Lyrics.IsMediumFontPreset}"
+                            Command="{Binding Lyrics.UseMediumFontCommand}">
+                      <TextBlock Text="中" />
+                    </Button>
+                    <Button Classes="settings-chip"
+                            Classes.selected="{Binding Lyrics.IsLargeFontPreset}"
+                            Command="{Binding Lyrics.UseLargeFontCommand}">
+                      <TextBlock Text="大" />
+                    </Button>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="settings-section">
+                <Grid ColumnDefinitions="*,Auto"
+                      RowDefinitions="Auto,Auto"
+                      RowSpacing="4">
+                  <TextBlock Text="自动居中"
+                             Foreground="White"
+                             FontSize="14"
+                             FontWeight="SemiBold" />
+                  <TextBlock Grid.Row="1"
+                             Text="播放时让当前歌词尽量稳定停留在视觉中心附近。"
+                             Foreground="#8CFFFFFF"
+                             FontSize="12"
+                             TextWrapping="Wrap" />
+                  <ToggleSwitch Grid.Column="1"
+                                Grid.RowSpan="2"
+                                Margin="18,0,0,0"
+                                VerticalAlignment="Center"
+                                IsChecked="{Binding Lyrics.IsAutoCenterEnabled, Mode=TwoWay}" />
+                </Grid>
+              </Border>
+
+              <Border Classes="settings-section">
+                <Grid ColumnDefinitions="*,Auto"
+                      RowDefinitions="Auto,Auto"
+                      RowSpacing="4">
+                  <TextBlock Text="点击歌词跳转"
+                             Foreground="White"
+                             FontSize="14"
+                             FontWeight="SemiBold" />
+                  <TextBlock Grid.Row="1"
+                             Text="允许直接点按某一行歌词，立即跳转到对应时间戳。"
+                             Foreground="#8CFFFFFF"
+                             FontSize="12"
+                             TextWrapping="Wrap" />
+                  <ToggleSwitch Grid.Column="1"
+                                Grid.RowSpan="2"
+                                Margin="18,0,0,0"
+                                VerticalAlignment="Center"
+                                IsChecked="{Binding Lyrics.IsLyricClickSeekEnabled, Mode=TwoWay}" />
+                </Grid>
+              </Border>
+            </StackPanel>
+          </Border>
+        </Border>
+      </Grid>
     </Grid>
   </ScrollViewer>
 </UserControl>

@@ -199,6 +199,42 @@ public sealed class SqliteDatabaseService : IDatabaseService
         }
     }
 
+    public async Task DeleteTracksAsync(IEnumerable<string> filePaths, CancellationToken cancellationToken = default)
+    {
+        var paths = filePaths
+            .Where(static path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (paths.Count == 0)
+        {
+            return;
+        }
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+            foreach (var path in paths)
+            {
+                var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM tracks WHERE file_path = $filePath;";
+                command.Parameters.AddWithValue("$filePath", path);
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task SaveSettingAsync(string key, string value, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);

@@ -39,12 +39,22 @@
     <Setter Property="Background" Value="#60FFFFFF" />
   </Style>
 
+  <Style Selector="Button.settings-toggle">
+    <Setter Property="Padding" Value="12,6" />
+    <Setter Property="CornerRadius" Value="16" />
+  </Style>
+
+  <Style Selector="Button.settings-toggle.open">
+    <Setter Property="Background" Value="#1CFFFFFF" />
+  </Style>
+
   <Style Selector="Button.playlist-item">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="White" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="14,12" />
+    <Setter Property="MinHeight" Value="60" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
 
@@ -53,7 +63,203 @@
   </Style>
 
   <Style Selector="Button.playlist-item.current">
-    <Setter Property="Background" Value="#25FFFFFF" />
+    <Setter Property="Background" Value="#30FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.playlist-item.current:pointerover">
+    <Setter Property="Background" Value="#3AFFFFFF" />
+  </Style>
+
+  <Style Selector="ListBox.playlist-list">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+
+  <Style Selector="ListBox.playlist-list ListBoxItem">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0,0,0,6" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+
+  <Style Selector="ListBox.playlist-list ListBoxItem:pointerover">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="ListBox.playlist-list ListBoxItem:selected">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="Button.playlist-item TextBlock.playlist-title">
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="Button.playlist-item TextBlock.playlist-subtitle">
+    <Setter Property="Foreground" Value="#99FFFFFF" />
+    <Setter Property="FontSize" Value="11" />
+  </Style>
+
+  <Style Selector="Button.playlist-item TextBlock.playlist-duration">
+    <Setter Property="Foreground" Value="#8CFFFFFF" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+
+  <Style Selector="Button.playlist-item.current TextBlock.playlist-subtitle">
+    <Setter Property="Foreground" Value="#CCFFFFFF" />
+  </Style>
+
+  <Style Selector="Button.playlist-item.current TextBlock.playlist-duration">
+    <Setter Property="Foreground" Value="#E6FFFFFF" />
+  </Style>
+
+  <Style Selector="CheckBox.playlist-select">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+
+  <Style Selector="ContextMenu.immersive-menu">
+    <Setter Property="Background" Value="#B214101D" />
+    <Setter Property="BorderBrush" Value="#24FFFFFF" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="MinWidth" Value="180" />
+  </Style>
+
+  <Style Selector="ContextMenu.immersive-menu MenuItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="#F2FFFFFF" />
+    <Setter Property="Padding" Value="14,10" />
+    <Setter Property="MinHeight" Value="40" />
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+
+  <Style Selector="ContextMenu.immersive-menu MenuItem:selected">
+    <Setter Property="Background" Value="#18FFFFFF" />
+  </Style>
+
+  <Style Selector="ContextMenu.immersive-menu MenuItem:open">
+    <Setter Property="Background" Value="#20FFFFFF" />
+  </Style>
+
+  <Style Selector="ContextMenu.immersive-menu MenuItem:checked">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+
+  <Style Selector="StackPanel.player-stage">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="IsHitTestVisible" Value="True" />
+    <Setter Property="RenderTransformOrigin" Value="0.5,0" />
+    <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.22" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.24" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="StackPanel.player-stage.hidden">
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="RenderTransform" Value="translate(0px, 28px)" />
+  </Style>
+
+  <Style Selector="Border.settings-stage">
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="Padding" Value="0,8,0,0" />
+    <Setter Property="RenderTransformOrigin" Value="0.5,0" />
+    <Setter Property="RenderTransform" Value="translate(0px, -18px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.22" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.24" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="Border.settings-stage.open">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="IsHitTestVisible" Value="True" />
+    <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+  </Style>
+
+  <Style Selector="Border.settings-panel">
+    <Setter Property="Background" Value="#10FFFFFF" />
+    <Setter Property="BorderBrush" Value="#18FFFFFF" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="24" />
+    <Setter Property="Padding" Value="22,20,22,22" />
+  </Style>
+
+  <Style Selector="Border.settings-section">
+    <Setter Property="Background" Value="#12FFFFFF" />
+    <Setter Property="BorderBrush" Value="#18FFFFFF" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="Padding" Value="18,16" />
+  </Style>
+
+  <Style Selector="Button.settings-chip">
+    <Setter Property="Background" Value="#12FFFFFF" />
+    <Setter Property="Foreground" Value="#D9FFFFFF" />
+    <Setter Property="BorderBrush" Value="#18FFFFFF" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="14,8" />
+    <Setter Property="MinWidth" Value="52" />
+  </Style>
+
+  <Style Selector="Button.settings-chip:pointerover">
+    <Setter Property="Background" Value="#20FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.settings-chip:pressed">
+    <Setter Property="Background" Value="#2AFFFFFF" />
+  </Style>
+
+  <Style Selector="Button.settings-chip.selected">
+    <Setter Property="Background" Value="#30FFFFFF" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderBrush" Value="#45FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.lyric-line-button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="Padding" Value="18,10" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="MaxWidth" Value="520" />
+    <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+    <Setter Property="RenderTransform" Value="scale(1)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <ThicknessTransition Property="Padding" Duration="0:0:0.22" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="Button.lyric-line-button:pointerover">
+    <Setter Property="Background" Value="#10FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.lyric-line-button:pressed">
+    <Setter Property="Background" Value="#18FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.lyric-line-button.near">
+    <Setter Property="Padding" Value="18,12" />
+  </Style>
+
+  <Style Selector="Button.lyric-line-button.active">
+    <Setter Property="Background" Value="#08FFFFFF" />
+    <Setter Property="Padding" Value="18,14" />
+    <Setter Property="RenderTransform" Value="scale(1.02)" />
   </Style>
 
   <Style Selector="Slider.white">
@@ -78,25 +284,89 @@
     <Setter Property="CornerRadius" Value="6" />
   </Style>
 
-  <Style Selector="TextBlock.lyric-line">
-    <Setter Property="Foreground" Value="White" />
-    <Setter Property="FontSize" Value="15" />
-    <Setter Property="FontWeight" Value="Normal" />
-    <Setter Property="Opacity" Value="0.4" />
-    <Setter Property="TextAlignment" Value="Center" />
-    <Setter Property="TextWrapping" Value="Wrap" />
-    <Setter Property="Margin" Value="0,8" />
+  <Style Selector="Button.volume-toggle.open">
+    <Setter Property="Background" Value="#26FFFFFF" />
+  </Style>
+
+  <Style Selector="Border.volume-popover-surface">
+    <Setter Property="Background" Value="#C115111F" />
+    <Setter Property="BorderBrush" Value="#24FFFFFF" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Padding" Value="10,10,10,12" />
+    <Setter Property="MinWidth" Value="56" />
+    <Setter Property="BoxShadow" Value="0 12 26 0 #34000000" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="RenderTransformOrigin" Value="0.5,1" />
+    <Setter Property="RenderTransform" Value="translate(0px, 6px) scale(0.96)" />
     <Setter Property="Transitions">
       <Transitions>
-        <DoubleTransition Property="Opacity" Duration="0:0:0.3" />
+        <DoubleTransition Property="Opacity" Duration="0:0:0.16" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" />
       </Transitions>
     </Setter>
   </Style>
 
-  <Style Selector="TextBlock.lyric-line.active">
-    <Setter Property="FontSize" Value="18" />
-    <Setter Property="FontWeight" Value="Bold" />
+  <Style Selector="Border.volume-popover-surface.open">
     <Setter Property="Opacity" Value="1" />
+    <Setter Property="RenderTransform" Value="translate(0px, 0px) scale(1)" />
+  </Style>
+
+  <Style Selector="Slider.volume-slider">
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Width" Value="20" />
+  </Style>
+
+  <Style Selector="Slider.volume-slider /template/ Track#PART_Track:vertical Border#TrackBackground">
+    <Setter Property="Background" Value="#30FFFFFF" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Width" Value="4" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Slider.volume-slider /template/ Track#PART_Track:vertical Border#PART_SelectionRange">
+    <Setter Property="Background" Value="#F2FFFFFF" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Width" Value="4" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Slider.volume-slider /template/ Track#PART_Track:vertical Thumb">
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="14" />
+    <Setter Property="Background" Value="White" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="TextBlock.lyric-line">
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Margin" Value="0,6" />
+    <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+    <Setter Property="RenderTransform" Value="scale(1)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.26" />
+        <DoubleTransition Property="FontSize" Duration="0:0:0.24" />
+        <ThicknessTransition Property="Margin" Duration="0:0:0.24" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.24" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="TextBlock.lyric-line.near">
+    <Setter Property="Margin" Value="0,9" />
+    <Setter Property="RenderTransform" Value="scale(1.015)" />
+  </Style>
+
+  <Style Selector="TextBlock.lyric-line.active">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Margin" Value="0,12" />
+    <Setter Property="RenderTransform" Value="scale(1.045)" />
   </Style>
 
 </Styles>

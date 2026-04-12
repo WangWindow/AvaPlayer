@@ -13,7 +13,11 @@ public interface IPlayerService : IDisposable
     event EventHandler? TrackLoaded;
     event EventHandler? TrackEnded;
 
-    Task PlayAsync(string filePath, CancellationToken cancellationToken = default);
+    Task PlayAsync(
+        string filePath,
+        bool startPaused = false,
+        double startPositionSeconds = 0,
+        CancellationToken cancellationToken = default);
     void Pause();
     void Resume();
     void Stop();

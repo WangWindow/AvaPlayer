@@ -11,6 +11,7 @@ public interface IPlaylistService
 
     Task LoadAsync(CancellationToken cancellationToken = default);
     Task AddFolderAsync(string folderPath, CancellationToken cancellationToken = default);
+    Task RemoveTracksAsync(IEnumerable<Track> tracks, CancellationToken cancellationToken = default);
     void SetCurrentTrack(Track track);
     Track? GetNextTrack();
     Track? GetPreviousTrack();

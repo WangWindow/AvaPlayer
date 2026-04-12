@@ -20,6 +20,9 @@
                     <NativeMenu>
                         <NativeMenuItem Header="显示窗口"
                                         Click="OnShowWindowClick" />
+                        <NativeMenuItem Header="轻量模式"
+                                        ToggleType="CheckBox"
+                                        Click="OnLightweightModeClick" />
                         <NativeMenuItemSeparator />
                         <NativeMenuItem Header="上一首"
                                         Click="OnPreviousTrackClick" />

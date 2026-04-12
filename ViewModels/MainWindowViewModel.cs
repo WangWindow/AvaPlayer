@@ -38,6 +38,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         await _playlistService.LoadAsync(cancellationToken);
+        await PlayerBar.InitializeAsync(cancellationToken);
+        Playlist.RefreshFromQueue();
         Playlist.MarkCurrentTrack(_playlistService.CurrentTrack);
     }
 
