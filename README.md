@@ -233,9 +233,10 @@ artifacts/package/<RID>/<Version>/
 
 ### GitHub Actions
 
-仓库内置了 Linux 发布工作流：
+仓库内置了发布工作流：
 
 - `.github/workflows/release-linux.yml`
+- `.github/workflows/release-windows.yml`
 
 它会在 **tag push** 或手动触发时：
 
@@ -250,6 +251,24 @@ artifacts/package/<RID>/<Version>/
 ```text
 https://github.com/WangWindow/AvaPlayer/releases/download/v1.0.0/linux-x64.zip
 ```
+
+默认使用 `v1.0.0` 这份 runtime release 资源；如果后续 runtime 资产迁移到了别的 tag，可以在手动触发 workflow 时覆盖 `runtime_release_tag`。
+
+Windows workflow 会：
+
+1. 在 `windows-latest` 上安装 **Inno Setup** 和 **WiX CLI**
+2. 从下面的 release 下载 `win-x64` 的 `libmpv` 运行时包
+3. 调用 `scripts/package-windows.ps1`
+4. 上传 `zip` / `exe` / `msi` / `SHA256SUMS.txt`
+5. 在 tag push 或提供 `release_tag` 时同步发布到 GitHub Release
+
+当前使用的 Windows 运行时下载地址：
+
+```text
+https://github.com/WangWindow/AvaPlayer/releases/download/v1.0.0/win-x64.zip
+```
+
+同样，Windows workflow 默认使用 `v1.0.0` 这份 runtime release 资源，也支持在手动触发时覆盖 `runtime_release_tag`。
 
 ## 数据与缓存目录
 
