@@ -14,6 +14,7 @@ $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $ProjectPath = Join-Path $RepoRoot "AvaPlayer.csproj"
 $IssPath = Join-Path $RepoRoot "scripts\windows\AvaPlayer.iss"
 $WxsPath = Join-Path $RepoRoot "scripts\windows\AvaPlayer.wxs"
+$WindowsTargetFramework = "net10.0-windows10.0.19041.0"
 
 if (-not $Version) {
     [xml]$ProjectXml = Get-Content -LiteralPath $ProjectPath
@@ -54,7 +55,7 @@ if (-not $SkipPublish) {
         $ProjectPath,
         "-r", $Rid,
         "-p:EnableWindowsTargeting=true",
-        "-p:TargetFramework=net10.0-windows"
+        "-p:TargetFramework=$WindowsTargetFramework"
     )
 
     Invoke-Step dotnet @(
@@ -64,7 +65,7 @@ if (-not $SkipPublish) {
         "-r", $Rid,
         "--self-contained", "true",
         "-p:EnableWindowsTargeting=true",
-        "-p:TargetFramework=net10.0-windows",
+        "-p:TargetFramework=$WindowsTargetFramework",
         "-o", $PublishDir
     )
 }
@@ -85,13 +86,28 @@ if (-not $SkipExe) {
         Write-Warning "Inno Setup not found. Install it from https://jrsoftware.org/isinfo.php, then rerun this script to build the EXE installer."
     }
     else {
-        Invoke-Step $iscc.Source @(
+        $innoDir = Split-Path -Parent $iscc.Source
+        $chineseMessagesFile = @(
+            (Join-Path $innoDir "Languages\ChineseSimplified.isl"),
+            (Join-Path $innoDir "Languages\Unofficial\ChineseSimplified.isl")
+        ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+
+        $innoArguments = @(
             "/DMyAppVersion=$Version",
             "/DMyPublishDir=$PublishDir",
             "/DMyOutputDir=$ArtifactRoot",
             "/DMyRepoRoot=$RepoRoot",
             $IssPath
         )
+
+        if ($chineseMessagesFile) {
+            $innoArguments = @("/DChineseMessagesFile=$chineseMessagesFile") + $innoArguments
+        }
+        else {
+            Write-Warning "ChineseSimplified.isl was not found in the Inno Setup installation. Building the installer with English messages only."
+        }
+
+        Invoke-Step $iscc.Source $innoArguments
     }
 }
 
