@@ -10,7 +10,6 @@ namespace AvaPlayer.Views;
 
 public partial class LyricsView : UserControl
 {
-    private const double MinimumVerticalPadding = 120;
     private const double DirectSnapThreshold = 1.2;
 
     private LyricsViewModel? _viewModel;
@@ -41,7 +40,7 @@ public partial class LyricsView : UserControl
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
 
-        UpdateScrollerPadding();
+        UpdateSpacerHeights();
     }
 
     private void OnScrollToLineRequested(object? sender, int lineIndex)
@@ -56,7 +55,7 @@ public partial class LyricsView : UserControl
 
     private async Task CenterLineAsync(int lineIndex)
     {
-        await Dispatcher.UIThread.InvokeAsync(UpdateScrollerPadding, DispatcherPriority.Render);
+        await Dispatcher.UIThread.InvokeAsync(UpdateSpacerHeights, DispatcherPriority.Render);
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
         var targetOffset = CalculateTargetOffset(lineIndex);
         await AnimateScrollToAsync(targetOffset);
@@ -86,7 +85,8 @@ public partial class LyricsView : UserControl
             }
         }
 
-        var target = LyricsScroller.Padding.Top + lineIndex * lineHeight - LyricsScroller.Viewport.Height / 2d + lineHeight / 2d;
+        var spacerHeight = TopSpacer.Bounds.Height;
+        var target = spacerHeight + lineIndex * lineHeight + lineHeight / 2d - LyricsScroller.Viewport.Height / 2d;
         return ClampOffset(target);
     }
 
@@ -152,45 +152,26 @@ public partial class LyricsView : UserControl
             e.PropertyName == nameof(LyricsViewModel.HasLyrics))
         {
             ResetScrollAnchor();
-            UpdateScrollerPadding();
+            UpdateSpacerHeights();
         }
     }
 
     private void OnLyricsScrollerSizeChanged(object? sender, SizeChangedEventArgs e)
     {
         ResetScrollAnchor();
-        UpdateScrollerPadding();
+        UpdateSpacerHeights();
     }
 
-    private void UpdateScrollerPadding()
+    private void UpdateSpacerHeights()
     {
-        var estimatedLineHeight = _viewModel?.EstimatedLineHeight ?? 60;
         if (LyricsScroller.Bounds.Height <= 0)
         {
             return;
         }
 
-        var measuredLineHeight = GetMeasuredLineHeight(estimatedLineHeight);
-        var verticalPadding = Math.Max(
-            MinimumVerticalPadding,
-            (LyricsScroller.Bounds.Height - measuredLineHeight) / 2d);
-
-        LyricsScroller.Padding = new Thickness(
-            LyricsScroller.Padding.Left > 0 ? LyricsScroller.Padding.Left : 30,
-            verticalPadding,
-            LyricsScroller.Padding.Right > 0 ? LyricsScroller.Padding.Right : 30,
-            verticalPadding);
-    }
-
-    private double GetMeasuredLineHeight(double fallback)
-    {
-        var measuredHeights = LyricsItems
-            .GetVisualDescendants()
-            .OfType<Button>()
-            .Select(static button => button.Bounds.Height)
-            .Where(static height => height > 0);
-
-        return measuredHeights.DefaultIfEmpty(fallback).Max();
+        var halfViewport = LyricsScroller.Bounds.Height / 2d;
+        TopSpacer.Height = halfViewport;
+        BottomSpacer.Height = halfViewport;
     }
 
     private double ClampOffset(double offset) =>
