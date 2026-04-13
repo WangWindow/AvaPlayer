@@ -45,7 +45,7 @@
                   Name="AvaPlayer"
                   Target="[INSTALLFOLDER]AvaPlayer.exe"
                   WorkingDirectory="INSTALLFOLDER" />
-        <RegistryValue Root="HKLM"
+        <RegistryValue Root="HKCU"
                        Key="Software\AvaPlayer"
                        Name="Installed"
                        Type="integer"
