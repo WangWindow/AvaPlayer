@@ -56,8 +56,7 @@ public partial class LyricsView : UserControl
 
     private async Task CenterLineAsync(int lineIndex)
     {
-        UpdateScrollerPadding();
-
+        await Dispatcher.UIThread.InvokeAsync(UpdateScrollerPadding, DispatcherPriority.Render);
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
         var targetOffset = CalculateTargetOffset(lineIndex);
         await AnimateScrollToAsync(targetOffset);
@@ -72,6 +71,11 @@ public partial class LyricsView : UserControl
             return 0;
         }
 
+        if (TryGetVisualTargetOffset(lineIndex) is { } visualTargetOffset)
+        {
+            return visualTargetOffset;
+        }
+
         var lineHeight = _viewModel.EstimatedLineHeight;
         if (_lastCenteredLineIndex >= 0)
         {
@@ -80,11 +84,6 @@ public partial class LyricsView : UserControl
             {
                 return ClampOffset(_lastTargetOffset + lineDelta * lineHeight);
             }
-        }
-
-        if (TryGetVisualTargetOffset(lineIndex) is { } visualTargetOffset)
-        {
-            return visualTargetOffset;
         }
 
         var target = LyricsScroller.Padding.Top + lineIndex * lineHeight - LyricsScroller.Viewport.Height / 2d + lineHeight / 2d;
@@ -171,15 +170,27 @@ public partial class LyricsView : UserControl
             return;
         }
 
+        var measuredLineHeight = GetMeasuredLineHeight(estimatedLineHeight);
         var verticalPadding = Math.Max(
             MinimumVerticalPadding,
-            (LyricsScroller.Bounds.Height - estimatedLineHeight) / 2d);
+            (LyricsScroller.Bounds.Height - measuredLineHeight) / 2d);
 
         LyricsScroller.Padding = new Thickness(
             LyricsScroller.Padding.Left > 0 ? LyricsScroller.Padding.Left : 30,
             verticalPadding,
             LyricsScroller.Padding.Right > 0 ? LyricsScroller.Padding.Right : 30,
             verticalPadding);
+    }
+
+    private double GetMeasuredLineHeight(double fallback)
+    {
+        var measuredHeights = LyricsItems
+            .GetVisualDescendants()
+            .OfType<Button>()
+            .Select(static button => button.Bounds.Height)
+            .Where(static height => height > 0);
+
+        return measuredHeights.DefaultIfEmpty(fallback).Max();
     }
 
     private double ClampOffset(double offset) =>

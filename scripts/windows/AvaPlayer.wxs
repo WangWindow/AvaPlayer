@@ -4,24 +4,40 @@
            Manufacturer="AvaPlayer"
            Version="$(var.Version)"
            UpgradeCode="30BF3680-D1A8-4B6A-B5DE-C2EE04A4EC16"
-           Scope="perMachine">
+           Scope="perUser">
     <MajorUpgrade DowngradeErrorMessage="A newer version of AvaPlayer is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
     <Feature Id="MainFeature" Title="AvaPlayer" Level="1">
       <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="InstallStateComponent" />
     </Feature>
   </Package>
 
   <Fragment>
-    <StandardDirectory Id="ProgramFiles64Folder">
-      <Directory Id="INSTALLFOLDER" Name="AvaPlayer" />
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="LOCALPROGRAMSFOLDER" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="AvaPlayer" />
+      </Directory>
     </StandardDirectory>
   </Fragment>
 
   <Fragment>
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="InstallStateComponent" Guid="*">
+        <RegistryValue Root="HKCU"
+                       Key="Software\AvaPlayer"
+                       Name="Installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
     <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
-      <Files Include="$(var.PublishDir)\**" />
+      <Files Include="$(var.PublishDir)/**" />
     </ComponentGroup>
   </Fragment>
 </Wix>

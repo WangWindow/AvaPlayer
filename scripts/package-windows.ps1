@@ -43,6 +43,35 @@ function Invoke-Step {
     }
 }
 
+function Get-WixVersionInfo {
+    param(
+        [string]$WixPath
+    )
+
+    $versionOutput = & $WixPath "--version" 2>&1
+    if ($LASTEXITCODE -ne 0 -or -not $versionOutput) {
+        throw "Unable to determine WiX version from: $WixPath"
+    }
+
+    $versionLine = $versionOutput | Where-Object {
+        $_ -match "^\d+\.\d+\.\d+" -or $_ -match "^WiX Toolset(?: Core)? version \d+\.\d+\.\d+"
+    } | Select-Object -First 1
+
+    if (-not $versionLine) {
+        throw "Unable to parse WiX version from output: $($versionOutput -join [Environment]::NewLine)"
+    }
+
+    if ($versionLine -match "(\d+)\.(\d+)\.(\d+)") {
+        return [pscustomobject]@{
+            Major = [int]$Matches[1]
+            Version = "$($Matches[1]).$($Matches[2]).$($Matches[3])"
+            Raw = $versionLine
+        }
+    }
+
+    throw "Unable to parse WiX version from output: $versionLine"
+}
+
 if (-not $SkipPublish) {
     if (Test-Path -LiteralPath $PublishDir) {
         Remove-Item -LiteralPath $PublishDir -Recurse -Force
@@ -117,14 +146,24 @@ if (-not $SkipMsi) {
         Write-Warning "WiX CLI not found. Install it with: dotnet tool install --global wix"
     }
     else {
-        Invoke-Step $wix.Source @(
-            "build",
+        $wixVersion = Get-WixVersionInfo -WixPath $wix.Source
+        Write-Host "Using WiX CLI version $($wixVersion.Version)"
+
+        $wixArguments = @("build")
+
+        if ($wixVersion.Major -ge 7) {
+            $wixArguments += @("-acceptEula", "wix$($wixVersion.Major)")
+        }
+
+        $wixArguments += @(
             $WxsPath,
             "-arch", "x64",
             "-d", "PublishDir=$PublishDir",
             "-d", "Version=$Version",
             "-out", $MsiPath
         )
+
+        Invoke-Step $wix.Source $wixArguments
     }
 }
 

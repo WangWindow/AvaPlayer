@@ -6,6 +6,13 @@ namespace AvaPlayer.Services.Playlist;
 
 public sealed class TrackScannerService : ITrackScannerService
 {
+    private static readonly EnumerationOptions ScanEnumerationOptions = new()
+    {
+        IgnoreInaccessible = true,
+        RecurseSubdirectories = true,
+        ReturnSpecialDirectories = false
+    };
+
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".aac",
@@ -37,32 +44,39 @@ public sealed class TrackScannerService : ITrackScannerService
         {
             var tracks = new List<Track>();
 
-            foreach (var filePath in Directory.EnumerateFiles(folderPath, "*.*", SearchOption.AllDirectories))
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (!SupportedExtensions.Contains(Path.GetExtension(filePath)))
+                foreach (var filePath in Directory.EnumerateFiles(folderPath, "*.*", ScanEnumerationOptions))
                 {
-                    continue;
-                }
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                try
-                {
-                    using var tagFile = TagLib.File.Create(filePath);
-                    tracks.Add(new Track
+                    if (!SupportedExtensions.Contains(Path.GetExtension(filePath)))
                     {
-                        Id = BuildTrackId(filePath),
-                        FilePath = filePath,
-                        Title = tagFile.Tag.Title ?? string.Empty,
-                        Artist = tagFile.Tag.FirstPerformer ?? string.Empty,
-                        Album = tagFile.Tag.Album ?? string.Empty,
-                        DurationSeconds = Math.Max(0, tagFile.Properties.Duration.TotalSeconds)
-                    });
+                        continue;
+                    }
+
+                    try
+                    {
+                        using var tagFile = TagLib.File.Create(filePath);
+                        tracks.Add(new Track
+                        {
+                            Id = BuildTrackId(filePath),
+                            FilePath = filePath,
+                            Title = tagFile.Tag.Title ?? string.Empty,
+                            Artist = tagFile.Tag.FirstPerformer ?? string.Empty,
+                            Album = tagFile.Tag.Album ?? string.Empty,
+                            DurationSeconds = Math.Max(0, tagFile.Properties.Duration.TotalSeconds)
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"[Scanner] 跳过文件 {filePath}: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine($"[Scanner] 跳过文件 {filePath}: {ex.Message}");
-                }
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or DirectoryNotFoundException or PathTooLongException)
+            {
+                Console.Error.WriteLine($"[Scanner] 扫描文件夹 {folderPath} 时发生错误: {ex.Message}");
             }
 
             return (IReadOnlyList<Track>)tracks

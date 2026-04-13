@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -28,6 +27,8 @@ public partial class TrackItemViewModel : ObservableObject
     public string Title => Track.DisplayTitle;
 
     public string Artist => Track.DisplayArtist;
+
+    public string Album => Track.DisplayAlbum;
 
     public string DurationText => Track.DisplayDuration;
 
@@ -56,6 +57,7 @@ public partial class PlaylistViewModel : ViewModelBase
     }
 
     public ObservableCollection<TrackItemViewModel> Tracks { get; } = new();
+    public ObservableCollection<TrackItemViewModel> VisibleTracks { get; } = new();
 
     [ObservableProperty]
     private TrackItemViewModel? _currentTrack;
@@ -67,23 +69,40 @@ public partial class PlaylistViewModel : ViewModelBase
     private bool _showEmptyState = true;
 
     [ObservableProperty]
+    private bool _hasVisibleTracks;
+
+    [ObservableProperty]
+    private bool _showSearchEmptyState;
+
+    [ObservableProperty]
     private bool _isEditMode;
 
     [ObservableProperty]
     private int _selectedTrackCount;
 
+    [ObservableProperty]
+    private string _searchText = string.Empty;
+
     public event EventHandler<Track>? TrackSelected;
-    public Func<Task<IStorageFolder?>>? FolderPickRequested { get; set; }
+    public Func<Task<string?>>? FolderPickRequested { get; set; }
 
     public bool ShowNormalToolbar => !IsEditMode;
 
     public bool ShowEditToolbar => IsEditMode;
+
+    public bool ShowSearchBar => HasTracks;
+
+    public bool ShowClearSearch => !string.IsNullOrWhiteSpace(SearchText);
 
     public bool CanRemoveSelected => SelectedTrackCount > 0;
 
     public string EditSelectionText => SelectedTrackCount > 0
         ? $"已选 {SelectedTrackCount} 首"
         : "选择要移除的歌曲";
+
+    public string SearchEmptyStateText => string.IsNullOrWhiteSpace(SearchText)
+        ? "未找到匹配歌曲"
+        : $"没有匹配“{SearchText.Trim()}”的歌曲";
 
     [RelayCommand]
     private async Task AddFolderAsync()
@@ -93,14 +112,26 @@ public partial class PlaylistViewModel : ViewModelBase
             return;
         }
 
-        var folder = await FolderPickRequested.Invoke();
-        if (folder is null)
+        var folderPath = await FolderPickRequested.Invoke();
+        if (string.IsNullOrWhiteSpace(folderPath))
         {
+            Console.Error.WriteLine("[Playlist] 所选文件夹无法用于本地扫描。");
             return;
         }
 
-        await _playlistService.AddFolderAsync(folder.Path.LocalPath);
-        RefreshTracks();
+        try
+        {
+            await _playlistService.AddFolderAsync(folderPath);
+            RefreshTracks();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Playlist] 添加文件夹失败: {ex.Message}");
+        }
     }
 
     [RelayCommand]
@@ -123,6 +154,9 @@ public partial class PlaylistViewModel : ViewModelBase
         ClearTrackSelection();
         IsEditMode = false;
     }
+
+    [RelayCommand]
+    private void ClearSearch() => SearchText = string.Empty;
 
     [RelayCommand]
     private async Task RemoveSelectedAsync()
@@ -184,9 +218,26 @@ public partial class PlaylistViewModel : ViewModelBase
         CurrentTrack = null;
         ClearTrackSelection();
         ClearTrackCache();
+        SearchText = string.Empty;
         HasTracks = false;
+        HasVisibleTracks = false;
         ShowEmptyState = true;
+        ShowSearchEmptyState = false;
         UpdateSelectedTrackCount();
+    }
+
+    partial void OnHasTracksChanged(bool value) => OnPropertyChanged(nameof(ShowSearchBar));
+
+    partial void OnSearchTextChanged(string value)
+    {
+        if (IsEditMode)
+        {
+            ClearTrackSelection();
+        }
+
+        OnPropertyChanged(nameof(ShowClearSearch));
+        OnPropertyChanged(nameof(SearchEmptyStateText));
+        RefreshVisibleTracks();
     }
 
     partial void OnIsEditModeChanged(bool value)
@@ -231,11 +282,24 @@ public partial class PlaylistViewModel : ViewModelBase
             _trackCache.Remove(staleItem.Key);
         }
 
-        ApplyTrackOrder(desiredItems);
+        ApplyTrackOrder(Tracks, desiredItems);
         HasTracks = Tracks.Count > 0;
+        RefreshVisibleTracks();
         ShowEmptyState = !HasTracks;
         UpdateSelectedTrackCount();
         MarkCurrentTrack(_playlistService.CurrentTrack);
+    }
+
+    private void RefreshVisibleTracks()
+    {
+        var query = SearchText.Trim();
+        var desiredItems = string.IsNullOrWhiteSpace(query)
+            ? Tracks.ToArray()
+            : Tracks.Where(item => MatchesSearch(item, query)).ToArray();
+
+        ApplyTrackOrder(VisibleTracks, desiredItems);
+        HasVisibleTracks = VisibleTracks.Count > 0;
+        ShowSearchEmptyState = HasTracks && !HasVisibleTracks && !string.IsNullOrWhiteSpace(query);
     }
 
     private void OnQueueCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => ScheduleRefresh();
@@ -260,34 +324,45 @@ public partial class PlaylistViewModel : ViewModelBase
         }, DispatcherPriority.Background);
     }
 
-    private void ApplyTrackOrder(IReadOnlyList<TrackItemViewModel> desiredItems)
+    private static bool MatchesSearch(TrackItemViewModel item, string query)
+    {
+        return item.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+               item.Artist.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+               item.Album.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+               Path.GetFileNameWithoutExtension(item.Track.FilePath)
+                   .Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void ApplyTrackOrder(
+        ObservableCollection<TrackItemViewModel> target,
+        IReadOnlyList<TrackItemViewModel> desiredItems)
     {
         var desiredSet = desiredItems.ToHashSet();
 
-        for (var index = Tracks.Count - 1; index >= 0; index--)
+        for (var index = target.Count - 1; index >= 0; index--)
         {
-            if (!desiredSet.Contains(Tracks[index]))
+            if (!desiredSet.Contains(target[index]))
             {
-                Tracks.RemoveAt(index);
+                target.RemoveAt(index);
             }
         }
 
         for (var index = 0; index < desiredItems.Count; index++)
         {
             var desired = desiredItems[index];
-            if (index < Tracks.Count && ReferenceEquals(Tracks[index], desired))
+            if (index < target.Count && ReferenceEquals(target[index], desired))
             {
                 continue;
             }
 
-            var existingIndex = Tracks.IndexOf(desired);
+            var existingIndex = target.IndexOf(desired);
             if (existingIndex >= 0)
             {
-                Tracks.Move(existingIndex, index);
+                target.Move(existingIndex, index);
             }
             else
             {
-                Tracks.Insert(index, desired);
+                target.Insert(index, desired);
             }
         }
     }
@@ -324,6 +399,7 @@ public partial class PlaylistViewModel : ViewModelBase
 
         _trackCache.Clear();
         Tracks.Clear();
+        VisibleTracks.Clear();
     }
 
     protected override void Dispose(bool disposing)

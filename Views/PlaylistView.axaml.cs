@@ -20,11 +20,17 @@ public partial class PlaylistView : UserControl
         }
     }
 
-    private async Task<IStorageFolder?> PickFolderAsync()
+    private async Task<string?> PickFolderAsync()
     {
         var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel is null)
         {
+            return null;
+        }
+
+        if (!topLevel.StorageProvider.CanPickFolder)
+        {
+            Console.Error.WriteLine("[Playlist] 当前平台不支持文件夹选择。");
             return null;
         }
 
@@ -34,6 +40,17 @@ public partial class PlaylistView : UserControl
             AllowMultiple = false
         });
 
-        return folders.Count > 0 ? folders[0] : null;
+        if (folders.Count == 0)
+        {
+            return null;
+        }
+
+        var folderPath = folders[0].TryGetLocalPath();
+        if (string.IsNullOrWhiteSpace(folderPath))
+        {
+            Console.Error.WriteLine($"[Playlist] 选择的文件夹无法映射为本地路径: {folders[0].Path}");
+        }
+
+        return folderPath;
     }
 }

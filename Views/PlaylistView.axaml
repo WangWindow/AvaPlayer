@@ -139,7 +139,7 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,*"
+  <Grid RowDefinitions="Auto,Auto,Auto,*"
         Margin="16,0,16,16">
     <Grid ColumnDefinitions="*,Auto"
           ColumnSpacing="10">
@@ -187,14 +187,49 @@
       </StackPanel>
     </Grid>
 
-    <TextBlock Grid.Row="1"
+    <Border Grid.Row="1"
+            Margin="0,12,0,0"
+            Padding="12,0"
+            Background="#10FFFFFF"
+            BorderBrush="#24FFFFFF"
+            BorderThickness="1"
+            CornerRadius="18"
+            IsVisible="{Binding ShowSearchBar}">
+      <Grid ColumnDefinitions="Auto,*,Auto"
+            ColumnSpacing="8">
+        <fi:FluentIcon Icon="Search"
+                       FontSize="14"
+                       Foreground="#8CFFFFFF"
+                       VerticalAlignment="Center" />
+
+        <TextBox Grid.Column="1"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Foreground="White"
+                 PlaceholderText="搜索当前播放列表"
+                 Text="{Binding SearchText, Mode=TwoWay}" />
+
+        <Button Grid.Column="2"
+                Classes="ghost"
+                Width="28"
+                Height="28"
+                Padding="0"
+                Command="{Binding ClearSearchCommand}"
+                IsVisible="{Binding ShowClearSearch}">
+          <fi:FluentIcon Icon="Dismiss"
+                         FontSize="14" />
+        </Button>
+      </Grid>
+    </Border>
+
+    <TextBlock Grid.Row="2"
                Margin="4,12,0,0"
                Text="{Binding EditSelectionText}"
                Foreground="#A6FFFFFF"
                FontSize="12"
                IsVisible="{Binding ShowEditToolbar}" />
 
-    <Grid Grid.Row="2"
+    <Grid Grid.Row="3"
           Margin="0,12,0,0">
       <StackPanel HorizontalAlignment="Center"
                   VerticalAlignment="Center"
@@ -210,9 +245,23 @@
                    HorizontalAlignment="Center" />
       </StackPanel>
 
-      <ListBox IsVisible="{Binding HasTracks}"
+      <StackPanel HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Spacing="12"
+                  IsVisible="{Binding ShowSearchEmptyState}">
+        <fi:FluentIcon Icon="Search"
+                       FontSize="40"
+                       Foreground="#55FFFFFF"
+                       HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding SearchEmptyStateText}"
+                   Foreground="#75FFFFFF"
+                   FontSize="14"
+                   HorizontalAlignment="Center" />
+      </StackPanel>
+
+      <ListBox IsVisible="{Binding HasVisibleTracks}"
                Classes="playlist-list"
-               ItemsSource="{Binding Tracks}">
+               ItemsSource="{Binding VisibleTracks}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TrackItemViewModel">
             <Button Classes="playlist-item"

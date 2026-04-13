@@ -32,16 +32,18 @@
         <ItemsControl.Styles>
           <Style Selector="ContentPresenter">
             <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="ClipToBounds" Value="False" />
           </Style>
         </ItemsControl.Styles>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:LyricLineViewModel">
             <Button Classes="lyric-line-button"
                     Classes.active="{Binding IsCurrent}"
-                    Classes.near="{Binding IsNearCurrent}"
-                    Command="{Binding #Root((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
-                    CommandParameter="{Binding}"
-                    HorizontalAlignment="Stretch">
+                     Classes.near="{Binding IsNearCurrent}"
+                     Command="{Binding #Root((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
+                     CommandParameter="{Binding}"
+                     HorizontalAlignment="Stretch"
+                     ClipToBounds="False">
               <TextBlock Text="{Binding Text}"
                          FontSize="{Binding DisplayFontSize}"
                          Opacity="{Binding DisplayOpacity}"
