@@ -1,43 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
   <Package Name="AvaPlayer"
            Manufacturer="AvaPlayer"
-           Version="$(var.Version)"
+           Version="$(var.AppVersion)"
            UpgradeCode="30BF3680-D1A8-4B6A-B5DE-C2EE04A4EC16"
-           Scope="perUser">
+           Scope="perMachine"
+           Compressed="yes"
+           InstallerVersion="500">
+
     <MajorUpgrade DowngradeErrorMessage="A newer version of AvaPlayer is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
     <Feature Id="MainFeature" Title="AvaPlayer" Level="1">
       <ComponentGroupRef Id="AppFiles" />
-      <ComponentRef Id="InstallStateComponent" />
+      <ComponentGroupRef Id="Shortcuts" />
     </Feature>
   </Package>
 
   <Fragment>
-    <StandardDirectory Id="LocalAppDataFolder">
-      <Directory Id="LOCALPROGRAMSFOLDER" Name="Programs">
-        <Directory Id="INSTALLFOLDER" Name="AvaPlayer" />
-      </Directory>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="AvaPlayer" />
     </StandardDirectory>
   </Fragment>
 
   <Fragment>
-    <DirectoryRef Id="INSTALLFOLDER">
-      <Component Id="InstallStateComponent" Guid="*">
-        <RegistryValue Root="HKCU"
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.AppPublishDir)\**" />
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ShortcutFolder" Name="AvaPlayer" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="Shortcuts">
+      <Component Id="StartMenuShortcut" Directory="ShortcutFolder" Guid="*">
+        <Shortcut Id="AppStartMenuShortcut"
+                  Name="AvaPlayer"
+                  Target="[INSTALLFOLDER]AvaPlayer.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKLM"
                        Key="Software\AvaPlayer"
                        Name="Installed"
                        Type="integer"
                        Value="1"
                        KeyPath="yes" />
+        <RemoveFolder Id="RemoveShortcutFolder" On="uninstall" />
       </Component>
-    </DirectoryRef>
-  </Fragment>
-
-  <Fragment>
-    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
-      <Files Include="$(var.PublishDir)/**" />
     </ComponentGroup>
   </Fragment>
 </Wix>

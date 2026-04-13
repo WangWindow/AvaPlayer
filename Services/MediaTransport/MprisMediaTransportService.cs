@@ -102,6 +102,8 @@ public sealed class MprisMediaTransportService : IMediaTransportService
         }
         catch (Exception ex)
         {
+            _connection?.Dispose();
+            _connection = null;
             Console.Error.WriteLine($"[MPRIS] 初始化失败: {ex.Message}");
         }
     }
@@ -335,17 +337,25 @@ public sealed class MprisMediaTransportService : IMediaTransportService
 
     private void EmitPropertiesChanged(string interfaceName, Dictionary<string, VariantValue> changedProperties)
     {
-        if (_connection is null || changedProperties.Count == 0)
+        if (!_initialized || _connection is null || changedProperties.Count == 0)
         {
             return;
         }
 
-        using var writer = _connection.GetMessageWriter();
-        writer.WriteSignalHeader(null, ObjectPathString, PropertiesInterface, "PropertiesChanged", "sa{sv}as");
-        writer.WriteString(interfaceName);
-        writer.WriteDictionary(changedProperties);
-        writer.WriteArray(Array.Empty<string>());
-        _connection.TrySendMessage(writer.CreateMessage());
+        try
+        {
+            using var writer = _connection.GetMessageWriter();
+            writer.WriteSignalHeader(null, ObjectPathString, PropertiesInterface, "PropertiesChanged", "sa{sv}as");
+            writer.WriteString(interfaceName);
+            writer.WriteDictionary(changedProperties);
+            writer.WriteArray(Array.Empty<string>());
+            _connection.TrySendMessage(writer.CreateMessage());
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+        {
+            _initialized = false;
+            Console.Error.WriteLine($"[MPRIS] 发送属性变更信号失败 (连接可能已断开): {ex.Message}");
+        }
     }
 
     private static long ToMicroseconds(TimeSpan value) => value.Ticks / 10;

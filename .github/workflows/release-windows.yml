@@ -66,11 +66,6 @@ jobs:
         shell: pwsh
         run: |
           choco install innosetup --no-progress -y
-          dotnet tool install -g wix --version 5.0.0
-
-          $toolPath = "$env:USERPROFILE\.dotnet\tools"
-          $env:PATH = "$toolPath;$env:PATH"
-          $toolPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
           $innoDirs = @(
               (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6"),
@@ -87,12 +82,6 @@ jobs:
           if (-not (Get-Command "ISCC.exe" -ErrorAction SilentlyContinue)) {
               throw "ISCC.exe was not found after installing Inno Setup."
           }
-
-          if (-not (Get-Command "wix" -ErrorAction SilentlyContinue)) {
-              throw "wix CLI was not found after installation."
-          }
-
-          & wix --version
 
       - name: Download win-x64 libmpv bundle
         shell: pwsh
@@ -134,8 +123,12 @@ jobs:
 
           $lines = foreach ($file in $files) {
               $fullPath = Join-Path $artifactDir $file
-              $hash = (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash.ToLowerInvariant()
-              "$hash *$file"
+              if (Test-Path -LiteralPath $fullPath) {
+                  $hash = (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash.ToLowerInvariant()
+                  "$hash *$file"
+              } else {
+                  Write-Warning "Artifact not found, skipping checksum: $file"
+              }
           }
 
           $lines | Set-Content -LiteralPath (Join-Path $artifactDir "SHA256SUMS.txt") -Encoding ascii
@@ -162,12 +155,19 @@ jobs:
         run: |
           $releaseTag = $env:RELEASE_TAG
           $artifactDir = $env:ARTIFACT_DIR
-          $files = @(
-              (Resolve-Path -LiteralPath (Join-Path $artifactDir "AvaPlayer-$env:VERSION-win-x64.zip")).Path,
-              (Resolve-Path -LiteralPath (Join-Path $artifactDir "AvaPlayer-$env:VERSION-win-x64-setup.exe")).Path,
-              (Resolve-Path -LiteralPath (Join-Path $artifactDir "AvaPlayer-$env:VERSION-win-x64.msi")).Path,
-              (Resolve-Path -LiteralPath (Join-Path $artifactDir "SHA256SUMS.txt")).Path
+          $candidates = @(
+              "AvaPlayer-$env:VERSION-win-x64.zip",
+              "AvaPlayer-$env:VERSION-win-x64-setup.exe",
+              "AvaPlayer-$env:VERSION-win-x64.msi",
+              "SHA256SUMS.txt"
           )
+
+          $files = foreach ($file in $candidates) {
+              $fullPath = Join-Path $artifactDir $file
+              if (Test-Path -LiteralPath $fullPath) {
+                  (Resolve-Path -LiteralPath $fullPath).Path
+              }
+          }
 
           & gh release view $releaseTag *> $null
           if ($LASTEXITCODE -ne 0) {

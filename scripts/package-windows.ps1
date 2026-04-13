@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $ProjectPath = Join-Path $RepoRoot "AvaPlayer.csproj"
 $IssPath = Join-Path $RepoRoot "scripts\windows\AvaPlayer.iss"
-$WxsPath = Join-Path $RepoRoot "scripts\windows\AvaPlayer.wxs"
+$WixProjPath = Join-Path $RepoRoot "scripts\windows\AvaPlayer.wixproj"
 $WindowsTargetFramework = "net10.0-windows10.0.19041.0"
 
 if (-not $Version) {
@@ -41,35 +41,6 @@ function Invoke-Step {
     if ($LASTEXITCODE -ne 0) {
         throw "Command failed: $FilePath $($Arguments -join ' ')"
     }
-}
-
-function Get-WixVersionInfo {
-    param(
-        [string]$WixPath
-    )
-
-    $versionOutput = & $WixPath "--version" 2>&1
-    if ($LASTEXITCODE -ne 0 -or -not $versionOutput) {
-        throw "Unable to determine WiX version from: $WixPath"
-    }
-
-    $versionLine = $versionOutput | Where-Object {
-        $_ -match "^\d+\.\d+\.\d+" -or $_ -match "^WiX Toolset(?: Core)? version \d+\.\d+\.\d+"
-    } | Select-Object -First 1
-
-    if (-not $versionLine) {
-        throw "Unable to parse WiX version from output: $($versionOutput -join [Environment]::NewLine)"
-    }
-
-    if ($versionLine -match "(\d+)\.(\d+)\.(\d+)") {
-        return [pscustomobject]@{
-            Major = [int]$Matches[1]
-            Version = "$($Matches[1]).$($Matches[2]).$($Matches[3])"
-            Raw = $versionLine
-        }
-    }
-
-    throw "Unable to parse WiX version from output: $versionLine"
 }
 
 if (-not $SkipPublish) {
@@ -141,29 +112,30 @@ if (-not $SkipExe) {
 }
 
 if (-not $SkipMsi) {
-    $wix = Get-Command "wix" -ErrorAction SilentlyContinue
-    if ($null -eq $wix) {
-        Write-Warning "WiX CLI not found. Install it with: dotnet tool install --global wix"
+    if (-not (Test-Path -LiteralPath $WixProjPath)) {
+        Write-Warning "WiX project not found at $WixProjPath. Skipping MSI build."
     }
     else {
-        $wixVersion = Get-WixVersionInfo -WixPath $wix.Source
-        Write-Host "Using WiX CLI version $($wixVersion.Version)"
+        Write-Host "Building MSI with WiX SDK (wixproj)..."
+        $wixBuildDir = Join-Path $ArtifactRoot "wix-build"
 
-        $wixArguments = @("build")
-
-        if ($wixVersion.Major -ge 7) {
-            $wixArguments += @("-acceptEula", "wix$($wixVersion.Major)")
-        }
-
-        $wixArguments += @(
-            $WxsPath,
-            "-arch", "x64",
-            "-d", "PublishDir=$PublishDir",
-            "-d", "Version=$Version",
-            "-out", $MsiPath
+        Invoke-Step dotnet @(
+            "build",
+            $WixProjPath,
+            "-c", "Release",
+            "-p:AppPublishDir=$PublishDir",
+            "-p:AppVersion=$Version",
+            "-p:OutputPath=$wixBuildDir"
         )
 
-        Invoke-Step $wix.Source $wixArguments
+        $builtMsi = Get-ChildItem -Path $wixBuildDir -Filter "*.msi" -Recurse | Select-Object -First 1
+        if ($null -eq $builtMsi) {
+            throw "MSI was not found in WiX build output: $wixBuildDir"
+        }
+
+        Copy-Item -LiteralPath $builtMsi.FullName -Destination $MsiPath -Force
+        Remove-Item -LiteralPath $wixBuildDir -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "MSI built: $MsiPath"
     }
 }
 
