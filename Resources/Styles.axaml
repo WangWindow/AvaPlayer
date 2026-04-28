@@ -230,33 +230,31 @@
   </Style>
 
   <Style Selector="Border.settings-panel">
-    <Setter Property="Background" Value="#10FFFFFF" />
-    <Setter Property="BorderBrush" Value="#18FFFFFF" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="24" />
+    <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Padding" Value="22,20,22,22" />
   </Style>
 
   <Style Selector="Border.settings-section">
-    <Setter Property="Background" Value="#12FFFFFF" />
-    <Setter Property="BorderBrush" Value="#18FFFFFF" />
+    <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Padding" Value="18,16" />
   </Style>
 
   <Style Selector="Button.settings-chip">
-    <Setter Property="Background" Value="#12FFFFFF" />
-    <Setter Property="Foreground" Value="#D9FFFFFF" />
-    <Setter Property="BorderBrush" Value="#18FFFFFF" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Background" Value="Transparent" />
     <Setter Property="Padding" Value="14,8" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="MinWidth" Value="52" />
   </Style>
 
   <Style Selector="Button.settings-chip:pointerover">
-    <Setter Property="Background" Value="#20FFFFFF" />
+    <Setter Property="Background" Value="Transparent" />
   </Style>
 
   <Style Selector="Button.settings-chip:pressed">
@@ -265,8 +263,8 @@
 
   <Style Selector="Button.settings-chip.selected">
     <Setter Property="Background" Value="#30FFFFFF" />
-    <Setter Property="Foreground" Value="White" />
-    <Setter Property="BorderBrush" Value="#45FFFFFF" />
+    <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
   </Style>
 
   <Style Selector="Button.lyric-line-button">
@@ -349,10 +347,7 @@
   </Style>
 
   <Style Selector="Border.volume-inline-surface">
-    <Setter Property="Background" Value="#1AFFFFFF" />
-    <Setter Property="BorderBrush" Value="#1EFFFFFF" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="22" />
+    <Setter Property="Background" Value="Transparent" />
     <Setter Property="Padding" Value="16,8" />
   </Style>
 

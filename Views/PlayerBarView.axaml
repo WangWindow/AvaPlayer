@@ -188,10 +188,6 @@
                            Foreground="White"
                            FontSize="22"
                            FontWeight="SemiBold" />
-                <TextBlock Text="设置会自动保存。"
-                           Foreground="#A6FFFFFF"
-                           FontSize="13"
-                           TextWrapping="Wrap" />
               </StackPanel>
 
               <Border Classes="settings-section">
