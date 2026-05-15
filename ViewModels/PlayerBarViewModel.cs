@@ -9,6 +9,7 @@ using AvaPlayer.Services.AlbumArt;
 using AvaPlayer.Services.Audio;
 using AvaPlayer.Services.Database;
 using AvaPlayer.Services.Lyrics;
+using AvaPlayer.Services.Network;
 using AvaPlayer.Services.Playlist;
 using FluentIcons.Common;
 
@@ -23,6 +24,7 @@ public partial class PlayerBarViewModel : ViewModelBase
     private readonly IPlaylistService _playlist;
     private readonly IAlbumArtService _albumArtService;
     private readonly ILyricsService _lyricsService;
+    private readonly INetworkAccessService _networkAccessService;
 
     private CancellationTokenSource? _lyricsCts;
     private bool _isInitialized;
@@ -35,13 +37,15 @@ public partial class PlayerBarViewModel : ViewModelBase
         IPlaylistService playlist,
         IAlbumArtService albumArtService,
         ILyricsService lyricsService,
-        IDatabaseService databaseService)
+        IDatabaseService databaseService,
+        INetworkAccessService networkAccessService)
     {
         _databaseService = databaseService;
         _player = player;
         _playlist = playlist;
         _albumArtService = albumArtService;
         _lyricsService = lyricsService;
+        _networkAccessService = networkAccessService;
 
         Lyrics = new LyricsViewModel(databaseService);
         Volume = _player.Volume;
@@ -112,6 +116,9 @@ public partial class PlayerBarViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSettingsVisible;
 
+    [ObservableProperty]
+    private bool _isNetworkEnabled = true;
+
     public LyricsViewModel Lyrics { get; }
 
     public event EventHandler<Track?>? TrackChanged;
@@ -151,6 +158,7 @@ public partial class PlayerBarViewModel : ViewModelBase
             return;
         }
 
+        IsNetworkEnabled = _networkAccessService.IsEnabled;
         await Lyrics.InitializeAsync(cancellationToken);
         await RestorePlaybackSessionAsync(cancellationToken);
         _isInitialized = true;
@@ -295,6 +303,12 @@ public partial class PlayerBarViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(SettingsToggleIcon));
         OnPropertyChanged(nameof(SettingsToggleToolTip));
+    }
+
+    partial void OnIsNetworkEnabledChanged(bool value)
+    {
+        _networkAccessService.IsNetworkEnabled = value;
+        _ = _networkAccessService.PersistAsync();
     }
 
     private void OnPlaybackStateChanged(object? sender, bool isPlaying)

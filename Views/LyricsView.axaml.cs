@@ -106,7 +106,7 @@ public partial class LyricsView : UserControl
         _scrollAnimationCts = animationCts;
         var token = animationCts.Token;
         var distance = Math.Abs(targetOffset - startOffset);
-        var durationMs = Math.Clamp(200 + (int)(distance * 0.22), 220, 420);
+        var durationMs = Math.Clamp(180 + (int)(distance * 0.18), 200, 380);
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -115,15 +115,12 @@ public partial class LyricsView : UserControl
             {
                 token.ThrowIfCancellationRequested();
 
-                var progress = stopwatch.Elapsed.TotalMilliseconds / durationMs;
+                var progress = Math.Min(1.0, stopwatch.Elapsed.TotalMilliseconds / durationMs);
                 var easedProgress = EaseInOutCubic(progress);
                 var currentOffset = startOffset + (targetOffset - startOffset) * easedProgress;
 
-                await Dispatcher.UIThread.InvokeAsync(
-                    () => LyricsScroller.Offset = LyricsScroller.Offset.WithY(currentOffset),
-                    DispatcherPriority.Render);
-
-                await Task.Delay(10, token);
+                LyricsScroller.Offset = LyricsScroller.Offset.WithY(currentOffset);
+                await Task.Delay(16, token);
             }
         }
         catch (OperationCanceledException)

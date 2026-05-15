@@ -4,6 +4,7 @@ using System.Text.Json;
 using Avalonia.Media.Imaging;
 using AvaPlayer.Models;
 using AvaPlayer.Services.Cache;
+using AvaPlayer.Services.Network;
 using Microsoft.Extensions.Http;
 
 namespace AvaPlayer.Services.AlbumArt;
@@ -12,11 +13,13 @@ public sealed class AlbumArtService : IAlbumArtService
 {
     private readonly ICacheService _cacheService;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly INetworkAccessService _networkAccessService;
 
-    public AlbumArtService(ICacheService cacheService, IHttpClientFactory httpClientFactory)
+    public AlbumArtService(ICacheService cacheService, IHttpClientFactory httpClientFactory, INetworkAccessService networkAccessService)
     {
         _cacheService = cacheService;
         _httpClientFactory = httpClientFactory;
+        _networkAccessService = networkAccessService;
     }
 
     public async Task<Bitmap?> GetAlbumArtAsync(Track track, CancellationToken cancellationToken = default)
@@ -35,11 +38,14 @@ public sealed class AlbumArtService : IAlbumArtService
             return CreateBitmap(embedded);
         }
 
-        var onlineCover = await TryFetchOnlineCoverAsync(track, cancellationToken);
-        if (onlineCover is { Length: > 0 })
+        if (_networkAccessService.IsEnabled)
         {
-            await File.WriteAllBytesAsync(cachePath, onlineCover, cancellationToken);
-            return CreateBitmap(onlineCover);
+            var onlineCover = await TryFetchOnlineCoverAsync(track, cancellationToken);
+            if (onlineCover is { Length: > 0 })
+            {
+                await File.WriteAllBytesAsync(cachePath, onlineCover, cancellationToken);
+                return CreateBitmap(onlineCover);
+            }
         }
 
         return null;
@@ -63,7 +69,7 @@ public sealed class AlbumArtService : IAlbumArtService
     {
         var client = _httpClientFactory.CreateClient();
         var term = Uri.EscapeDataString($"{track.DisplayArtist} {track.DisplayAlbum} {track.DisplayTitle}");
-        var response = await client.GetAsync($"https://itunes.apple.com/search?term={term}&entity=song&limit=1", cancellationToken);
+        using var response = await client.GetAsync($"https://itunes.apple.com/search?term={term}&entity=song&limit=1", cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             return null;

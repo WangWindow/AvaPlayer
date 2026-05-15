@@ -34,7 +34,7 @@ public sealed class LrcLibProvider : ILyricsProvider
         }
 
         var client = _httpClientFactory.CreateClient();
-        var response = await client.GetAsync($"https://lrclib.net/api/get?{string.Join("&", query)}", cancellationToken);
+        using var response = await client.GetAsync($"https://lrclib.net/api/get?{string.Join("&", query)}", cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             return null;

@@ -1,6 +1,9 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+  <!-- ============================================ -->
+  <!-- Ghost Button (icon-only, transparent)       -->
+  <!-- ============================================ -->
   <Style Selector="Button.ghost">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="White" />
@@ -10,15 +13,26 @@
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
-
   <Style Selector="Button.ghost:pointerover">
     <Setter Property="Background" Value="#30FFFFFF" />
   </Style>
-
   <Style Selector="Button.ghost:pressed">
     <Setter Property="Background" Value="#50FFFFFF" />
   </Style>
 
+  <Style Selector=":light Button.ghost">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+  <Style Selector=":light Button.ghost:pointerover">
+    <Setter Property="Background" Value="#12000000" />
+  </Style>
+  <Style Selector=":light Button.ghost:pressed">
+    <Setter Property="Background" Value="#1E000000" />
+  </Style>
+
+  <!-- ============================================ -->
+  <!-- Ghost Button Large (Play/Pause)             -->
+  <!-- ============================================ -->
   <Style Selector="Button.ghost-large">
     <Setter Property="Background" Value="#30FFFFFF" />
     <Setter Property="Foreground" Value="White" />
@@ -30,30 +44,56 @@
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
-
   <Style Selector="Button.ghost-large:pointerover">
     <Setter Property="Background" Value="#45FFFFFF" />
   </Style>
-
   <Style Selector="Button.ghost-large:pressed">
     <Setter Property="Background" Value="#60FFFFFF" />
   </Style>
 
+  <Style Selector=":light Button.ghost-large">
+    <Setter Property="Background" Value="#14000000" />
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+  <Style Selector=":light Button.ghost-large:pointerover">
+    <Setter Property="Background" Value="#1E000000" />
+  </Style>
+  <Style Selector=":light Button.ghost-large:pressed">
+    <Setter Property="Background" Value="#2A000000" />
+  </Style>
+
+  <!-- ============================================ -->
+  <!-- Settings Toggle Button                      -->
+  <!-- ============================================ -->
   <Style Selector="Button.settings-toggle">
     <Setter Property="Padding" Value="0" />
     <Setter Property="Width" Value="40" />
     <Setter Property="Height" Value="40" />
     <Setter Property="CornerRadius" Value="20" />
   </Style>
-
   <Style Selector="Button.settings-toggle.open">
     <Setter Property="Background" Value="#1CFFFFFF" />
   </Style>
+  <Style Selector=":light Button.settings-toggle.open">
+    <Setter Property="Background" Value="#12000000" />
+  </Style>
 
+  <!-- ============================================ -->
+  <!-- Volume Toggle Button                        -->
+  <!-- ============================================ -->
+  <Style Selector="Button.volume-toggle.open">
+    <Setter Property="Background" Value="#26FFFFFF" />
+  </Style>
+  <Style Selector=":light Button.volume-toggle.open">
+    <Setter Property="Background" Value="#14000000" />
+  </Style>
+
+  <!-- ============================================ -->
+  <!-- Playlist Drawer                             -->
+  <!-- ============================================ -->
   <Style Selector="Grid.playlist-drawer-host">
     <Setter Property="IsHitTestVisible" Value="False" />
   </Style>
-
   <Style Selector="Grid.playlist-drawer-host.open">
     <Setter Property="IsHitTestVisible" Value="True" />
   </Style>
@@ -67,9 +107,11 @@
       </Transitions>
     </Setter>
   </Style>
-
   <Style Selector="Border.playlist-drawer-scrim.open">
     <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector=":light Border.playlist-drawer-scrim">
+    <Setter Property="Background" Value="#40000000" />
   </Style>
 
   <Style Selector="Border.playlist-drawer-panel">
@@ -85,12 +127,18 @@
       </Transitions>
     </Setter>
   </Style>
-
   <Style Selector="Border.playlist-drawer-panel.open">
     <Setter Property="Opacity" Value="1" />
     <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
   </Style>
+  <Style Selector=":light Border.playlist-drawer-panel">
+    <Setter Property="Background" Value="#F4F1F0F8" />
+    <Setter Property="BoxShadow" Value="0 14 40 0 #18000000" />
+  </Style>
 
+  <!-- ============================================ -->
+  <!-- Playlist Item Button                        -->
+  <!-- ============================================ -->
   <Style Selector="Button.playlist-item">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="White" />
@@ -100,38 +148,27 @@
     <Setter Property="MinHeight" Value="60" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
-
   <Style Selector="Button.playlist-item:pointerover">
     <Setter Property="Background" Value="#18FFFFFF" />
   </Style>
-
   <Style Selector="Button.playlist-item.current">
     <Setter Property="Background" Value="#30FFFFFF" />
   </Style>
-
   <Style Selector="Button.playlist-item.current:pointerover">
     <Setter Property="Background" Value="#3AFFFFFF" />
   </Style>
 
-  <Style Selector="ListBox.playlist-list">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
+  <Style Selector=":light Button.playlist-item">
+    <Setter Property="Foreground" Value="#1A1A1A" />
   </Style>
-
-  <Style Selector="ListBox.playlist-list ListBoxItem">
-    <Setter Property="Padding" Value="0" />
-    <Setter Property="Margin" Value="0,0,0,6" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  <Style Selector=":light Button.playlist-item:pointerover">
+    <Setter Property="Background" Value="#0C000000" />
   </Style>
-
-  <Style Selector="ListBox.playlist-list ListBoxItem:pointerover">
-    <Setter Property="Background" Value="Transparent" />
+  <Style Selector=":light Button.playlist-item.current">
+    <Setter Property="Background" Value="#18000000" />
   </Style>
-
-  <Style Selector="ListBox.playlist-list ListBoxItem:selected">
-    <Setter Property="Background" Value="Transparent" />
+  <Style Selector=":light Button.playlist-item.current:pointerover">
+    <Setter Property="Background" Value="#20000000" />
   </Style>
 
   <Style Selector="Button.playlist-item TextBlock.playlist-title">
@@ -139,35 +176,81 @@
     <Setter Property="FontSize" Value="14" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
+  <Style Selector=":light Button.playlist-item TextBlock.playlist-title">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
 
   <Style Selector="Button.playlist-item TextBlock.playlist-subtitle">
     <Setter Property="Foreground" Value="#99FFFFFF" />
     <Setter Property="FontSize" Value="11" />
+  </Style>
+  <Style Selector=":light Button.playlist-item TextBlock.playlist-subtitle">
+    <Setter Property="Foreground" Value="#66000000" />
   </Style>
 
   <Style Selector="Button.playlist-item TextBlock.playlist-duration">
     <Setter Property="Foreground" Value="#8CFFFFFF" />
     <Setter Property="FontSize" Value="12" />
   </Style>
+  <Style Selector=":light Button.playlist-item TextBlock.playlist-duration">
+    <Setter Property="Foreground" Value="#55000000" />
+  </Style>
 
   <Style Selector="Button.playlist-item.current TextBlock.playlist-subtitle">
     <Setter Property="Foreground" Value="#CCFFFFFF" />
+  </Style>
+  <Style Selector=":light Button.playlist-item.current TextBlock.playlist-subtitle">
+    <Setter Property="Foreground" Value="#88000000" />
   </Style>
 
   <Style Selector="Button.playlist-item.current TextBlock.playlist-duration">
     <Setter Property="Foreground" Value="#E6FFFFFF" />
   </Style>
+  <Style Selector=":light Button.playlist-item.current TextBlock.playlist-duration">
+    <Setter Property="Foreground" Value="#77000000" />
+  </Style>
+
+  <!-- ============================================ -->
+  <!-- Playlist ListBox                            -->
+  <!-- ============================================ -->
+  <Style Selector="ListBox.playlist-list">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="ListBox.playlist-list ListBoxItem">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0,0,0,6" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="ListBox.playlist-list ListBoxItem:pointerover">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.playlist-list ListBoxItem:selected">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
 
   <Style Selector="CheckBox.playlist-select">
     <Setter Property="Foreground" Value="White" />
   </Style>
+  <Style Selector=":light CheckBox.playlist-select">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
 
+  <!-- ============================================ -->
+  <!-- Immersive Context Menu                      -->
+  <!-- ============================================ -->
   <Style Selector="ContextMenu.immersive-menu">
     <Setter Property="Background" Value="#B214101D" />
     <Setter Property="BorderBrush" Value="#24FFFFFF" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Padding" Value="8" />
     <Setter Property="MinWidth" Value="180" />
+  </Style>
+  <Style Selector=":light ContextMenu.immersive-menu">
+    <Setter Property="Background" Value="#F4F1F0F8" />
+    <Setter Property="BorderBrush" Value="#18000000" />
   </Style>
 
   <Style Selector="ContextMenu.immersive-menu MenuItem">
@@ -177,19 +260,31 @@
     <Setter Property="MinHeight" Value="40" />
     <Setter Property="FontSize" Value="13" />
   </Style>
-
+  <Style Selector=":light ContextMenu.immersive-menu MenuItem">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
   <Style Selector="ContextMenu.immersive-menu MenuItem:selected">
     <Setter Property="Background" Value="#18FFFFFF" />
   </Style>
-
+  <Style Selector=":light ContextMenu.immersive-menu MenuItem:selected">
+    <Setter Property="Background" Value="#0C000000" />
+  </Style>
   <Style Selector="ContextMenu.immersive-menu MenuItem:open">
     <Setter Property="Background" Value="#20FFFFFF" />
   </Style>
-
+  <Style Selector=":light ContextMenu.immersive-menu MenuItem:open">
+    <Setter Property="Background" Value="#12000000" />
+  </Style>
   <Style Selector="ContextMenu.immersive-menu MenuItem:checked">
     <Setter Property="Foreground" Value="White" />
   </Style>
+  <Style Selector=":light ContextMenu.immersive-menu MenuItem:checked">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
 
+  <!-- ============================================ -->
+  <!-- Player Stage (Playback Content)             -->
+  <!-- ============================================ -->
   <Style Selector="StackPanel.player-stage">
     <Setter Property="Opacity" Value="1" />
     <Setter Property="IsHitTestVisible" Value="True" />
@@ -202,13 +297,15 @@
       </Transitions>
     </Setter>
   </Style>
-
   <Style Selector="StackPanel.player-stage.hidden">
     <Setter Property="Opacity" Value="0" />
     <Setter Property="IsHitTestVisible" Value="False" />
     <Setter Property="RenderTransform" Value="translate(0px, 28px)" />
   </Style>
 
+  <!-- ============================================ -->
+  <!-- Settings Stage                              -->
+  <!-- ============================================ -->
   <Style Selector="Border.settings-stage">
     <Setter Property="Opacity" Value="0" />
     <Setter Property="IsHitTestVisible" Value="False" />
@@ -222,7 +319,6 @@
       </Transitions>
     </Setter>
   </Style>
-
   <Style Selector="Border.settings-stage.open">
     <Setter Property="Opacity" Value="1" />
     <Setter Property="IsHitTestVisible" Value="True" />
@@ -231,10 +327,13 @@
 
   <Style Selector="Border.settings-panel">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+    <Setter Property="BorderBrush" Value="#18FFFFFF" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Padding" Value="22,20,22,22" />
+  </Style>
+  <Style Selector=":light Border.settings-panel">
+    <Setter Property="BorderBrush" Value="#14000000" />
   </Style>
 
   <Style Selector="Border.settings-section">
@@ -244,6 +343,7 @@
     <Setter Property="Padding" Value="18,16" />
   </Style>
 
+  <!-- Settings Chip Buttons -->
   <Style Selector="Button.settings-chip">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Padding" Value="14,8" />
@@ -252,21 +352,30 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="MinWidth" Value="52" />
   </Style>
-
   <Style Selector="Button.settings-chip:pointerover">
     <Setter Property="Background" Value="Transparent" />
   </Style>
-
   <Style Selector="Button.settings-chip:pressed">
     <Setter Property="Background" Value="#2AFFFFFF" />
   </Style>
-
   <Style Selector="Button.settings-chip.selected">
     <Setter Property="Background" Value="#30FFFFFF" />
-    <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderBrush" Value="#60FFFFFF" />
   </Style>
 
+  <Style Selector=":light Button.settings-chip:pressed">
+    <Setter Property="Background" Value="#12000000" />
+  </Style>
+  <Style Selector=":light Button.settings-chip.selected">
+    <Setter Property="Background" Value="#18000000" />
+    <Setter Property="Foreground" Value="#1A1A1A" />
+    <Setter Property="BorderBrush" Value="#30000000" />
+  </Style>
+
+  <!-- ============================================ -->
+  <!-- Lyric Line Button & Text                    -->
+  <!-- ============================================ -->
   <Style Selector="Button.lyric-line-button">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
@@ -282,100 +391,28 @@
       </Transitions>
     </Setter>
   </Style>
-
   <Style Selector="Button.lyric-line-button:pointerover">
     <Setter Property="Background" Value="#10FFFFFF" />
   </Style>
-
   <Style Selector="Button.lyric-line-button:pressed">
     <Setter Property="Background" Value="#18FFFFFF" />
   </Style>
-
   <Style Selector="Button.lyric-line-button.near">
     <Setter Property="Padding" Value="18,12" />
   </Style>
-
   <Style Selector="Button.lyric-line-button.active">
     <Setter Property="Background" Value="#08FFFFFF" />
     <Setter Property="Padding" Value="18,14" />
   </Style>
 
-  <Style Selector="Slider.white">
-    <Setter Property="Foreground" Value="White" />
+  <Style Selector=":light Button.lyric-line-button:pointerover">
+    <Setter Property="Background" Value="#08000000" />
   </Style>
-
-  <Style Selector="Slider.white /template/ Track#PART_Track Border#TrackBackground">
-    <Setter Property="Background" Value="#35FFFFFF" />
-    <Setter Property="CornerRadius" Value="2" />
+  <Style Selector=":light Button.lyric-line-button:pressed">
+    <Setter Property="Background" Value="#0E000000" />
   </Style>
-
-  <Style Selector="Slider.white /template/ Track#PART_Track Border#PART_SelectionRange">
-    <Setter Property="Background" Value="White" />
-    <Setter Property="CornerRadius" Value="2" />
-  </Style>
-
-  <Style Selector="Slider.white /template/ Track#PART_Track Thumb">
-    <Setter Property="Width" Value="12" />
-    <Setter Property="Height" Value="12" />
-    <Setter Property="Background" Value="White" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="6" />
-  </Style>
-
-  <Style Selector="Button.volume-toggle.open">
-    <Setter Property="Background" Value="#26FFFFFF" />
-  </Style>
-
-  <Style Selector="Border.volume-inline-host">
-    <Setter Property="Height" Value="0" />
-    <Setter Property="Opacity" Value="0" />
-    <Setter Property="RenderTransformOrigin" Value="0.5,0" />
-    <Setter Property="RenderTransform" Value="translate(0px, -8px)" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <DoubleTransition Property="Height" Duration="0:0:0.22" />
-        <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
-        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" />
-      </Transitions>
-    </Setter>
-  </Style>
-
-  <Style Selector="Border.volume-inline-host.open">
-    <Setter Property="Height" Value="66" />
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
-  </Style>
-
-  <Style Selector="Border.volume-inline-surface">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Padding" Value="16,8" />
-  </Style>
-
-  <Style Selector="Slider.volume-slider">
-    <Setter Property="Foreground" Value="White" />
-    <Setter Property="Height" Value="22" />
-  </Style>
-
-  <Style Selector="Slider.volume-slider /template/ Track#PART_Track Border#TrackBackground">
-    <Setter Property="Background" Value="#24FFFFFF" />
-    <Setter Property="CornerRadius" Value="999" />
-    <Setter Property="Height" Value="3" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-
-  <Style Selector="Slider.volume-slider /template/ Track#PART_Track Border#PART_SelectionRange">
-    <Setter Property="Background" Value="#F2FFFFFF" />
-    <Setter Property="CornerRadius" Value="999" />
-    <Setter Property="Height" Value="3" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-
-  <Style Selector="Slider.volume-slider /template/ Track#PART_Track Thumb">
-    <Setter Property="Width" Value="12" />
-    <Setter Property="Height" Value="12" />
-    <Setter Property="Background" Value="White" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="6" />
+  <Style Selector=":light Button.lyric-line-button.active">
+    <Setter Property="Background" Value="#06000000" />
   </Style>
 
   <Style Selector="TextBlock.lyric-line">
@@ -393,14 +430,192 @@
       </Transitions>
     </Setter>
   </Style>
-
+  <Style Selector=":light TextBlock.lyric-line">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
   <Style Selector="TextBlock.lyric-line.near">
     <Setter Property="Margin" Value="0,10" />
   </Style>
-
   <Style Selector="TextBlock.lyric-line.active">
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Margin" Value="0,14" />
+  </Style>
+
+  <!-- ============================================ -->
+  <!-- Sliders                                     -->
+  <!-- ============================================ -->
+  <Style Selector="Slider.white">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector=":light Slider.white">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+  <Style Selector="Slider.white /template/ Track#PART_Track Border#TrackBackground">
+    <Setter Property="Background" Value="#35FFFFFF" />
+    <Setter Property="CornerRadius" Value="2" />
+  </Style>
+  <Style Selector=":light Slider.white /template/ Track#PART_Track Border#TrackBackground">
+    <Setter Property="Background" Value="#20000000" />
+  </Style>
+  <Style Selector="Slider.white /template/ Track#PART_Track Border#PART_SelectionRange">
+    <Setter Property="Background" Value="White" />
+    <Setter Property="CornerRadius" Value="2" />
+  </Style>
+  <Style Selector=":light Slider.white /template/ Track#PART_Track Border#PART_SelectionRange">
+    <Setter Property="Background" Value="#1A1A1A" />
+  </Style>
+  <Style Selector="Slider.white /template/ Track#PART_Track Thumb">
+    <Setter Property="Width" Value="12" />
+    <Setter Property="Height" Value="12" />
+    <Setter Property="Background" Value="White" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector=":light Slider.white /template/ Track#PART_Track Thumb">
+    <Setter Property="Background" Value="#1A1A1A" />
+  </Style>
+
+  <!-- ============================================ -->
+  <!-- Volume Panel                                -->
+  <!-- ============================================ -->
+  <Style Selector="Border.volume-inline-host">
+    <Setter Property="Height" Value="0" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="RenderTransformOrigin" Value="0.5,0" />
+    <Setter Property="RenderTransform" Value="translate(0px, -8px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Height" Duration="0:0:0.22" />
+        <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.volume-inline-host.open">
+    <Setter Property="Height" Value="66" />
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+  </Style>
+  <Style Selector="Border.volume-inline-surface">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="16,8" />
+  </Style>
+
+  <Style Selector="Slider.volume-slider">
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Height" Value="22" />
+  </Style>
+  <Style Selector=":light Slider.volume-slider">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+  <Style Selector="Slider.volume-slider /template/ Track#PART_Track Border#TrackBackground">
+    <Setter Property="Background" Value="#24FFFFFF" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Height" Value="3" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector=":light Slider.volume-slider /template/ Track#PART_Track Border#TrackBackground">
+    <Setter Property="Background" Value="#18000000" />
+  </Style>
+  <Style Selector="Slider.volume-slider /template/ Track#PART_Track Border#PART_SelectionRange">
+    <Setter Property="Background" Value="#F2FFFFFF" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Height" Value="3" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector=":light Slider.volume-slider /template/ Track#PART_Track Border#PART_SelectionRange">
+    <Setter Property="Background" Value="#1A1A1A" />
+  </Style>
+  <Style Selector="Slider.volume-slider /template/ Track#PART_Track Thumb">
+    <Setter Property="Width" Value="12" />
+    <Setter Property="Height" Value="12" />
+    <Setter Property="Background" Value="White" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector=":light Slider.volume-slider /template/ Track#PART_Track Thumb">
+    <Setter Property="Background" Value="#1A1A1A" />
+  </Style>
+
+  <!-- ============================================ -->
+  <!-- Theme-Aware Text Colors                     -->
+  <!-- ============================================ -->
+  <Style Selector="TextBlock.player-title">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector=":light TextBlock.player-title">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+
+  <Style Selector="TextBlock.player-subtitle">
+    <Setter Property="Foreground" Value="#B3FFFFFF" />
+  </Style>
+  <Style Selector=":light TextBlock.player-subtitle">
+    <Setter Property="Foreground" Value="#66000000" />
+  </Style>
+
+  <Style Selector="TextBlock.player-time">
+    <Setter Property="Foreground" Value="#A6FFFFFF" />
+  </Style>
+  <Style Selector=":light TextBlock.player-time">
+    <Setter Property="Foreground" Value="#55000000" />
+  </Style>
+
+  <Style Selector="TextBlock.settings-title">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector=":light TextBlock.settings-title">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+
+  <Style Selector="TextBlock.settings-label">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector=":light TextBlock.settings-label">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+
+  <Style Selector="TextBlock.settings-description">
+    <Setter Property="Foreground" Value="#8CFFFFFF" />
+  </Style>
+  <Style Selector=":light TextBlock.settings-description">
+    <Setter Property="Foreground" Value="#55000000" />
+  </Style>
+
+  <Style Selector="TextBlock.lyrics-status">
+    <Setter Property="Foreground" Value="#80FFFFFF" />
+  </Style>
+  <Style Selector=":light TextBlock.lyrics-status">
+    <Setter Property="Foreground" Value="#55000000" />
+  </Style>
+
+  <Style Selector="TextBlock.lyrics-empty">
+    <Setter Property="Foreground" Value="#66FFFFFF" />
+  </Style>
+  <Style Selector=":light TextBlock.lyrics-empty">
+    <Setter Property="Foreground" Value="#40000000" />
+  </Style>
+
+  <Style Selector="TextBlock.volume-text">
+    <Setter Property="Foreground" Value="#F2FFFFFF" />
+  </Style>
+  <Style Selector=":light TextBlock.volume-text">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+
+  <!-- Theme-aware panel backgrounds -->
+  <Style Selector="Border.player-panel">
+    <Setter Property="Background" Value="#08000000" />
+  </Style>
+  <Style Selector=":light Border.player-panel">
+    <Setter Property="Background" Value="#08000000" />
+  </Style>
+
+  <Style Selector="Border.lyrics-panel">
+    <Setter Property="Background" Value="#04000000" />
+  </Style>
+  <Style Selector=":light Border.lyrics-panel">
+    <Setter Property="Background" Value="#04000000" />
   </Style>
 
 </Styles>

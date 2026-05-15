@@ -19,7 +19,7 @@ public sealed class LyricsOvhProvider : ILyricsProvider
         var artist = Uri.EscapeDataString(track.DisplayArtist);
         var title = Uri.EscapeDataString(track.DisplayTitle);
         var client = _httpClientFactory.CreateClient();
-        var response = await client.GetAsync($"https://api.lyrics.ovh/v1/{artist}/{title}", cancellationToken);
+        using var response = await client.GetAsync($"https://api.lyrics.ovh/v1/{artist}/{title}", cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             return null;

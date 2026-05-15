@@ -4,6 +4,7 @@ using System.Text;
 using AvaPlayer.Helpers;
 using AvaPlayer.Models;
 using AvaPlayer.Services.Cache;
+using AvaPlayer.Services.Network;
 
 namespace AvaPlayer.Services.Lyrics;
 
@@ -12,11 +13,13 @@ public sealed class LyricsService : ILyricsService
     private const string CacheKeyVersion = "lyrics-v2";
 
     private readonly ICacheService _cacheService;
+    private readonly INetworkAccessService _networkAccessService;
     private readonly IReadOnlyList<ILyricsProvider> _providers;
 
-    public LyricsService(ICacheService cacheService, IEnumerable<ILyricsProvider> providers)
+    public LyricsService(ICacheService cacheService, IEnumerable<ILyricsProvider> providers, INetworkAccessService networkAccessService)
     {
         _cacheService = cacheService;
+        _networkAccessService = networkAccessService;
         _providers = providers.ToArray();
     }
 
@@ -46,36 +49,39 @@ public sealed class LyricsService : ILyricsService
             }
         }
 
-        LyricsSelection? bestAccepted = null;
-        foreach (var provider in _providers)
+        if (_networkAccessService.IsEnabled)
         {
-            var lyrics = await provider.GetLyricsAsync(track, cancellationToken);
-            if (lyrics is not { Count: > 0 })
+            LyricsSelection? bestAccepted = null;
+            foreach (var provider in _providers)
             {
-                continue;
-            }
-
-            var selection = CreateSelection(track, lyrics);
-            if (selection.Quality.IsAccepted)
-            {
-                if (!bestAccepted.HasValue || selection.Quality.Score > bestAccepted.Value.Quality.Score)
+                var lyrics = await provider.GetLyricsAsync(track, cancellationToken);
+                if (lyrics is not { Count: > 0 })
                 {
-                    bestAccepted = selection;
+                    continue;
                 }
 
-                continue;
+                var selection = CreateSelection(track, lyrics);
+                if (selection.Quality.IsAccepted)
+                {
+                    if (!bestAccepted.HasValue || selection.Quality.Score > bestAccepted.Value.Quality.Score)
+                    {
+                        bestAccepted = selection;
+                    }
+
+                    continue;
+                }
+
+                if (!bestFallback.HasValue || selection.Quality.Score > bestFallback.Value.Quality.Score)
+                {
+                    bestFallback = selection;
+                }
             }
 
-            if (!bestFallback.HasValue || selection.Quality.Score > bestFallback.Value.Quality.Score)
+            if (bestAccepted.HasValue)
             {
-                bestFallback = selection;
+                await WriteCacheAsync(cachePath, bestAccepted.Value.Lyrics, cancellationToken);
+                return bestAccepted.Value.Lyrics;
             }
-        }
-
-        if (bestAccepted.HasValue)
-        {
-            await WriteCacheAsync(cachePath, bestAccepted.Value.Lyrics, cancellationToken);
-            return bestAccepted.Value.Lyrics;
         }
 
         return bestFallback?.Lyrics ?? [];

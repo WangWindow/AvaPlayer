@@ -16,12 +16,12 @@
   <Panel>
     <Grid ColumnDefinitions="46*,54*">
       <Border Grid.Column="0"
-              Background="#08000000">
+              Classes="player-panel">
         <views:PlayerBarView DataContext="{Binding PlayerBar}" />
       </Border>
 
       <Border Grid.Column="1"
-              Background="#04000000">
+              Classes="lyrics-panel">
         <views:LyricsView DataContext="{Binding PlayerBar.Lyrics}" />
       </Border>
     </Grid>
@@ -48,7 +48,7 @@
           <Grid RowDefinitions="Auto,*">
             <DockPanel Margin="16,16,16,12">
               <TextBlock Text="播放列表"
-                         Foreground="White"
+                         Classes="player-title"
                          FontSize="18"
                          FontWeight="SemiBold"
                          VerticalAlignment="Center" />

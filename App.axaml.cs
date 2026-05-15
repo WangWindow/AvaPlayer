@@ -1,5 +1,3 @@
-using System.ComponentModel;
-using System.Runtime;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -14,10 +12,13 @@ using AvaPlayer.Services.Cache;
 using AvaPlayer.Services.Database;
 using AvaPlayer.Services.Lyrics;
 using AvaPlayer.Services.MediaTransport;
+using AvaPlayer.Services.Network;
 using AvaPlayer.Services.Playlist;
 using AvaPlayer.ViewModels;
 using AvaPlayer.Views;
 using Microsoft.Extensions.DependencyInjection;
+using System.ComponentModel;
+using System.Runtime;
 
 namespace AvaPlayer;
 
@@ -89,6 +90,7 @@ public partial class App : Application
 
         services.AddSingleton<ICacheService, CacheService>();
         services.AddSingleton<IDatabaseService, SqliteDatabaseService>();
+        services.AddSingleton<INetworkAccessService, NetworkAccessService>();
         services.AddSingleton<ITrackScannerService, TrackScannerService>();
         services.AddSingleton<IPlaylistService, PlaylistService>();
         services.AddSingleton<IPlayerService, MpvPlayerService>();
@@ -124,6 +126,19 @@ public partial class App : Application
         if (_mainWindowViewModel is null || _mediaTransportService is null)
         {
             return;
+        }
+
+        try
+        {
+            var networkService = _services?.GetService<INetworkAccessService>();
+            if (networkService is not null)
+            {
+                await networkService.InitializeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[App] 初始化网络访问服务失败: {ex.Message}");
         }
 
         try
@@ -232,20 +247,60 @@ public partial class App : Application
 
         _mainWindowViewModel.PlayerBar.TrackChanged += OnTrackChanged;
 
-        _mediaTransportService.PlayRequested += (_, _) =>
-            Dispatcher.UIThread.Post(() => _mainWindowViewModel.PlayerBar.ResumeCommand.Execute(null));
-        _mediaTransportService.PauseRequested += (_, _) =>
-            Dispatcher.UIThread.Post(() => _mainWindowViewModel.PlayerBar.PauseCommand.Execute(null));
-        _mediaTransportService.NextRequested += (_, _) =>
-            Dispatcher.UIThread.Post(async () => await _mainWindowViewModel.PlayerBar.NextCommand.ExecuteAsync(null));
-        _mediaTransportService.PreviousRequested += (_, _) =>
-            Dispatcher.UIThread.Post(async () => await _mainWindowViewModel.PlayerBar.PreviousCommand.ExecuteAsync(null));
-        _mediaTransportService.SeekRequested += (_, position) =>
-            Dispatcher.UIThread.Post(() => _playerService.Seek(position.TotalSeconds));
+        _mediaTransportService.PlayRequested += OnMediaTransportPlayRequested;
+        _mediaTransportService.PauseRequested += OnMediaTransportPauseRequested;
+        _mediaTransportService.NextRequested += OnMediaTransportNextRequested;
+        _mediaTransportService.PreviousRequested += OnMediaTransportPreviousRequested;
+        _mediaTransportService.SeekRequested += OnMediaTransportSeekRequested;
 
         _playerService.PlaybackStateChanged += OnPlaybackStateChanged;
         _playerService.PositionChanged += OnPlayerPositionChanged;
         _mediaTransportService.UpdatePlaybackMode(_mainWindowViewModel.PlayerBar.PlaybackMode);
+    }
+
+    private void OnMediaTransportPlayRequested(object? sender, EventArgs e)
+    {
+        if (_mainWindowViewModel is null)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() => _mainWindowViewModel.PlayerBar.ResumeCommand.Execute(null));
+    }
+
+    private void OnMediaTransportPauseRequested(object? sender, EventArgs e)
+    {
+        if (_mainWindowViewModel is null)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() => _mainWindowViewModel.PlayerBar.PauseCommand.Execute(null));
+    }
+
+    private void OnMediaTransportNextRequested(object? sender, EventArgs e)
+    {
+        if (_mainWindowViewModel is null)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(async () => await _mainWindowViewModel.PlayerBar.NextCommand.ExecuteAsync(null));
+    }
+
+    private void OnMediaTransportPreviousRequested(object? sender, EventArgs e)
+    {
+        if (_mainWindowViewModel is null)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(async () => await _mainWindowViewModel.PlayerBar.PreviousCommand.ExecuteAsync(null));
+    }
+
+    private void OnMediaTransportSeekRequested(object? sender, TimeSpan position)
+    {
+        _playerService?.Seek(position.TotalSeconds);
     }
 
     private void WireSingleInstanceActivation()
@@ -568,11 +623,25 @@ public partial class App : Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
+        if (_desktop is not null)
+        {
+            _desktop.Exit -= OnDesktopExit;
+        }
+
         ActualThemeVariantChanged -= OnActualThemeVariantChanged;
 
         if (_singleInstanceManager is not null)
         {
             _singleInstanceManager.ActivationRequested -= OnSingleInstanceActivationRequested;
+        }
+
+        if (_mediaTransportService is not null)
+        {
+            _mediaTransportService.PlayRequested -= OnMediaTransportPlayRequested;
+            _mediaTransportService.PauseRequested -= OnMediaTransportPauseRequested;
+            _mediaTransportService.NextRequested -= OnMediaTransportNextRequested;
+            _mediaTransportService.PreviousRequested -= OnMediaTransportPreviousRequested;
+            _mediaTransportService.SeekRequested -= OnMediaTransportSeekRequested;
         }
 
         if (_mainWindowViewModel is not null)
