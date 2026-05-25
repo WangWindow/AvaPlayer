@@ -117,7 +117,7 @@ runtimes/
 也可以直接使用系统已安装的 `libmpv`：
 
 - **Windows**：从 mpv/libmpv 对应发行包中获取 `libmpv-2.dll`
-- **Linux**：安装提供 `libmpv.so.2` 的发行版包
+- **Linux**：安装提供 `libmpv.so.2` 的发行版包 (仅本地测试，发现需要安装 luajit 否则加载失败)
 - **macOS**：通过 Homebrew 或其他方式安装可提供 `libmpv.dylib` 的 mpv/libmpv
 
 如果系统库已在动态库搜索路径中，项目可以直接加载，无需放进 `runtimes/`。
