@@ -3,6 +3,13 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+.antigravitycli/
+.claude/
+.codex/
+.copilot/
+.gemini/
+.opencode/
+.omo/
 .sisyphus/
 runtimes/
 [Tt]emp/
