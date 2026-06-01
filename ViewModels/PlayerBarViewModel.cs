@@ -18,6 +18,7 @@ namespace AvaPlayer.ViewModels;
 public partial class PlayerBarViewModel : ViewModelBase
 {
     private const string PlaybackPositionSettingKey = "playback-position-seconds";
+    private const string VolumeSettingKey = "player-volume";
 
     private readonly IDatabaseService _databaseService;
     private readonly IPlayerService _player;
@@ -160,6 +161,7 @@ public partial class PlayerBarViewModel : ViewModelBase
 
         IsNetworkEnabled = _networkAccessService.IsEnabled;
         await Lyrics.InitializeAsync(cancellationToken);
+        await RestoreVolumeAsync(cancellationToken);
         await RestorePlaybackSessionAsync(cancellationToken);
         _isInitialized = true;
     }
@@ -196,7 +198,10 @@ public partial class PlayerBarViewModel : ViewModelBase
     }
 
     public Task PersistSessionAsync(CancellationToken cancellationToken = default) =>
-        PersistPlaybackPositionAsync(CurrentTrack is null ? 0 : Position, cancellationToken);
+        Task.WhenAll(
+            PersistPlaybackPositionAsync(CurrentTrack is null ? 0 : Position, cancellationToken),
+            PersistVolumeAsync(Volume, cancellationToken)
+        );
 
     [RelayCommand]
     private void PlayPause()
@@ -579,6 +584,43 @@ public partial class PlayerBarViewModel : ViewModelBase
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[Player] 保存播放进度失败: {ex.Message}");
+        }
+    }
+
+    private async Task RestoreVolumeAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var savedVolume = await _databaseService.GetSettingAsync(VolumeSettingKey, cancellationToken);
+            if (double.TryParse(savedVolume, NumberStyles.Float, CultureInfo.InvariantCulture, out var volume))
+            {
+                Volume = Math.Clamp(volume, 0, 100);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Player] 读取音量设置失败: {ex.Message}");
+        }
+    }
+
+    private async Task PersistVolumeAsync(double volume, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _databaseService.SaveSettingAsync(
+                VolumeSettingKey,
+                volume.ToString(CultureInfo.InvariantCulture),
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Player] 保存音量设置失败: {ex.Message}");
         }
     }
 
