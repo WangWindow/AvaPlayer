@@ -15,7 +15,8 @@
   <TrayIcon.Icons>
     <TrayIcons>
       <TrayIcon Icon="/Resources/logo-tray.ico"
-                ToolTipText="AvaPlayer">
+                ToolTipText="AvaPlayer"
+                Clicked="OnPlayPauseClick">
         <TrayIcon.Menu>
           <NativeMenu>
             <NativeMenuItem Header="显示窗口"
