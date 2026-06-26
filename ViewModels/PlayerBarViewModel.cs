@@ -61,64 +61,64 @@ public partial class PlayerBarViewModel : ViewModelBase
     }
 
     [ObservableProperty]
-    private IBrush _backgroundBrush = ColorExtractor.DefaultBackground();
+    public partial IBrush BackgroundBrush { get; set; } = ColorExtractor.DefaultBackground();
 
     [ObservableProperty]
-    private Track? _currentTrack;
+    public partial Track? CurrentTrack { get; set; }
 
     [ObservableProperty]
-    private string _titleDisplay = "AvaPlayer";
+    public partial string TitleDisplay { get; set; } = "AvaPlayer";
 
     [ObservableProperty]
-    private string _artistDisplay = "从左上角添加音乐文件夹";
+    public partial string ArtistDisplay { get; set; } = "从左上角添加音乐文件夹";
 
     [ObservableProperty]
-    private Bitmap? _albumArtBitmap;
+    public partial Bitmap? AlbumArtBitmap { get; set; }
 
     [ObservableProperty]
-    private bool _hasAlbumArt;
+    public partial bool HasAlbumArt { get; set; }
 
     [ObservableProperty]
-    private bool _showAlbumArtPlaceholder = true;
+    public partial bool ShowAlbumArtPlaceholder { get; set; } = true;
 
     [ObservableProperty]
-    private bool _isPlaying;
+    public partial bool IsPlaying { get; set; }
 
     [ObservableProperty]
-    private Icon _playPauseIcon = Icon.Play;
+    public partial Icon PlayPauseIcon { get; set; } = Icon.Play;
 
     [ObservableProperty]
-    private double _position;
+    public partial double Position { get; set; }
 
     [ObservableProperty]
-    private double _duration = 1;
+    public partial double Duration { get; set; } = 1;
 
     [ObservableProperty]
-    private string _positionText = "0:00";
+    public partial string PositionText { get; set; } = "0:00";
 
     [ObservableProperty]
-    private string _durationText = "0:00";
+    public partial string DurationText { get; set; } = "0:00";
 
     [ObservableProperty]
-    private double _volume = 80;
+    public partial double Volume { get; set; } = 80;
 
     [ObservableProperty]
-    private PlaybackMode _playbackMode = PlaybackMode.Sequential;
+    public partial PlaybackMode PlaybackMode { get; set; } = PlaybackMode.Sequential;
 
     [ObservableProperty]
-    private Icon _playbackModeIcon = Icon.ArrowSort;
+    public partial Icon PlaybackModeIcon { get; set; } = Icon.ArrowSort;
 
     [ObservableProperty]
-    private string _playbackModeTooltip = "顺序播放";
+    public partial string PlaybackModeTooltip { get; set; } = "顺序播放";
 
     [ObservableProperty]
-    private bool _isUserSeeking;
+    public partial bool IsUserSeeking { get; set; }
 
     [ObservableProperty]
-    private bool _isSettingsVisible;
+    public partial bool IsSettingsVisible { get; set; }
 
     [ObservableProperty]
-    private bool _isNetworkEnabled = true;
+    public partial bool IsNetworkEnabled { get; set; } = true;
 
     public LyricsViewModel Lyrics { get; }
 

@@ -16,16 +16,16 @@ public enum LyricFontPreset
 public partial class LyricLineViewModel : ObservableObject
 {
     [ObservableProperty]
-    private bool _isCurrent;
+    public partial bool IsCurrent { get; set; }
 
     [ObservableProperty]
-    private bool _isNearCurrent;
+    public partial bool IsNearCurrent { get; set; }
 
     [ObservableProperty]
-    private double _displayFontSize = 17;
+    public partial double DisplayFontSize { get; set; } = 17;
 
     [ObservableProperty]
-    private double _displayOpacity = 0.34;
+    public partial double DisplayOpacity { get; set; } = 0.34;
 
     public string Text { get; init; } = string.Empty;
 
@@ -50,22 +50,22 @@ public partial class LyricsViewModel : ViewModelBase
     public ObservableCollection<LyricLineViewModel> Lines { get; } = new();
 
     [ObservableProperty]
-    private bool _hasLyrics;
+    public partial bool HasLyrics { get; set; }
 
     [ObservableProperty]
-    private bool _isLoading;
+    public partial bool IsLoading { get; set; }
 
     [ObservableProperty]
-    private bool _showEmptyState = true;
+    public partial bool ShowEmptyState { get; set; } = true;
 
     [ObservableProperty]
-    private LyricFontPreset _fontPreset = LyricFontPreset.Medium;
+    public partial LyricFontPreset FontPreset { get; set; } = LyricFontPreset.Medium;
 
     [ObservableProperty]
-    private bool _isAutoCenterEnabled = true;
+    public partial bool IsAutoCenterEnabled { get; set; } = true;
 
     [ObservableProperty]
-    private bool _isLyricClickSeekEnabled = true;
+    public partial bool IsLyricClickSeekEnabled { get; set; } = true;
 
     public event EventHandler<int>? ScrollToLineRequested;
     public event EventHandler<TimeSpan>? SeekRequested;

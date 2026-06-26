@@ -28,7 +28,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public PlaylistViewModel Playlist { get; }
 
     [ObservableProperty]
-    private bool _isPlaylistVisible;
+    public partial bool IsPlaylistVisible { get; set; }
 
     [RelayCommand]
     private void TogglePlaylist() => IsPlaylistVisible = !IsPlaylistVisible;

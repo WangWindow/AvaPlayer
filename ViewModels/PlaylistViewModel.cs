@@ -19,10 +19,10 @@ public partial class TrackItemViewModel : ObservableObject
     public Track Track { get; }
 
     [ObservableProperty]
-    private bool _isCurrent;
+    public partial bool IsCurrent { get; set; }
 
     [ObservableProperty]
-    private bool _isSelectedForRemoval;
+    public partial bool IsSelectedForRemoval { get; set; }
 
     public string Title => Track.DisplayTitle;
 
@@ -60,28 +60,28 @@ public partial class PlaylistViewModel : ViewModelBase
     public ObservableCollection<TrackItemViewModel> VisibleTracks { get; } = new();
 
     [ObservableProperty]
-    private TrackItemViewModel? _currentTrack;
+    public partial TrackItemViewModel? CurrentTrack { get; set; }
 
     [ObservableProperty]
-    private bool _hasTracks;
+    public partial bool HasTracks { get; set; }
 
     [ObservableProperty]
-    private bool _showEmptyState = true;
+    public partial bool ShowEmptyState { get; set; } = true;
 
     [ObservableProperty]
-    private bool _hasVisibleTracks;
+    public partial bool HasVisibleTracks { get; set; }
 
     [ObservableProperty]
-    private bool _showSearchEmptyState;
+    public partial bool ShowSearchEmptyState { get; set; }
 
     [ObservableProperty]
-    private bool _isEditMode;
+    public partial bool IsEditMode { get; set; }
 
     [ObservableProperty]
-    private int _selectedTrackCount;
+    public partial int SelectedTrackCount { get; set; }
 
     [ObservableProperty]
-    private string _searchText = string.Empty;
+    public partial string SearchText { get; set; } = string.Empty;
 
     public event EventHandler<Track>? TrackSelected;
     public Func<Task<string?>>? FolderPickRequested { get; set; }
