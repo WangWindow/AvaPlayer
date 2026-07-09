@@ -29,6 +29,7 @@ public partial class App : Application
     private const string LightTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray.ico";
 
     private ServiceProvider? _services;
+    private IServiceScope? _runtimeScope;
     private IDatabaseService? _databaseService;
     private MainWindowViewModel? _mainWindowViewModel;
     private MainWindow? _mainWindow;
@@ -43,6 +44,11 @@ public partial class App : Application
     private bool _isLightweightModeEnabled;
     private bool _isApplyingLightweightMode;
     private bool _isReleasingMainWindow;
+    private bool _isNetworkInitialized;
+    private bool _isMediaTransportInitialized;
+    private bool _isPlayerBarWired;
+    private bool _isMediaTransportWired;
+    private bool _isIdleRuntimeReleaseScheduled;
 
     public override void Initialize()
     {
@@ -57,14 +63,12 @@ public partial class App : Application
             _desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _services = ConfigureServices();
             _databaseService = _services.GetRequiredService<IDatabaseService>();
-            _mainWindowViewModel = _services.GetRequiredService<MainWindowViewModel>();
-            _mediaTransportService = _services.GetRequiredService<IMediaTransportService>();
-            _playerService = _services.GetRequiredService<IPlayerService>();
             _singleInstanceManager = Program.SingleInstance;
 
             _isLightweightModeEnabled = LoadLightweightModeSetting();
             if (!_isLightweightModeEnabled)
             {
+                _ = EnsureRuntimeServices();
                 EnsureMainWindow();
             }
 
@@ -92,48 +96,55 @@ public partial class App : Application
         services.AddSingleton<IDatabaseService, SqliteDatabaseService>();
         services.AddSingleton<INetworkAccessService, NetworkAccessService>();
         services.AddSingleton<ITrackScannerService, TrackScannerService>();
-        services.AddSingleton<IPlaylistService, PlaylistService>();
-        services.AddSingleton<IPlayerService, MpvPlayerService>();
-        services.AddSingleton<IAlbumArtService, AlbumArtService>();
+        services.AddScoped<IPlaylistService, PlaylistService>();
+        services.AddScoped<IPlayerService, MpvPlayerService>();
+        services.AddScoped<IAlbumArtService, AlbumArtService>();
 
-        services.AddSingleton<ILyricsProvider, LrcLibProvider>();
-        services.AddSingleton<ILyricsProvider, NetEaseProvider>();
-        services.AddSingleton<ILyricsProvider, LyricsOvhProvider>();
-        services.AddSingleton<ILyricsService, LyricsService>();
+        services.AddScoped<ILyricsProvider, LrcLibProvider>();
+        services.AddScoped<ILyricsProvider, NetEaseProvider>();
+        services.AddScoped<ILyricsProvider, LyricsOvhProvider>();
+        services.AddScoped<ILyricsService, LyricsService>();
 
         if (OperatingSystem.IsLinux())
         {
-            services.AddSingleton<IMediaTransportService, MprisMediaTransportService>();
+            services.AddScoped<IMediaTransportService, MprisMediaTransportService>();
         }
         else if (OperatingSystem.IsWindows())
         {
-            services.AddSingleton<IMediaTransportService, SmtcMediaTransportService>();
+            services.AddScoped<IMediaTransportService, SmtcMediaTransportService>();
         }
         else
         {
-            services.AddSingleton<IMediaTransportService, NoopMediaTransportService>();
+            services.AddScoped<IMediaTransportService, NoopMediaTransportService>();
         }
 
-        services.AddSingleton<PlayerBarViewModel>();
-        services.AddSingleton<PlaylistViewModel>();
-        services.AddSingleton<MainWindowViewModel>();
+        services.AddScoped<PlayerBarViewModel>();
+        services.AddScoped<PlaylistViewModel>();
+        services.AddScoped<MainWindowViewModel>();
 
         return services.BuildServiceProvider();
     }
 
     private async Task InitializeApplicationAsync()
     {
-        if (_mainWindowViewModel is null || _mediaTransportService is null)
+        if (_isLightweightModeEnabled && _mainWindowViewModel is null)
         {
             return;
         }
 
+        await InitializeRuntimeAsync(hydrateVisuals: !_isLightweightModeEnabled);
+    }
+
+    private async Task InitializeRuntimeAsync(bool hydrateVisuals)
+    {
+        EnsureRuntimeServices();
+
         try
         {
-            var networkService = _services?.GetService<INetworkAccessService>();
-            if (networkService is not null)
+            if (!_isNetworkInitialized && _services?.GetService<INetworkAccessService>() is { } networkService)
             {
                 await networkService.InitializeAsync();
+                _isNetworkInitialized = true;
             }
         }
         catch (Exception ex)
@@ -143,7 +154,11 @@ public partial class App : Application
 
         try
         {
-            await _mediaTransportService.InitializeAsync();
+            if (!_isMediaTransportInitialized && _mediaTransportService is not null)
+            {
+                await _mediaTransportService.InitializeAsync();
+                _isMediaTransportInitialized = true;
+            }
         }
         catch (Exception ex)
         {
@@ -152,7 +167,10 @@ public partial class App : Application
 
         try
         {
-            await _mainWindowViewModel.InitializeAsync(hydrateVisuals: !_isLightweightModeEnabled);
+            if (_mainWindowViewModel is not null)
+            {
+                await _mainWindowViewModel.InitializeAsync(hydrateVisuals);
+            }
         }
         catch (Exception ex)
         {
@@ -161,6 +179,35 @@ public partial class App : Application
         }
 
         await SyncMediaTransportAsync();
+    }
+
+    private MainWindowViewModel EnsureRuntimeServices()
+    {
+        if (_services is null)
+        {
+            throw new InvalidOperationException("应用服务尚未初始化。");
+        }
+
+        _runtimeScope ??= _services.CreateScope();
+        var runtimeServices = _runtimeScope.ServiceProvider;
+        _mainWindowViewModel ??= runtimeServices.GetRequiredService<MainWindowViewModel>();
+        _mediaTransportService ??= runtimeServices.GetRequiredService<IMediaTransportService>();
+        _playerService ??= runtimeServices.GetRequiredService<IPlayerService>();
+
+        WirePlayerBarEvents();
+        WireMediaTransport();
+        return _mainWindowViewModel;
+    }
+
+    private async Task<MainWindowViewModel> EnsureRuntimeForTrayAsync()
+    {
+        await InitializeRuntimeAsync(hydrateVisuals: false);
+        if (_mainWindowViewModel is null)
+        {
+            throw new InvalidOperationException("主窗口视图模型尚未初始化。");
+        }
+
+        return _mainWindowViewModel;
     }
 
     private bool LoadLightweightModeSetting()
@@ -215,19 +262,26 @@ public partial class App : Application
 
     private void WireTrayMenu()
     {
-        if (_mainWindowViewModel is null)
-        {
-            return;
-        }
-
-        _mainWindowViewModel.PlayerBar.PropertyChanged += OnPlayerBarPropertyChanged;
         _lightweightModeMenuItem = TrayIcon.GetIcons(this)?
             .Select(icon => icon.Menu)
             .OfType<NativeMenu>()
             .SelectMany(menu => menu.Items.OfType<NativeMenuItem>())
             .FirstOrDefault(item => string.Equals(item.Header?.ToString(), "轻量模式", StringComparison.Ordinal));
 
+        WirePlayerBarEvents();
         SyncLightweightModeMenuState();
+    }
+
+    private void WirePlayerBarEvents()
+    {
+        if (_isPlayerBarWired || _mainWindowViewModel is null)
+        {
+            return;
+        }
+
+        _mainWindowViewModel.PlayerBar.PropertyChanged += OnPlayerBarPropertyChanged;
+        _mainWindowViewModel.PlayerBar.TrackChanged += OnTrackChanged;
+        _isPlayerBarWired = true;
     }
 
     private void WireTrayIconTheme()
@@ -240,12 +294,10 @@ public partial class App : Application
 
     private void WireMediaTransport()
     {
-        if (_mainWindowViewModel is null || _mediaTransportService is null || _playerService is null)
+        if (_isMediaTransportWired || _mainWindowViewModel is null || _mediaTransportService is null || _playerService is null)
         {
             return;
         }
-
-        _mainWindowViewModel.PlayerBar.TrackChanged += OnTrackChanged;
 
         _mediaTransportService.PlayRequested += OnMediaTransportPlayRequested;
         _mediaTransportService.PauseRequested += OnMediaTransportPauseRequested;
@@ -256,46 +308,51 @@ public partial class App : Application
         _playerService.PlaybackStateChanged += OnPlaybackStateChanged;
         _playerService.PositionChanged += OnPlayerPositionChanged;
         _mediaTransportService.UpdatePlaybackMode(_mainWindowViewModel.PlayerBar.PlaybackMode);
+        _isMediaTransportWired = true;
     }
 
     private void OnMediaTransportPlayRequested(object? sender, EventArgs e)
     {
-        if (_mainWindowViewModel is null)
-        {
-            return;
-        }
-
-        Dispatcher.UIThread.Post(() => _mainWindowViewModel.PlayerBar.ResumeCommand.Execute(null));
+        _ = HandleMediaTransportPlayRequestedAsync();
     }
 
     private void OnMediaTransportPauseRequested(object? sender, EventArgs e)
     {
-        if (_mainWindowViewModel is null)
-        {
-            return;
-        }
-
-        Dispatcher.UIThread.Post(() => _mainWindowViewModel.PlayerBar.PauseCommand.Execute(null));
+        _ = HandleMediaTransportPauseRequestedAsync();
     }
 
     private void OnMediaTransportNextRequested(object? sender, EventArgs e)
     {
-        if (_mainWindowViewModel is null)
-        {
-            return;
-        }
-
-        Dispatcher.UIThread.Post(async () => await _mainWindowViewModel.PlayerBar.NextCommand.ExecuteAsync(null));
+        _ = HandleMediaTransportNextRequestedAsync();
     }
 
     private void OnMediaTransportPreviousRequested(object? sender, EventArgs e)
     {
-        if (_mainWindowViewModel is null)
-        {
-            return;
-        }
+        _ = HandleMediaTransportPreviousRequestedAsync();
+    }
 
-        Dispatcher.UIThread.Post(async () => await _mainWindowViewModel.PlayerBar.PreviousCommand.ExecuteAsync(null));
+    private async Task HandleMediaTransportPlayRequestedAsync()
+    {
+        var viewModel = await EnsureRuntimeForTrayAsync();
+        Dispatcher.UIThread.Post(() => viewModel.PlayerBar.ResumeCommand.Execute(null));
+    }
+
+    private async Task HandleMediaTransportPauseRequestedAsync()
+    {
+        var viewModel = await EnsureRuntimeForTrayAsync();
+        Dispatcher.UIThread.Post(() => viewModel.PlayerBar.PauseCommand.Execute(null));
+    }
+
+    private async Task HandleMediaTransportNextRequestedAsync()
+    {
+        var viewModel = await EnsureRuntimeForTrayAsync();
+        Dispatcher.UIThread.Post(async () => await viewModel.PlayerBar.NextCommand.ExecuteAsync(null));
+    }
+
+    private async Task HandleMediaTransportPreviousRequestedAsync()
+    {
+        var viewModel = await EnsureRuntimeForTrayAsync();
+        Dispatcher.UIThread.Post(async () => await viewModel.PlayerBar.PreviousCommand.ExecuteAsync(null));
     }
 
     private void OnMediaTransportSeekRequested(object? sender, TimeSpan position)
@@ -345,6 +402,10 @@ public partial class App : Application
     private void OnPlaybackStateChanged(object? sender, bool isPlaying)
     {
         _mediaTransportService?.UpdatePlaybackState(isPlaying);
+        if (!isPlaying && _isLightweightModeEnabled && _mainWindow is null)
+        {
+            ScheduleIdleRuntimeRelease();
+        }
     }
 
     private void OnPlayerPositionChanged(object? sender, double position)
@@ -373,29 +434,24 @@ public partial class App : Application
         await SetLightweightModeEnabledAsync(!_isLightweightModeEnabled);
     }
 
-    private void OnPreviousTrackClick(object? sender, EventArgs e)
+    private async void OnPreviousTrackClick(object? sender, EventArgs e)
     {
-        if (_mainWindowViewModel is null)
-        {
-            return;
-        }
+        var viewModel = await EnsureRuntimeForTrayAsync();
 
-        _ = _mainWindowViewModel.PlayerBar.PreviousCommand.ExecuteAsync(null);
+        _ = viewModel.PlayerBar.PreviousCommand.ExecuteAsync(null);
     }
 
-    private void OnPlayPauseClick(object? sender, EventArgs e)
+    private async void OnPlayPauseClick(object? sender, EventArgs e)
     {
-        _mainWindowViewModel?.PlayerBar.PlayPauseCommand.Execute(null);
+        var viewModel = await EnsureRuntimeForTrayAsync();
+        viewModel.PlayerBar.PlayPauseCommand.Execute(null);
     }
 
-    private void OnNextTrackClick(object? sender, EventArgs e)
+    private async void OnNextTrackClick(object? sender, EventArgs e)
     {
-        if (_mainWindowViewModel is null)
-        {
-            return;
-        }
+        var viewModel = await EnsureRuntimeForTrayAsync();
 
-        _ = _mainWindowViewModel.PlayerBar.NextCommand.ExecuteAsync(null);
+        _ = viewModel.PlayerBar.NextCommand.ExecuteAsync(null);
     }
 
     private async void OnExitClick(object? sender, EventArgs e)
@@ -409,14 +465,9 @@ public partial class App : Application
 
     private async Task ShowMainWindowAsync()
     {
-        if (_mainWindowViewModel is null)
-        {
-            return;
-        }
-
         try
         {
-            await _mainWindowViewModel.EnsureWindowStateAsync();
+            await InitializeRuntimeAsync(hydrateVisuals: true);
         }
         catch (Exception ex)
         {
@@ -501,7 +552,8 @@ public partial class App : Application
         {
             await PersistPlaybackSessionAsync();
             _mainWindowViewModel?.ReleaseWindowState();
-            TrimLightweightMemory();
+            DisposeRuntimeIfIdle();
+            await TrimLightweightMemoryAsync("轻量模式无窗口");
             return;
         }
 
@@ -597,6 +649,8 @@ public partial class App : Application
 
         window.Closing -= OnMainWindowClosing;
         window.Closed -= OnMainWindowClosed;
+        window.DataContext = null;
+        window.Content = null;
 
         if (ReferenceEquals(_mainWindow, window))
         {
@@ -611,7 +665,86 @@ public partial class App : Application
         if (_isLightweightModeEnabled || _isReleasingMainWindow)
         {
             _mainWindowViewModel?.ReleaseWindowState();
-            TrimLightweightMemory();
+            DisposeRuntimeIfIdle();
+            _ = TrimLightweightMemoryAsync("主窗口关闭后");
+        }
+    }
+
+    private void DisposeRuntimeIfIdle()
+    {
+        if (_runtimeScope is null)
+        {
+            return;
+        }
+
+        if (_playerService?.IsPlaying == true)
+        {
+            _isIdleRuntimeReleaseScheduled = false;
+            Console.Error.WriteLine("[LightweightMode] 当前正在播放，保留播放运行时。");
+            return;
+        }
+
+        UnwireRuntimeEvents();
+        _runtimeScope.Dispose();
+        _runtimeScope = null;
+        _mainWindowViewModel = null;
+        _mediaTransportService = null;
+        _playerService = null;
+        _isNetworkInitialized = false;
+        _isMediaTransportInitialized = false;
+        _isPlayerBarWired = false;
+        _isMediaTransportWired = false;
+        _isIdleRuntimeReleaseScheduled = false;
+        Console.Error.WriteLine("[LightweightMode] 已释放空闲播放/UI运行时。");
+    }
+
+    private void ScheduleIdleRuntimeRelease()
+    {
+        if (_isIdleRuntimeReleaseScheduled)
+        {
+            return;
+        }
+
+        _isIdleRuntimeReleaseScheduled = true;
+        _ = ReleaseIdleRuntimeAsync();
+    }
+
+    private async Task ReleaseIdleRuntimeAsync()
+    {
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        if (!_isLightweightModeEnabled || _mainWindow is not null)
+        {
+            _isIdleRuntimeReleaseScheduled = false;
+            return;
+        }
+
+        await PersistPlaybackSessionAsync();
+        _mainWindowViewModel?.ReleaseWindowState();
+        DisposeRuntimeIfIdle();
+        await TrimLightweightMemoryAsync("轻量模式播放停止后");
+    }
+
+    private void UnwireRuntimeEvents()
+    {
+        if (_mediaTransportService is not null && _isMediaTransportWired)
+        {
+            _mediaTransportService.PlayRequested -= OnMediaTransportPlayRequested;
+            _mediaTransportService.PauseRequested -= OnMediaTransportPauseRequested;
+            _mediaTransportService.NextRequested -= OnMediaTransportNextRequested;
+            _mediaTransportService.PreviousRequested -= OnMediaTransportPreviousRequested;
+            _mediaTransportService.SeekRequested -= OnMediaTransportSeekRequested;
+        }
+
+        if (_mainWindowViewModel is not null && _isPlayerBarWired)
+        {
+            _mainWindowViewModel.PlayerBar.PropertyChanged -= OnPlayerBarPropertyChanged;
+            _mainWindowViewModel.PlayerBar.TrackChanged -= OnTrackChanged;
+        }
+
+        if (_playerService is not null && _isMediaTransportWired)
+        {
+            _playerService.PlaybackStateChanged -= OnPlaybackStateChanged;
+            _playerService.PositionChanged -= OnPlayerPositionChanged;
         }
     }
 
@@ -635,26 +768,7 @@ public partial class App : Application
             _singleInstanceManager.ActivationRequested -= OnSingleInstanceActivationRequested;
         }
 
-        if (_mediaTransportService is not null)
-        {
-            _mediaTransportService.PlayRequested -= OnMediaTransportPlayRequested;
-            _mediaTransportService.PauseRequested -= OnMediaTransportPauseRequested;
-            _mediaTransportService.NextRequested -= OnMediaTransportNextRequested;
-            _mediaTransportService.PreviousRequested -= OnMediaTransportPreviousRequested;
-            _mediaTransportService.SeekRequested -= OnMediaTransportSeekRequested;
-        }
-
-        if (_mainWindowViewModel is not null)
-        {
-            _mainWindowViewModel.PlayerBar.PropertyChanged -= OnPlayerBarPropertyChanged;
-            _mainWindowViewModel.PlayerBar.TrackChanged -= OnTrackChanged;
-        }
-
-        if (_playerService is not null)
-        {
-            _playerService.PlaybackStateChanged -= OnPlaybackStateChanged;
-            _playerService.PositionChanged -= OnPlayerPositionChanged;
-        }
+        UnwireRuntimeEvents();
 
         if (_desktop is not null)
         {
@@ -667,12 +781,13 @@ public partial class App : Application
             _mainWindow.Closed -= OnMainWindowClosed;
         }
 
-        _mediaTransportService?.Dispose();
+        _runtimeScope?.Dispose();
         _services?.Dispose();
     }
 
-    private static void TrimLightweightMemory()
+    private static async Task TrimLightweightMemoryAsync(string reason)
     {
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
         GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
         GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
         GC.WaitForPendingFinalizers();

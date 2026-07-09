@@ -56,8 +56,8 @@ public partial class PlaylistViewModel : ViewModelBase
         _playlistService.Queue.CollectionChanged += OnQueueCollectionChanged;
     }
 
-    public ObservableCollection<TrackItemViewModel> Tracks { get; } = new();
-    public ObservableCollection<TrackItemViewModel> VisibleTracks { get; } = new();
+    public ObservableCollection<TrackItemViewModel> Tracks { get; } = [];
+    public ObservableCollection<TrackItemViewModel> VisibleTracks { get; } = [];
 
     [ObservableProperty]
     public partial TrackItemViewModel? CurrentTrack { get; set; }
@@ -398,8 +398,10 @@ public partial class PlaylistViewModel : ViewModelBase
         }
 
         _trackCache.Clear();
+        _trackCache.TrimExcess();
         Tracks.Clear();
         VisibleTracks.Clear();
+        _refreshScheduled = false;
     }
 
     protected override void Dispose(bool disposing)
