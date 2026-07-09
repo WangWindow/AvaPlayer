@@ -11,6 +11,8 @@ namespace AvaPlayer.Services.AlbumArt;
 
 public sealed class AlbumArtService : IAlbumArtService
 {
+    private const int AlbumArtDecodeWidth = 360;
+
     private readonly ICacheService _cacheService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly INetworkAccessService _networkAccessService;
@@ -95,8 +97,8 @@ public sealed class AlbumArtService : IAlbumArtService
         }
 
         artworkUrl = artworkUrl
-            .Replace("100x100bb", "600x600bb", StringComparison.OrdinalIgnoreCase)
-            .Replace("100x100", "600x600", StringComparison.OrdinalIgnoreCase);
+            .Replace("100x100bb", "360x360bb", StringComparison.OrdinalIgnoreCase)
+            .Replace("100x100", "360x360", StringComparison.OrdinalIgnoreCase);
 
         return await client.GetByteArrayAsync(artworkUrl, cancellationToken);
     }
@@ -106,7 +108,7 @@ public sealed class AlbumArtService : IAlbumArtService
         try
         {
             using var stream = File.OpenRead(path);
-            return new Bitmap(stream);
+            return Bitmap.DecodeToWidth(stream, AlbumArtDecodeWidth, BitmapInterpolationMode.HighQuality);
         }
         catch (Exception ex)
         {
@@ -120,7 +122,7 @@ public sealed class AlbumArtService : IAlbumArtService
         try
         {
             using var stream = new MemoryStream(bytes);
-            return new Bitmap(stream);
+            return Bitmap.DecodeToWidth(stream, AlbumArtDecodeWidth, BitmapInterpolationMode.HighQuality);
         }
         catch (Exception ex)
         {

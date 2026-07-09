@@ -95,42 +95,6 @@
       <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
 
-    <Style Selector="CheckBox.playlist-select /template/ Border#NormalRectangle">
-      <Setter Property="Background" Value="#10FFFFFF" />
-      <Setter Property="BorderBrush" Value="#55FFFFFF" />
-      <Setter Property="BorderThickness" Value="1.5" />
-      <Setter Property="CornerRadius" Value="6" />
-    </Style>
-
-    <Style Selector="CheckBox.playlist-select:pointerover /template/ Border#NormalRectangle">
-      <Setter Property="Background" Value="#18FFFFFF" />
-      <Setter Property="BorderBrush" Value="#80FFFFFF" />
-    </Style>
-
-    <Style Selector="CheckBox.playlist-select:pressed /template/ Border#NormalRectangle">
-      <Setter Property="Background" Value="#22FFFFFF" />
-      <Setter Property="BorderBrush" Value="#99FFFFFF" />
-    </Style>
-
-    <Style Selector="CheckBox.playlist-select:checked /template/ Border#NormalRectangle">
-      <Setter Property="Background" Value="#30FFFFFF" />
-      <Setter Property="BorderBrush" Value="#E6FFFFFF" />
-    </Style>
-
-    <Style Selector="CheckBox.playlist-select:checked:pointerover /template/ Border#NormalRectangle">
-      <Setter Property="Background" Value="#3AFFFFFF" />
-      <Setter Property="BorderBrush" Value="White" />
-    </Style>
-
-    <Style Selector="CheckBox.playlist-select:checked:pressed /template/ Border#NormalRectangle">
-      <Setter Property="Background" Value="#44FFFFFF" />
-      <Setter Property="BorderBrush" Value="White" />
-    </Style>
-
-    <Style Selector="CheckBox.playlist-select:checked /template/ Path#CheckGlyph">
-      <Setter Property="Fill" Value="White" />
-    </Style>
-
     <Style Selector="Button.playlist-toolbar-icon">
       <Setter Property="Width" Value="36" />
       <Setter Property="Height" Value="36" />
@@ -151,7 +115,7 @@
         <StackPanel Orientation="Horizontal"
                     Spacing="8">
           <fi:FluentIcon Icon="FolderAdd" FontSize="16" />
-          <TextBlock Text="添加文件夹" Foreground="White" />
+          <TextBlock Text="添加文件夹" Classes="playlist-toolbar-label" />
         </StackPanel>
       </Button>
 
@@ -172,40 +136,39 @@
                   Spacing="8"
                   IsVisible="{Binding ShowEditToolbar}">
         <Button Classes="ghost"
+                Height="36"
                 Padding="12,8"
                 Command="{Binding RemoveSelectedCommand}"
                 IsEnabled="{Binding CanRemoveSelected}">
           <TextBlock Text="删除"
-                     Foreground="White" />
+                     Classes="playlist-toolbar-label" />
         </Button>
         <Button Classes="ghost"
+                Height="36"
                 Padding="12,8"
                 Command="{Binding CancelEditCommand}">
           <TextBlock Text="取消"
-                     Foreground="White" />
+                     Classes="playlist-toolbar-label" />
         </Button>
       </StackPanel>
     </Grid>
 
     <Border Grid.Row="1"
+            Classes="playlist-search-bar"
             Margin="0,12,0,0"
             Padding="12,0"
-            Background="#10FFFFFF"
-            BorderBrush="#24FFFFFF"
-            BorderThickness="1"
-            CornerRadius="18"
             IsVisible="{Binding ShowSearchBar}">
       <Grid ColumnDefinitions="Auto,*,Auto"
             ColumnSpacing="8">
         <fi:FluentIcon Icon="Search"
+                       Classes="playlist-search-icon"
                        FontSize="14"
-                       Foreground="#8CFFFFFF"
                        VerticalAlignment="Center" />
 
         <TextBox Grid.Column="1"
+                 Classes="playlist-search-text"
                  Background="Transparent"
                  BorderThickness="0"
-                 Foreground="White"
                  PlaceholderText="搜索当前播放列表"
                  Text="{Binding SearchText, Mode=TwoWay}" />
 
@@ -221,13 +184,6 @@
         </Button>
       </Grid>
     </Border>
-
-    <TextBlock Grid.Row="2"
-               Margin="4,12,0,0"
-               Text="{Binding EditSelectionText}"
-               Foreground="#A6FFFFFF"
-               FontSize="12"
-               IsVisible="{Binding ShowEditToolbar}" />
 
     <Grid Grid.Row="3"
           Margin="0,12,0,0">

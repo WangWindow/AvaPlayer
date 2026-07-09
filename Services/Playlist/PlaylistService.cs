@@ -12,6 +12,7 @@ public sealed class PlaylistService : IPlaylistService
     private readonly ITrackScannerService _trackScannerService;
     private readonly Random _random = new();
     private PlaybackMode _playbackMode;
+    private bool _isLoading;
 
     public PlaylistService(IDatabaseService databaseService, ITrackScannerService trackScannerService)
     {
@@ -28,43 +29,59 @@ public sealed class PlaylistService : IPlaylistService
         get => _playbackMode;
         set
         {
+            if (_playbackMode == value)
+            {
+                return;
+            }
+
             _playbackMode = value;
-            _ = _databaseService.SaveSettingAsync("playback-mode", value.ToString());
+            if (!_isLoading)
+            {
+                _ = _databaseService.SaveSettingAsync("playback-mode", value.ToString());
+            }
         }
     }
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        await _databaseService.InitializeAsync(cancellationToken);
-
-        var modeSetting = await _databaseService.GetSettingAsync("playback-mode", cancellationToken);
-        if (Enum.TryParse<PlaybackMode>(modeSetting, out var playbackMode))
+        _isLoading = true;
+        try
         {
-            _playbackMode = playbackMode;
-        }
+            await _databaseService.InitializeAsync(cancellationToken);
 
-        var tracks = await _databaseService.GetTracksAsync(cancellationToken);
-        Queue.Clear();
-
-        foreach (var track in tracks.Where(static track => File.Exists(track.FilePath)))
-        {
-            Queue.Add(track);
-        }
-
-        var currentTrackPath = await _databaseService.GetSettingAsync(CurrentTrackPathSettingKey, cancellationToken);
-        if (!string.IsNullOrWhiteSpace(currentTrackPath))
-        {
-            CurrentTrack = Queue.FirstOrDefault(track =>
-                string.Equals(track.FilePath, currentTrackPath, StringComparison.OrdinalIgnoreCase));
-
-            if (CurrentTrack is null)
+            var modeSetting = await _databaseService.GetSettingAsync("playback-mode", cancellationToken);
+            if (Enum.TryParse<PlaybackMode>(modeSetting, out var playbackMode))
             {
-                CurrentTrack = Queue.FirstOrDefault();
-                await _databaseService.SaveSettingAsync(
-                    CurrentTrackPathSettingKey,
-                    CurrentTrack?.FilePath ?? string.Empty,
-                    cancellationToken);
+                PlaybackMode = playbackMode;
             }
+
+            var tracks = await _databaseService.GetTracksAsync(cancellationToken);
+            Queue.Clear();
+
+            foreach (var track in tracks.Where(static track => File.Exists(track.FilePath)))
+            {
+                Queue.Add(track);
+            }
+
+            var currentTrackPath = await _databaseService.GetSettingAsync(CurrentTrackPathSettingKey, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(currentTrackPath))
+            {
+                CurrentTrack = Queue.FirstOrDefault(track =>
+                    string.Equals(track.FilePath, currentTrackPath, StringComparison.OrdinalIgnoreCase));
+
+                if (CurrentTrack is null)
+                {
+                    CurrentTrack = Queue.FirstOrDefault();
+                    await _databaseService.SaveSettingAsync(
+                        CurrentTrackPathSettingKey,
+                        CurrentTrack?.FilePath ?? string.Empty,
+                        cancellationToken);
+                }
+            }
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 

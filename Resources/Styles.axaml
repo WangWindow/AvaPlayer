@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fi="using:FluentIcons.Avalonia">
 
   <!-- ============================================ -->
   <!-- Ghost Button (icon-only, transparent)       -->
@@ -231,11 +232,106 @@
     <Setter Property="Background" Value="Transparent" />
   </Style>
 
+  <!-- ============================================ -->
+  <!-- Playlist Toolbar & Search (theme-aware)     -->
+  <!-- ============================================ -->
+  <Style Selector="TextBlock.playlist-toolbar-label">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector=":light TextBlock.playlist-toolbar-label">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+
+  <Style Selector="Border.playlist-search-bar">
+    <Setter Property="Background" Value="#10FFFFFF" />
+    <Setter Property="BorderBrush" Value="#24FFFFFF" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="18" />
+  </Style>
+  <Style Selector=":light Border.playlist-search-bar">
+    <Setter Property="Background" Value="#08000000" />
+    <Setter Property="BorderBrush" Value="#18000000" />
+  </Style>
+
+  <Style Selector="fi|FluentIcon.playlist-search-icon">
+    <Setter Property="Foreground" Value="#8CFFFFFF" />
+  </Style>
+  <Style Selector=":light fi|FluentIcon.playlist-search-icon">
+    <Setter Property="Foreground" Value="#55000000" />
+  </Style>
+
+  <Style Selector="TextBox.playlist-search-text">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector=":light TextBox.playlist-search-text">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+
   <Style Selector="CheckBox.playlist-select">
     <Setter Property="Foreground" Value="White" />
   </Style>
   <Style Selector=":light CheckBox.playlist-select">
     <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+
+  <!-- playlist-select checkbox template colors (dark) -->
+  <Style Selector="CheckBox.playlist-select /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#10FFFFFF" />
+    <Setter Property="BorderBrush" Value="#55FFFFFF" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="CheckBox.playlist-select:pointerover /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#18FFFFFF" />
+    <Setter Property="BorderBrush" Value="#80FFFFFF" />
+  </Style>
+  <Style Selector="CheckBox.playlist-select:pressed /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#22FFFFFF" />
+    <Setter Property="BorderBrush" Value="#99FFFFFF" />
+  </Style>
+  <Style Selector="CheckBox.playlist-select:checked /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#30FFFFFF" />
+    <Setter Property="BorderBrush" Value="#E6FFFFFF" />
+  </Style>
+  <Style Selector="CheckBox.playlist-select:checked:pointerover /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#3AFFFFFF" />
+    <Setter Property="BorderBrush" Value="White" />
+  </Style>
+  <Style Selector="CheckBox.playlist-select:checked:pressed /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#44FFFFFF" />
+    <Setter Property="BorderBrush" Value="White" />
+  </Style>
+  <Style Selector="CheckBox.playlist-select:checked /template/ Path#CheckGlyph">
+    <Setter Property="Fill" Value="White" />
+  </Style>
+
+  <!-- playlist-select checkbox template colors (light) -->
+  <Style Selector=":light CheckBox.playlist-select /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#08000000" />
+    <Setter Property="BorderBrush" Value="#30000000" />
+  </Style>
+  <Style Selector=":light CheckBox.playlist-select:pointerover /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#10000000" />
+    <Setter Property="BorderBrush" Value="#44000000" />
+  </Style>
+  <Style Selector=":light CheckBox.playlist-select:pressed /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#18000000" />
+    <Setter Property="BorderBrush" Value="#55000000" />
+  </Style>
+  <Style Selector=":light CheckBox.playlist-select:checked /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#18000000" />
+    <Setter Property="BorderBrush" Value="#1A1A1A" />
+  </Style>
+  <Style Selector=":light CheckBox.playlist-select:checked:pointerover /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#20000000" />
+    <Setter Property="BorderBrush" Value="#1A1A1A" />
+  </Style>
+  <Style Selector=":light CheckBox.playlist-select:checked:pressed /template/ Border#NormalRectangle">
+    <Setter Property="Background" Value="#2A000000" />
+    <Setter Property="BorderBrush" Value="#1A1A1A" />
+  </Style>
+  <Style Selector=":light CheckBox.playlist-select:checked /template/ Path#CheckGlyph">
+    <Setter Property="Fill" Value="#1A1A1A" />
   </Style>
 
   <!-- ============================================ -->
@@ -338,9 +434,89 @@
 
   <Style Selector="Border.settings-section">
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="#14FFFFFF" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Padding" Value="18,16" />
+  </Style>
+  <Style Selector=":light Border.settings-section">
+    <Setter Property="BorderBrush" Value="#10000000" />
+  </Style>
+
+  <!-- ============================================ -->
+  <!-- Settings ToggleSwitch (glass-aware)         -->
+  <!-- ============================================ -->
+  <Style Selector="ToggleSwitch.settings-toggle-switch">
+    <Setter Property="Foreground" Value="#F2FFFFFF" />
+  </Style>
+  <Style Selector=":light ToggleSwitch.settings-toggle-switch">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+
+  <!-- Off-state track -->
+  <Style Selector="ToggleSwitch.settings-toggle-switch /template/ Border#OuterBorder">
+    <Setter Property="Background" Value="#18FFFFFF" />
+    <Setter Property="BorderBrush" Value="#40FFFFFF" />
+  </Style>
+  <Style Selector=":light ToggleSwitch.settings-toggle-switch /template/ Border#OuterBorder">
+    <Setter Property="Background" Value="#0C000000" />
+    <Setter Property="BorderBrush" Value="#20000000" />
+  </Style>
+  <Style Selector="ToggleSwitch.settings-toggle-switch:pointerover /template/ Border#OuterBorder">
+    <Setter Property="Background" Value="#22FFFFFF" />
+    <Setter Property="BorderBrush" Value="#55FFFFFF" />
+  </Style>
+  <Style Selector=":light ToggleSwitch.settings-toggle-switch:pointerover /template/ Border#OuterBorder">
+    <Setter Property="Background" Value="#14000000" />
+    <Setter Property="BorderBrush" Value="#2A000000" />
+  </Style>
+  <Style Selector="ToggleSwitch.settings-toggle-switch:pressed /template/ Border#OuterBorder">
+    <Setter Property="Background" Value="#2CFFFFFF" />
+    <Setter Property="BorderBrush" Value="#66FFFFFF" />
+  </Style>
+  <Style Selector=":light ToggleSwitch.settings-toggle-switch:pressed /template/ Border#OuterBorder">
+    <Setter Property="Background" Value="#1A000000" />
+    <Setter Property="BorderBrush" Value="#33000000" />
+  </Style>
+
+  <!-- On-state track -->
+  <Style Selector="ToggleSwitch.settings-toggle-switch /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="#30FFFFFF" />
+    <Setter Property="BorderBrush" Value="#60FFFFFF" />
+  </Style>
+  <Style Selector=":light ToggleSwitch.settings-toggle-switch /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="#18000000" />
+    <Setter Property="BorderBrush" Value="#30000000" />
+  </Style>
+  <Style Selector="ToggleSwitch.settings-toggle-switch:pointerover /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="#3AFFFFFF" />
+    <Setter Property="BorderBrush" Value="#75FFFFFF" />
+  </Style>
+  <Style Selector=":light ToggleSwitch.settings-toggle-switch:pointerover /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="#20000000" />
+    <Setter Property="BorderBrush" Value="#3A000000" />
+  </Style>
+  <Style Selector="ToggleSwitch.settings-toggle-switch:pressed /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="#44FFFFFF" />
+    <Setter Property="BorderBrush" Value="#88FFFFFF" />
+  </Style>
+  <Style Selector=":light ToggleSwitch.settings-toggle-switch:pressed /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="#2A000000" />
+    <Setter Property="BorderBrush" Value="#44000000" />
+  </Style>
+
+  <!-- Knobs -->
+  <Style Selector="ToggleSwitch.settings-toggle-switch /template/ Ellipse#SwitchKnobOff">
+    <Setter Property="Fill" Value="#B3FFFFFF" />
+  </Style>
+  <Style Selector=":light ToggleSwitch.settings-toggle-switch /template/ Ellipse#SwitchKnobOff">
+    <Setter Property="Fill" Value="#55000000" />
+  </Style>
+  <Style Selector="ToggleSwitch.settings-toggle-switch /template/ Ellipse#SwitchKnobOn">
+    <Setter Property="Fill" Value="White" />
+  </Style>
+  <Style Selector=":light ToggleSwitch.settings-toggle-switch /template/ Ellipse#SwitchKnobOn">
+    <Setter Property="Fill" Value="#1A1A1A" />
   </Style>
 
   <!-- Settings Chip Buttons -->

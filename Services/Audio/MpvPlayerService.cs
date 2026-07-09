@@ -39,6 +39,8 @@ public sealed class MpvPlayerService : IPlayerService
             Check(MpvInterop.SetOptionString(_handle, "video", "no"), "video");
             Check(MpvInterop.SetOptionString(_handle, "idle", "yes"), "idle");
             Check(MpvInterop.SetOptionString(_handle, "keep-open", "yes"), "keep-open");
+            TrySetOptionString("demuxer-max-bytes", "16MiB");
+            TrySetOptionString("demuxer-max-back-bytes", "4MiB");
             Check(MpvInterop.Initialize(_handle), "initialize");
             Check(MpvInterop.ObserveProperty(_handle, PositionReplyId, "time-pos", MpvFormat.Double), "observe time-pos");
             Check(MpvInterop.ObserveProperty(_handle, DurationReplyId, "duration", MpvFormat.Double), "observe duration");
@@ -372,6 +374,15 @@ public sealed class MpvPlayerService : IPlayerService
         }
 
         throw new InvalidOperationException($"mpv {operation} 失败: {GetErrorString(errorCode)}");
+    }
+
+    private void TrySetOptionString(string name, string value)
+    {
+        var result = MpvInterop.SetOptionString(_handle, name, value);
+        if (result < 0)
+        {
+            Console.Error.WriteLine($"[AvaPlayer] mpv {name}={value} 未生效: {GetErrorString(result)}");
+        }
     }
 
     private static string GetErrorString(int errorCode)

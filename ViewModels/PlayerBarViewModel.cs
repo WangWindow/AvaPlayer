@@ -28,7 +28,9 @@ public partial class PlayerBarViewModel : ViewModelBase
     private readonly INetworkAccessService _networkAccessService;
 
     private CancellationTokenSource? _lyricsCts;
+    private CancellationTokenSource? _albumArtCts;
     private bool _isInitialized;
+    private bool _isLoadingSettings;
     private bool _isVisualHydrationEnabled = true;
     private int _visualHydrationVersion;
     private string? _hydratedTrackPath;
@@ -151,6 +153,7 @@ public partial class PlayerBarViewModel : ViewModelBase
 
         if (_isInitialized)
         {
+            SyncStateFromServices();
             if (hydrateVisuals)
             {
                 await EnsureVisualHydrationAsync(cancellationToken);
@@ -159,7 +162,7 @@ public partial class PlayerBarViewModel : ViewModelBase
             return;
         }
 
-        IsNetworkEnabled = _networkAccessService.IsEnabled;
+        SyncStateFromServices();
         await Lyrics.InitializeAsync(cancellationToken);
         await RestoreVolumeAsync(cancellationToken);
         await RestorePlaybackSessionAsync(cancellationToken);
@@ -189,6 +192,7 @@ public partial class PlayerBarViewModel : ViewModelBase
         _isVisualHydrationEnabled = false;
         Interlocked.Increment(ref _visualHydrationVersion);
         _hydratedTrackPath = null;
+        CancelAlbumArtLoading();
         CancelLyricsLoading();
         ReplaceAlbumArt(null);
         HasAlbumArt = false;
@@ -312,9 +316,16 @@ public partial class PlayerBarViewModel : ViewModelBase
 
     partial void OnIsNetworkEnabledChanged(bool value)
     {
+        if (_isLoadingSettings)
+        {
+            return;
+        }
+
         _networkAccessService.IsNetworkEnabled = value;
         _ = _networkAccessService.PersistAsync();
     }
+
+    partial void OnPlaybackModeChanged(PlaybackMode value) => UpdatePlaybackModeDisplay();
 
     private void OnPlaybackStateChanged(object? sender, bool isPlaying)
     {
@@ -446,8 +457,12 @@ public partial class PlayerBarViewModel : ViewModelBase
 
         var hydrationVersion = Interlocked.Increment(ref _visualHydrationVersion);
         _hydratedTrackPath = track.FilePath;
+        CancelAlbumArtLoading();
+        _albumArtCts = cancellationToken.CanBeCanceled
+            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+            : new CancellationTokenSource();
         Lyrics.BeginLoading();
-        _ = LoadAlbumArtAsync(track, hydrationVersion, cancellationToken);
+        _ = LoadAlbumArtAsync(track, hydrationVersion, _albumArtCts.Token);
         _ = LoadLyricsAsync(track, hydrationVersion, cancellationToken);
     }
 
@@ -647,6 +662,28 @@ public partial class PlayerBarViewModel : ViewModelBase
         _lyricsCts = null;
     }
 
+    private void CancelAlbumArtLoading()
+    {
+        _albumArtCts?.Cancel();
+        _albumArtCts?.Dispose();
+        _albumArtCts = null;
+    }
+
+    private void SyncStateFromServices()
+    {
+        _isLoadingSettings = true;
+        try
+        {
+            IsNetworkEnabled = _networkAccessService.IsEnabled;
+            PlaybackMode = _playlist.PlaybackMode;
+            UpdatePlaybackModeDisplay();
+        }
+        finally
+        {
+            _isLoadingSettings = false;
+        }
+    }
+
     private static string FormatTime(double seconds)
     {
         var time = TimeSpan.FromSeconds(Math.Max(0, seconds));
@@ -663,6 +700,7 @@ public partial class PlayerBarViewModel : ViewModelBase
         }
 
         CancelLyricsLoading();
+        CancelAlbumArtLoading();
         ReplaceAlbumArt(null);
 
         _player.PlaybackStateChanged -= OnPlaybackStateChanged;

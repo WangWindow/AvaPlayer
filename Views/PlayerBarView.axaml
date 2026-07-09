@@ -239,6 +239,7 @@
                              TextWrapping="Wrap" />
                   <ToggleSwitch Grid.Column="1"
                                 Grid.RowSpan="2"
+                                Classes="settings-toggle-switch"
                                 Margin="18,0,0,0"
                                 VerticalAlignment="Center"
                                 IsChecked="{Binding Lyrics.IsAutoCenterEnabled, Mode=TwoWay}" />
@@ -260,6 +261,7 @@
                              TextWrapping="Wrap" />
                   <ToggleSwitch Grid.Column="1"
                                 Grid.RowSpan="2"
+                                Classes="settings-toggle-switch"
                                 Margin="18,0,0,0"
                                 VerticalAlignment="Center"
                                 IsChecked="{Binding Lyrics.IsLyricClickSeekEnabled, Mode=TwoWay}" />
@@ -281,6 +283,7 @@
                              TextWrapping="Wrap" />
                   <ToggleSwitch Grid.Column="1"
                                 Grid.RowSpan="2"
+                                Classes="settings-toggle-switch"
                                 Margin="18,0,0,0"
                                 VerticalAlignment="Center"
                                 IsChecked="{Binding IsNetworkEnabled, Mode=TwoWay}" />
