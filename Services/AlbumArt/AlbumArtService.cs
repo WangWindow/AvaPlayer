@@ -6,6 +6,7 @@ using AvaPlayer.Models;
 using AvaPlayer.Services.Cache;
 using AvaPlayer.Services.Network;
 using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.Services.AlbumArt;
 
@@ -16,12 +17,14 @@ public sealed class AlbumArtService : IAlbumArtService
     private readonly ICacheService _cacheService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly INetworkAccessService _networkAccessService;
+    private readonly ILogger<AlbumArtService> _logger;
 
-    public AlbumArtService(ICacheService cacheService, IHttpClientFactory httpClientFactory, INetworkAccessService networkAccessService)
+    public AlbumArtService(ICacheService cacheService, IHttpClientFactory httpClientFactory, INetworkAccessService networkAccessService, ILogger<AlbumArtService> logger)
     {
         _cacheService = cacheService;
         _httpClientFactory = httpClientFactory;
         _networkAccessService = networkAccessService;
+        _logger = logger;
     }
 
     public async Task<Bitmap?> GetAlbumArtAsync(Track track, CancellationToken cancellationToken = default)
@@ -53,7 +56,7 @@ public sealed class AlbumArtService : IAlbumArtService
         return null;
     }
 
-    private static byte[]? TryReadEmbeddedCover(string filePath)
+    private byte[]? TryReadEmbeddedCover(string filePath)
     {
         try
         {
@@ -62,7 +65,7 @@ public sealed class AlbumArtService : IAlbumArtService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[AlbumArt] 读取内嵌封面失败: {ex.Message}");
+            _logger.LogWarning(ex, "[AlbumArt] 读取内嵌封面失败: {Message}", ex.Message);
             return null;
         }
     }
@@ -103,7 +106,7 @@ public sealed class AlbumArtService : IAlbumArtService
         return await client.GetByteArrayAsync(artworkUrl, cancellationToken);
     }
 
-    private static Bitmap? LoadBitmapFromFile(string path)
+    private Bitmap? LoadBitmapFromFile(string path)
     {
         try
         {
@@ -112,12 +115,12 @@ public sealed class AlbumArtService : IAlbumArtService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[AlbumArt] 读取缓存封面失败: {ex.Message}");
+            _logger.LogWarning(ex, "[AlbumArt] 读取缓存封面失败: {Message}", ex.Message);
             return null;
         }
     }
 
-    private static Bitmap? CreateBitmap(byte[] bytes)
+    private Bitmap? CreateBitmap(byte[] bytes)
     {
         try
         {
@@ -126,7 +129,7 @@ public sealed class AlbumArtService : IAlbumArtService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[AlbumArt] 解码封面失败: {ex.Message}");
+            _logger.LogWarning(ex, "[AlbumArt] 解码封面失败: {Message}", ex.Message);
             return null;
         }
     }

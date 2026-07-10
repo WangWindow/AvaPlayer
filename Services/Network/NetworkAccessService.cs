@@ -1,4 +1,5 @@
 using AvaPlayer.Services.Database;
+using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.Services.Network;
 
@@ -7,12 +8,14 @@ public sealed class NetworkAccessService : INetworkAccessService
     private const string SettingKey = "network-enabled";
 
     private readonly IDatabaseService _databaseService;
+    private readonly ILogger<NetworkAccessService> _logger;
     private bool _isEnabled = true;
     private bool _initialized;
 
-    public NetworkAccessService(IDatabaseService databaseService)
+    public NetworkAccessService(IDatabaseService databaseService, ILogger<NetworkAccessService> logger)
     {
         _databaseService = databaseService;
+        _logger = logger;
     }
 
     public bool IsNetworkEnabled
@@ -51,11 +54,11 @@ public sealed class NetworkAccessService : INetworkAccessService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Network] 读取网络访问设置失败: {ex.Message}");
+            _logger.LogError(ex, "[Network] 读取网络访问设置失败: {Message}", ex.Message);
         }
 
         _initialized = true;
-        Console.WriteLine($"[Network] 网络访问: {(_isEnabled ? "已启用" : "已禁用")}");
+        _logger.LogInformation("[Network] 网络访问: {Status}", _isEnabled ? "已启用" : "已禁用");
     }
 
     public async Task PersistAsync(CancellationToken cancellationToken = default)
@@ -66,7 +69,7 @@ public sealed class NetworkAccessService : INetworkAccessService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Network] 保存网络访问设置失败: {ex.Message}");
+            _logger.LogError(ex, "[Network] 保存网络访问设置失败: {Message}", ex.Message);
         }
     }
 }

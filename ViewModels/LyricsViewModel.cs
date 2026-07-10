@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using AvaPlayer.Models;
 using AvaPlayer.Services.Database;
+using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.ViewModels;
 
@@ -22,7 +23,7 @@ public partial class LyricLineViewModel : ObservableObject
     public partial bool IsNearCurrent { get; set; }
 
     [ObservableProperty]
-    public partial double DisplayFontSize { get; set; } = 17;
+    public partial double DisplayScale { get; set; } = 1.0;
 
     [ObservableProperty]
     public partial double DisplayOpacity { get; set; } = 0.34;
@@ -39,12 +40,14 @@ public partial class LyricsViewModel : ViewModelBase
     private const string ClickSeekSettingKey = "lyrics-click-seek";
 
     private readonly IDatabaseService _databaseService;
+    private readonly ILogger<LyricsViewModel> _logger;
     private int _currentLineIndex = -1;
     private bool _isLoadingSettings;
 
-    public LyricsViewModel(IDatabaseService databaseService)
+    public LyricsViewModel(IDatabaseService databaseService, ILogger<LyricsViewModel> logger)
     {
         _databaseService = databaseService;
+        _logger = logger;
     }
 
     public ObservableCollection<LyricLineViewModel> Lines { get; } = new();
@@ -95,6 +98,25 @@ public partial class LyricsViewModel : ViewModelBase
         LyricFontPreset.Small => 20,
         LyricFontPreset.Large => 26,
         _ => 23
+    };
+
+    // Scale is relative to the base rendered font size (23 = Medium active line).
+    private double BaseFontSize => 23;
+
+    public double ActiveLineScale => ActiveLineFontSize / BaseFontSize;
+
+    public double NearbyLineScale => FontPreset switch
+    {
+        LyricFontPreset.Small => 16d / BaseFontSize,
+        LyricFontPreset.Large => 22d / BaseFontSize,
+        _ => 19d / BaseFontSize
+    };
+
+    public double InactiveLineScale => FontPreset switch
+    {
+        LyricFontPreset.Small => 14d / BaseFontSize,
+        LyricFontPreset.Large => 20d / BaseFontSize,
+        _ => 17d / BaseFontSize
     };
 
     public double EstimatedLineHeight => FontPreset switch
@@ -212,6 +234,9 @@ public partial class LyricsViewModel : ViewModelBase
         OnPropertyChanged(nameof(InactiveLineFontSize));
         OnPropertyChanged(nameof(NearbyLineFontSize));
         OnPropertyChanged(nameof(ActiveLineFontSize));
+        OnPropertyChanged(nameof(InactiveLineScale));
+        OnPropertyChanged(nameof(NearbyLineScale));
+        OnPropertyChanged(nameof(ActiveLineScale));
         OnPropertyChanged(nameof(EstimatedLineHeight));
         RefreshLineVisuals();
 
@@ -268,7 +293,7 @@ public partial class LyricsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Lyrics] 保存设置失败: {ex.Message}");
+            _logger.LogError(ex, "[Lyrics] 保存设置失败: {Message}", ex.Message);
         }
     }
 
@@ -285,7 +310,7 @@ public partial class LyricsViewModel : ViewModelBase
             {
                 line.IsCurrent = false;
                 line.IsNearCurrent = false;
-                line.DisplayFontSize = InactiveLineFontSize;
+                line.DisplayScale = InactiveLineScale;
                 line.DisplayOpacity = 0.34;
             }
 
@@ -299,11 +324,11 @@ public partial class LyricsViewModel : ViewModelBase
 
             line.IsCurrent = distance == 0;
             line.IsNearCurrent = distance is 1 or 2;
-            line.DisplayFontSize = distance switch
+            line.DisplayScale = distance switch
             {
-                0 => ActiveLineFontSize,
-                1 => NearbyLineFontSize,
-                _ => InactiveLineFontSize
+                0 => ActiveLineScale,
+                1 => NearbyLineScale,
+                _ => InactiveLineScale
             };
 
             line.DisplayOpacity = distance switch

@@ -1,6 +1,7 @@
 #if LINUX_MPRIS
 using System.Text;
 using AvaPlayer.Models;
+using Microsoft.Extensions.Logging;
 using Tmds.DBus.Protocol;
 
 namespace AvaPlayer.Services.MediaTransport;
@@ -63,6 +64,7 @@ public sealed class MprisMediaTransportService : IMediaTransportService
     ];
 
     private readonly object _gate = new();
+    private readonly ILogger<MprisMediaTransportService> _logger;
     private DBusConnection? _connection;
     private Track? _currentTrack;
     private bool _isPlaying;
@@ -70,6 +72,11 @@ public sealed class MprisMediaTransportService : IMediaTransportService
     private TimeSpan _duration;
     private PlaybackMode _playbackMode = PlaybackMode.Sequential;
     private bool _initialized;
+
+    public MprisMediaTransportService(ILogger<MprisMediaTransportService> logger)
+    {
+        _logger = logger;
+    }
 
     public event EventHandler? PlayRequested;
     public event EventHandler? PauseRequested;
@@ -87,7 +94,7 @@ public sealed class MprisMediaTransportService : IMediaTransportService
         var address = DBusAddress.Session;
         if (string.IsNullOrWhiteSpace(address))
         {
-            Console.Error.WriteLine("[MPRIS] 未找到 session bus 地址，跳过初始化。");
+            _logger.LogWarning("[MPRIS] 未找到 session bus 地址，跳过初始化。");
             return;
         }
 
@@ -98,13 +105,13 @@ public sealed class MprisMediaTransportService : IMediaTransportService
             _connection.AddMethodHandler(new MprisObject(this));
             await _connection.RequestNameAsync(ServiceName, RequestNameOptions.Default).ConfigureAwait(false);
             _initialized = true;
-            Console.WriteLine("[MPRIS] 服务已注册");
+            _logger.LogInformation("[MPRIS] 服务已注册");
         }
         catch (Exception ex)
         {
             _connection?.Dispose();
             _connection = null;
-            Console.Error.WriteLine($"[MPRIS] 初始化失败: {ex.Message}");
+            _logger.LogError(ex, "[MPRIS] 初始化失败: {Message}", ex.Message);
         }
     }
 
@@ -354,7 +361,7 @@ public sealed class MprisMediaTransportService : IMediaTransportService
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
         {
             _initialized = false;
-            Console.Error.WriteLine($"[MPRIS] 发送属性变更信号失败 (连接可能已断开): {ex.Message}");
+            _logger.LogWarning(ex, "[MPRIS] 发送属性变更信号失败 (连接可能已断开): {Message}", ex.Message);
         }
     }
 
@@ -558,6 +565,7 @@ public sealed class MprisMediaTransportService : IMediaTransportService
 #else
 #pragma warning disable CS0067
 using AvaPlayer.Models;
+using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.Services.MediaTransport;
 

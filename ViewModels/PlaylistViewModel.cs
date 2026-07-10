@@ -6,6 +6,7 @@ using AvaPlayer.Models;
 using AvaPlayer.Services.Playlist;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.ViewModels;
 
@@ -46,13 +47,15 @@ public partial class TrackItemViewModel : ObservableObject
 public partial class PlaylistViewModel : ViewModelBase
 {
     private readonly IPlaylistService _playlistService;
+    private readonly ILogger<PlaylistViewModel> _logger;
     private readonly Dictionary<string, TrackItemViewModel> _trackCache = new(StringComparer.OrdinalIgnoreCase);
     private bool _refreshScheduled;
     private bool _isUiActive;
 
-    public PlaylistViewModel(IPlaylistService playlistService)
+    public PlaylistViewModel(IPlaylistService playlistService, ILogger<PlaylistViewModel> logger)
     {
         _playlistService = playlistService;
+        _logger = logger;
         _playlistService.Queue.CollectionChanged += OnQueueCollectionChanged;
     }
 
@@ -115,7 +118,7 @@ public partial class PlaylistViewModel : ViewModelBase
         var folderPath = await FolderPickRequested.Invoke();
         if (string.IsNullOrWhiteSpace(folderPath))
         {
-            Console.Error.WriteLine("[Playlist] 所选文件夹无法用于本地扫描。");
+            _logger.LogWarning("[Playlist] 所选文件夹无法用于本地扫描。");
             return;
         }
 
@@ -130,7 +133,7 @@ public partial class PlaylistViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Playlist] 添加文件夹失败: {ex.Message}");
+            _logger.LogError(ex, "[Playlist] 添加文件夹失败: {Message}", ex.Message);
         }
     }
 

@@ -37,20 +37,25 @@
           </ItemsControl.Styles>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:LyricLineViewModel">
-              <Button Classes="lyric-line-button"
-                      Classes.active="{Binding IsCurrent}"
-                       Classes.near="{Binding IsNearCurrent}"
-                       Command="{Binding #Root((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
-                       CommandParameter="{Binding}"
-                       HorizontalAlignment="Stretch"
-                       ClipToBounds="False">
-                <TextBlock Text="{Binding Text}"
-                           FontSize="{Binding DisplayFontSize}"
-                           Opacity="{Binding DisplayOpacity}"
-                           Classes="lyric-line"
-                           Classes.near="{Binding IsNearCurrent}"
-                           Classes.active="{Binding IsCurrent}" />
-              </Button>
+               <Button Classes="lyric-line-button"
+                       Classes.active="{Binding IsCurrent}"
+                        Classes.near="{Binding IsNearCurrent}"
+                        Command="{Binding #Root((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
+                        CommandParameter="{Binding}"
+                        HorizontalAlignment="Stretch"
+                        ClipToBounds="False">
+                 <TextBlock Text="{Binding Text}"
+                            FontSize="23"
+                            Opacity="{Binding DisplayOpacity}"
+                            RenderTransformOrigin="50%,50%"
+                            Classes="lyric-line"
+                            Classes.near="{Binding IsNearCurrent}"
+                            Classes.active="{Binding IsCurrent}">
+                   <TextBlock.RenderTransform>
+                     <ScaleTransform ScaleX="{Binding DisplayScale}" ScaleY="{Binding DisplayScale}" />
+                   </TextBlock.RenderTransform>
+                 </TextBlock>
+               </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

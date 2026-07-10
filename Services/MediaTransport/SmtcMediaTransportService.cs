@@ -1,5 +1,6 @@
 #if WINDOWS_SMTC
 using AvaPlayer.Models;
+using Microsoft.Extensions.Logging;
 using Windows.Media;
 using Windows.Media.Playback;
 using Windows.Storage;
@@ -11,6 +12,7 @@ public sealed class SmtcMediaTransportService : IMediaTransportService
     private static readonly TimeSpan TimelineUpdateInterval = TimeSpan.FromSeconds(5);
 
     private readonly object _gate = new();
+    private readonly ILogger<SmtcMediaTransportService> _logger;
     private MediaPlayer? _mediaPlayer;
     private SystemMediaTransportControls? _controls;
     private Track? _currentTrack;
@@ -21,6 +23,11 @@ public sealed class SmtcMediaTransportService : IMediaTransportService
     private DateTimeOffset _lastTimelineUpdate = DateTimeOffset.MinValue;
     private PlaybackMode _playbackMode = PlaybackMode.Sequential;
     private bool _initialized;
+
+    public SmtcMediaTransportService(ILogger<SmtcMediaTransportService> logger)
+    {
+        _logger = logger;
+    }
 
     public event EventHandler? PlayRequested;
     public event EventHandler? PauseRequested;
@@ -54,11 +61,11 @@ public sealed class SmtcMediaTransportService : IMediaTransportService
             UpdateTimelineProperties(force: true);
 
             _initialized = true;
-            Console.WriteLine("[SMTC] 服务已注册");
+            _logger.LogInformation("[SMTC] 服务已注册");
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[SMTC] 初始化失败: {ex.Message}");
+            _logger.LogError(ex, "[SMTC] 初始化失败: {Message}", ex.Message);
             DisposePlayer();
         }
 
@@ -93,7 +100,7 @@ public sealed class SmtcMediaTransportService : IMediaTransportService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[SMTC] 更新媒体信息失败: {ex.Message}");
+            _logger.LogWarning(ex, "[SMTC] 更新媒体信息失败: {Message}", ex.Message);
         }
     }
 
@@ -159,7 +166,7 @@ public sealed class SmtcMediaTransportService : IMediaTransportService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[SMTC] 读取文件元数据失败: {ex.Message}");
+            _logger.LogWarning(ex, "[SMTC] 读取文件元数据失败: {Message}", ex.Message);
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -346,6 +353,7 @@ public sealed class SmtcMediaTransportService : IMediaTransportService
 #else
 #pragma warning disable CS0067
 using AvaPlayer.Models;
+using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.Services.MediaTransport;
 

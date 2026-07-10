@@ -5,6 +5,7 @@ using AvaPlayer.Helpers;
 using AvaPlayer.Models;
 using AvaPlayer.Services.Cache;
 using AvaPlayer.Services.Network;
+using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.Services.Lyrics;
 
@@ -14,12 +15,14 @@ public sealed class LyricsService : ILyricsService
 
     private readonly ICacheService _cacheService;
     private readonly INetworkAccessService _networkAccessService;
+    private readonly ILogger<LyricsService> _logger;
     private readonly IReadOnlyList<ILyricsProvider> _providers;
 
-    public LyricsService(ICacheService cacheService, IEnumerable<ILyricsProvider> providers, INetworkAccessService networkAccessService)
+    public LyricsService(ICacheService cacheService, IEnumerable<ILyricsProvider> providers, INetworkAccessService networkAccessService, ILogger<LyricsService> logger)
     {
         _cacheService = cacheService;
         _networkAccessService = networkAccessService;
+        _logger = logger;
         _providers = providers.ToArray();
     }
 
@@ -98,7 +101,7 @@ public sealed class LyricsService : ILyricsService
         return Convert.ToHexString(SHA1.HashData(bytes));
     }
 
-    private static async Task<IReadOnlyList<LyricLine>> ReadCacheAsync(string cachePath, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<LyricLine>> ReadCacheAsync(string cachePath, CancellationToken cancellationToken)
     {
         try
         {
@@ -116,7 +119,7 @@ public sealed class LyricsService : ILyricsService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Lyrics] 读取缓存歌词失败: {ex.Message}");
+            _logger.LogWarning(ex, "[Lyrics] 读取缓存歌词失败: {Message}", ex.Message);
             return [];
         }
     }

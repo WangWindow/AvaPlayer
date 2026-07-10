@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Runtime;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -17,8 +19,7 @@ using AvaPlayer.Services.Playlist;
 using AvaPlayer.ViewModels;
 using AvaPlayer.Views;
 using Microsoft.Extensions.DependencyInjection;
-using System.ComponentModel;
-using System.Runtime;
+using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer;
 
@@ -30,6 +31,7 @@ public partial class App : Application
 
     private ServiceProvider? _services;
     private IServiceScope? _runtimeScope;
+    private ILogger<App>? _logger;
     private IDatabaseService? _databaseService;
     private MainWindowViewModel? _mainWindowViewModel;
     private MainWindow? _mainWindow;
@@ -62,6 +64,7 @@ public partial class App : Application
             _desktop = desktop;
             _desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _services = ConfigureServices();
+            _logger = _services.GetRequiredService<ILogger<App>>();
             _databaseService = _services.GetRequiredService<IDatabaseService>();
             _singleInstanceManager = Program.SingleInstance;
 
@@ -89,6 +92,7 @@ public partial class App : Application
     private static ServiceProvider ConfigureServices()
     {
         var services = new ServiceCollection();
+        services.AddLogging(builder => builder.AddConsole());
 
         services.AddHttpClient();
 
@@ -149,7 +153,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[App] 初始化网络访问服务失败: {ex.Message}");
+            _logger?.LogError(ex, "[App] 初始化网络访问服务失败: {Message}", ex.Message);
         }
 
         try
@@ -162,7 +166,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[App] 初始化系统媒体控制失败: {ex.Message}");
+            _logger?.LogError(ex, "[App] 初始化系统媒体控制失败: {Message}", ex.Message);
         }
 
         try
@@ -174,7 +178,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[App] 初始化主界面失败: {ex.Message}");
+            _logger?.LogError(ex, "[App] 初始化主界面失败: {Message}", ex.Message);
             return;
         }
 
@@ -228,7 +232,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[App] 读取轻量模式设置失败: {ex.Message}");
+            _logger?.LogError(ex, "[App] 读取轻量模式设置失败: {Message}", ex.Message);
             return false;
         }
     }
@@ -471,7 +475,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[App] 恢复主窗口视觉状态失败: {ex.Message}");
+            _logger?.LogError(ex, "[App] 恢复主窗口视觉状态失败: {Message}", ex.Message);
             return;
         }
 
@@ -488,7 +492,7 @@ public partial class App : Application
 
     private void OnSingleInstanceActivationRequested(object? sender, EventArgs e)
     {
-        Console.Error.WriteLine("[SingleInstance] 收到新的启动请求，激活现有窗口。");
+        _logger?.LogInformation("[SingleInstance] 收到新的启动请求，激活现有窗口。");
         Dispatcher.UIThread.Post(ShowMainWindow);
     }
 
@@ -510,7 +514,14 @@ public partial class App : Application
         _isLightweightModeEnabled = isEnabled;
         SyncLightweightModeMenuState();
 
-        Console.Error.WriteLine($"[LightweightMode] 切换到{(isEnabled ? "轻量" : "正常")}模式。");
+        if (isEnabled)
+        {
+            _logger?.LogInformation("[LightweightMode] 切换到轻量模式。");
+        }
+        else
+        {
+            _logger?.LogInformation("[LightweightMode] 切换到正常模式。");
+        }
 
         try
         {
@@ -524,7 +535,7 @@ public partial class App : Application
                 {
                     _isLightweightModeEnabled = previousState;
                     SyncLightweightModeMenuState();
-                    Console.Error.WriteLine($"[LightweightMode] 保存设置失败: {ex.Message}");
+                    _logger?.LogError(ex, "[LightweightMode] 保存设置失败: {Message}", ex.Message);
                     return;
                 }
             }
@@ -546,7 +557,7 @@ public partial class App : Application
 
     private async Task EnterLightweightModeAsync()
     {
-        Console.Error.WriteLine("[LightweightMode] 正在释放主窗口并保留托盘。");
+        _logger?.LogInformation("[LightweightMode] 正在释放主窗口并保留托盘。");
 
         if (_mainWindow is null)
         {
@@ -562,7 +573,7 @@ public partial class App : Application
 
     private async Task ExitLightweightModeAsync()
     {
-        Console.Error.WriteLine("[LightweightMode] 正在恢复主窗口。");
+        _logger?.LogInformation("[LightweightMode] 正在恢复主窗口。");
         await ShowMainWindowAsync();
     }
 
@@ -680,7 +691,7 @@ public partial class App : Application
         if (_playerService?.IsPlaying == true)
         {
             _isIdleRuntimeReleaseScheduled = false;
-            Console.Error.WriteLine("[LightweightMode] 当前正在播放，保留播放运行时。");
+            _logger?.LogInformation("[LightweightMode] 当前正在播放，保留播放运行时。");
             return;
         }
 
@@ -695,7 +706,7 @@ public partial class App : Application
         _isPlayerBarWired = false;
         _isMediaTransportWired = false;
         _isIdleRuntimeReleaseScheduled = false;
-        Console.Error.WriteLine("[LightweightMode] 已释放空闲播放/UI运行时。");
+        _logger?.LogInformation("[LightweightMode] 已释放空闲播放/UI运行时。");
     }
 
     private void ScheduleIdleRuntimeRelease()

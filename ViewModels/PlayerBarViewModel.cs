@@ -12,6 +12,7 @@ using AvaPlayer.Services.Lyrics;
 using AvaPlayer.Services.Network;
 using AvaPlayer.Services.Playlist;
 using FluentIcons.Common;
+using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.ViewModels;
 
@@ -26,6 +27,7 @@ public partial class PlayerBarViewModel : ViewModelBase
     private readonly IAlbumArtService _albumArtService;
     private readonly ILyricsService _lyricsService;
     private readonly INetworkAccessService _networkAccessService;
+    private readonly ILogger<PlayerBarViewModel> _logger;
 
     private CancellationTokenSource? _lyricsCts;
     private CancellationTokenSource? _albumArtCts;
@@ -41,7 +43,9 @@ public partial class PlayerBarViewModel : ViewModelBase
         IAlbumArtService albumArtService,
         ILyricsService lyricsService,
         IDatabaseService databaseService,
-        INetworkAccessService networkAccessService)
+        INetworkAccessService networkAccessService,
+        ILogger<PlayerBarViewModel> logger,
+        ILoggerFactory loggerFactory)
     {
         _databaseService = databaseService;
         _player = player;
@@ -49,8 +53,9 @@ public partial class PlayerBarViewModel : ViewModelBase
         _albumArtService = albumArtService;
         _lyricsService = lyricsService;
         _networkAccessService = networkAccessService;
+        _logger = logger;
 
-        Lyrics = new LyricsViewModel(databaseService);
+        Lyrics = new LyricsViewModel(databaseService, loggerFactory.CreateLogger<LyricsViewModel>());
         Volume = _player.Volume;
         PlaybackMode = _playlist.PlaybackMode;
         UpdatePlaybackModeDisplay();
@@ -362,13 +367,13 @@ public partial class PlayerBarViewModel : ViewModelBase
         var next = _playlist.GetNextTrack();
         if (next is null)
         {
-            Console.WriteLine("[Player] 当前曲目播放结束，没有可自动切换的下一首。");
+            _logger.LogInformation("[Player] 当前曲目播放结束，没有可自动切换的下一首。");
             IsPlaying = false;
             PlayPauseIcon = Icon.Play;
             return;
         }
 
-        Console.WriteLine($"[Player] 当前曲目播放结束，准备自动切换到: {next.DisplayTitle}");
+        _logger.LogInformation("[Player] 当前曲目播放结束，准备自动切换到: {Title}", next.DisplayTitle);
         var started = await TryStartTrackAsync(next, "自动切换下一首");
         if (!started)
         {
@@ -400,7 +405,7 @@ public partial class PlayerBarViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Player] 恢复播放会话失败: {ex.Message}");
+            _logger.LogError(ex, "[Player] 恢复播放会话失败: {Message}", ex.Message);
         }
     }
 
@@ -438,13 +443,13 @@ public partial class PlayerBarViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Player] {reason}失败: {track.DisplayTitle} ({track.FilePath}) - {ex.Message}");
+            _logger.LogError(ex, "[Player] {Reason}失败: {Title} ({FilePath}) - {Message}", reason, track.DisplayTitle, track.FilePath, ex.Message);
             return false;
         }
 
         _playlist.SetCurrentTrack(track);
         UpdateTrackInfo(track);
-        Console.WriteLine($"[Player] {reason}: {track.DisplayTitle}");
+        _logger.LogInformation("[Player] {Reason}: {Title}", reason, track.DisplayTitle);
         return true;
     }
 
@@ -497,7 +502,7 @@ public partial class PlayerBarViewModel : ViewModelBase
                 return;
             }
 
-            Console.Error.WriteLine($"[AlbumArt] 加载封面失败: {ex.Message}");
+            _logger.LogError(ex, "[AlbumArt] 加载封面失败: {Message}", ex.Message);
             ReplaceAlbumArt(null);
             HasAlbumArt = false;
             ShowAlbumArtPlaceholder = true;
@@ -541,7 +546,7 @@ public partial class PlayerBarViewModel : ViewModelBase
                 return;
             }
 
-            Console.Error.WriteLine($"[Lyrics] 加载失败: {ex.Message}");
+            _logger.LogError(ex, "[Lyrics] 加载失败: {Message}", ex.Message);
             Lyrics.ClearLyrics();
         }
     }
@@ -579,7 +584,7 @@ public partial class PlayerBarViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Player] 读取播放进度失败: {ex.Message}");
+            _logger.LogError(ex, "[Player] 读取播放进度失败: {Message}", ex.Message);
             return 0;
         }
     }
@@ -598,7 +603,7 @@ public partial class PlayerBarViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Player] 保存播放进度失败: {ex.Message}");
+            _logger.LogError(ex, "[Player] 保存播放进度失败: {Message}", ex.Message);
         }
     }
 
@@ -617,7 +622,7 @@ public partial class PlayerBarViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Player] 读取音量设置失败: {ex.Message}");
+            _logger.LogError(ex, "[Player] 读取音量设置失败: {Message}", ex.Message);
         }
     }
 
@@ -635,7 +640,7 @@ public partial class PlayerBarViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Player] 保存音量设置失败: {ex.Message}");
+            _logger.LogError(ex, "[Player] 保存音量设置失败: {Message}", ex.Message);
         }
     }
 

@@ -1,11 +1,19 @@
 using System.Security.Cryptography;
 using System.Text;
 using AvaPlayer.Models;
+using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.Services.Playlist;
 
 public sealed class TrackScannerService : ITrackScannerService
 {
+    private readonly ILogger<TrackScannerService> _logger;
+
+    public TrackScannerService(ILogger<TrackScannerService> logger)
+    {
+        _logger = logger;
+    }
+
     private static readonly EnumerationOptions ScanEnumerationOptions = new()
     {
         IgnoreInaccessible = true,
@@ -70,13 +78,13 @@ public sealed class TrackScannerService : ITrackScannerService
                     }
                     catch (Exception ex)
                     {
-                        Console.Error.WriteLine($"[Scanner] 跳过文件 {filePath}: {ex.Message}");
+                        _logger.LogWarning(ex, "[Scanner] 跳过文件 {FilePath}: {Message}", filePath, ex.Message);
                     }
                 }
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or DirectoryNotFoundException or PathTooLongException)
             {
-                Console.Error.WriteLine($"[Scanner] 扫描文件夹 {folderPath} 时发生错误: {ex.Message}");
+                _logger.LogWarning(ex, "[Scanner] 扫描文件夹 {FolderPath} 时发生错误: {Message}", folderPath, ex.Message);
             }
 
             return (IReadOnlyList<Track>)tracks

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
 using Avalonia.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.Services.Audio;
 
@@ -14,14 +15,16 @@ public sealed class MpvPlayerService : IPlayerService
     private readonly CancellationTokenSource _eventLoopCts = new();
     private readonly object _restoreGate = new();
     private readonly object _trackEndGate = new();
+    private readonly ILogger<MpvPlayerService> _logger;
     private readonly Thread? _eventLoopThread;
     private IntPtr _handle;
     private double _pendingStartPosition;
     private double _volume = 80;
     private bool _trackEndSignaled;
 
-    public MpvPlayerService()
+    public MpvPlayerService(ILogger<MpvPlayerService> logger)
     {
+        _logger = logger;
         MpvNativeLoader.Configure();
 
         try
@@ -30,7 +33,7 @@ public sealed class MpvPlayerService : IPlayerService
             if (_handle == IntPtr.Zero)
             {
                 InitializationError = "无法创建 libmpv 实例。";
-                Console.Error.WriteLine($"[AvaPlayer] {InitializationError}");
+                _logger.LogError("[AvaPlayer] {Error}", InitializationError);
                 return;
             }
 
@@ -49,7 +52,7 @@ public sealed class MpvPlayerService : IPlayerService
             Check(MpvInterop.SetPropertyString(_handle, "volume", _volume.ToString(CultureInfo.InvariantCulture)), "volume");
 
             IsReady = true;
-            Console.WriteLine("[AvaPlayer] mpv 音频引擎初始化成功");
+            _logger.LogInformation("[AvaPlayer] mpv 音频引擎初始化成功");
 
             _eventLoopThread = new Thread(EventLoop)
             {
@@ -61,7 +64,7 @@ public sealed class MpvPlayerService : IPlayerService
         catch (Exception ex)
         {
             InitializationError = ex.Message;
-            Console.Error.WriteLine($"[AvaPlayer] mpv 初始化失败: {ex.Message}");
+            _logger.LogError(ex, "[AvaPlayer] mpv 初始化失败: {Message}", ex.Message);
 
             if (_handle != IntPtr.Zero)
             {
@@ -107,7 +110,7 @@ public sealed class MpvPlayerService : IPlayerService
 
         if (_handle == IntPtr.Zero)
         {
-            Console.Error.WriteLine("[AvaPlayer] libmpv 不可用，无法播放。");
+            _logger.LogError("[AvaPlayer] libmpv 不可用，无法播放。");
             return Task.CompletedTask;
         }
 
@@ -210,7 +213,7 @@ public sealed class MpvPlayerService : IPlayerService
 
                 case MpvEventId.EndFile:
                     var endFile = Marshal.PtrToStructure<MpvEventEndFile>(mpvEvent.Data);
-                    Console.WriteLine($"[AvaPlayer] mpv EndFile: reason={endFile.Reason}");
+                    _logger.LogInformation("[AvaPlayer] mpv EndFile: reason={Reason}", endFile.Reason);
                     if (endFile.Reason == MpvEndFileReason.Eof)
                     {
                         SignalTrackEnded("end-file/eof");
@@ -308,7 +311,7 @@ public sealed class MpvPlayerService : IPlayerService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[AvaPlayer] 恢复播放位置失败: {ex.Message}");
+            _logger.LogError(ex, "[AvaPlayer] 恢复播放位置失败: {Message}", ex.Message);
         }
     }
 
@@ -332,7 +335,7 @@ public sealed class MpvPlayerService : IPlayerService
             _trackEndSignaled = true;
         }
 
-        Console.WriteLine($"[AvaPlayer] 检测到曲目自然结束，来源: {source}");
+        _logger.LogInformation("[AvaPlayer] 检测到曲目自然结束，来源: {Source}", source);
         SetPlaybackState(isPlaying: false, publishWhenUnchanged: true);
         Dispatcher.UIThread.Post(() => TrackEnded?.Invoke(this, EventArgs.Empty));
     }
@@ -381,7 +384,7 @@ public sealed class MpvPlayerService : IPlayerService
         var result = MpvInterop.SetOptionString(_handle, name, value);
         if (result < 0)
         {
-            Console.Error.WriteLine($"[AvaPlayer] mpv {name}={value} 未生效: {GetErrorString(result)}");
+            _logger.LogWarning("[AvaPlayer] mpv {Name}={Value} 未生效: {Error}", name, value, GetErrorString(result));
         }
     }
 
