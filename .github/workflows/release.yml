@@ -134,6 +134,7 @@ jobs:
           sudo apt-get install -y clang zlib1g-dev curl unzip zip desktop-file-utils
 
       - name: Download appimagetool
+        if: matrix.rid == 'linux-x64'
         shell: bash
         run: |
           set -euo pipefail
@@ -157,7 +158,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x scripts/package-linux.sh
-          CONFIGURATION=Release RID="${RID}" ./scripts/package-linux.sh
+          ./scripts/package-linux.sh --rid "${RID}" --configuration Release
 
       - name: Generate checksums
         shell: bash
