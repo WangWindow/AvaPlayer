@@ -222,11 +222,11 @@ public partial class PlayerBarViewModel : ViewModelBase
         );
 
     [RelayCommand]
-    private void PlayPause()
+    private async Task PlayPauseAsync()
     {
         if (_player.IsPlaying)
         {
-            _player.Pause();
+            await PauseAsync();
         }
         else
         {
@@ -235,7 +235,11 @@ public partial class PlayerBarViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void Pause() => _player.Pause();
+    private async Task PauseAsync()
+    {
+        _player.Pause();
+        await PersistPlaybackPositionAsync(Position);
+    }
 
     [RelayCommand]
     private void Resume()
@@ -346,10 +350,6 @@ public partial class PlayerBarViewModel : ViewModelBase
         IsPlaying = isPlaying;
         PlayPauseIcon = isPlaying ? Icon.Pause : Icon.Play;
 
-        if (!isPlaying && CurrentTrack is not null)
-        {
-            _ = PersistPlaybackPositionAsync(Position);
-        }
     }
 
     private void OnPositionChanged(object? sender, double position)

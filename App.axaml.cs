@@ -49,7 +49,8 @@ public partial class App : Application
     private bool _isNetworkInitialized;
     private bool _isMediaTransportInitialized;
     private bool _isPlayerBarWired;
-    private bool _isMediaTransportWired;
+    private bool _isMediaTransportCommandsWired;
+    private bool _isMediaTransportStateWired;
     private bool _isIdleRuntimeReleaseScheduled;
     private int _pendingTrayPlaybackOperations;
 
@@ -112,15 +113,15 @@ public partial class App : Application
 
         if (OperatingSystem.IsLinux())
         {
-            services.AddScoped<IMediaTransportService, MprisMediaTransportService>();
+            services.AddSingleton<IMediaTransportService, MprisMediaTransportService>();
         }
         else if (OperatingSystem.IsWindows())
         {
-            services.AddScoped<IMediaTransportService, SmtcMediaTransportService>();
+            services.AddSingleton<IMediaTransportService, SmtcMediaTransportService>();
         }
         else
         {
-            services.AddScoped<IMediaTransportService, NoopMediaTransportService>();
+            services.AddSingleton<IMediaTransportService, NoopMediaTransportService>();
         }
 
         services.AddScoped<PlayerBarViewModel>();
@@ -299,21 +300,30 @@ public partial class App : Application
 
     private void WireMediaTransport()
     {
-        if (_isMediaTransportWired || _mainWindowViewModel is null || _mediaTransportService is null || _playerService is null)
+        if (_mediaTransportService is null)
         {
             return;
         }
 
-        _mediaTransportService.PlayRequested += OnMediaTransportPlayRequested;
-        _mediaTransportService.PauseRequested += OnMediaTransportPauseRequested;
-        _mediaTransportService.NextRequested += OnMediaTransportNextRequested;
-        _mediaTransportService.PreviousRequested += OnMediaTransportPreviousRequested;
-        _mediaTransportService.SeekRequested += OnMediaTransportSeekRequested;
+        if (!_isMediaTransportCommandsWired)
+        {
+            _mediaTransportService.PlayRequested += OnMediaTransportPlayRequested;
+            _mediaTransportService.PauseRequested += OnMediaTransportPauseRequested;
+            _mediaTransportService.NextRequested += OnMediaTransportNextRequested;
+            _mediaTransportService.PreviousRequested += OnMediaTransportPreviousRequested;
+            _mediaTransportService.SeekRequested += OnMediaTransportSeekRequested;
+            _isMediaTransportCommandsWired = true;
+        }
+
+        if (_mainWindowViewModel is null || _playerService is null || _isMediaTransportStateWired)
+        {
+            return;
+        }
 
         _playerService.PlaybackStateChanged += OnPlaybackStateChanged;
         _playerService.PositionChanged += OnPlayerPositionChanged;
         _mediaTransportService.UpdatePlaybackMode(_mainWindowViewModel.PlayerBar.PlaybackMode);
-        _isMediaTransportWired = true;
+        _isMediaTransportStateWired = true;
     }
 
     private void OnMediaTransportPlayRequested(object? sender, EventArgs e)
@@ -781,12 +791,10 @@ public partial class App : Application
         _runtimeScope.Dispose();
         _runtimeScope = null;
         _mainWindowViewModel = null;
-        _mediaTransportService = null;
         _playerService = null;
         _isNetworkInitialized = false;
-        _isMediaTransportInitialized = false;
         _isPlayerBarWired = false;
-        _isMediaTransportWired = false;
+        _isMediaTransportStateWired = false;
         _isIdleRuntimeReleaseScheduled = false;
         _logger?.LogInformation("[LightweightMode] 已释放空闲播放/UI运行时。");
     }
@@ -832,26 +840,33 @@ public partial class App : Application
 
     private void UnwireRuntimeEvents()
     {
-        if (_mediaTransportService is not null && _isMediaTransportWired)
-        {
-            _mediaTransportService.PlayRequested -= OnMediaTransportPlayRequested;
-            _mediaTransportService.PauseRequested -= OnMediaTransportPauseRequested;
-            _mediaTransportService.NextRequested -= OnMediaTransportNextRequested;
-            _mediaTransportService.PreviousRequested -= OnMediaTransportPreviousRequested;
-            _mediaTransportService.SeekRequested -= OnMediaTransportSeekRequested;
-        }
-
         if (_mainWindowViewModel is not null && _isPlayerBarWired)
         {
             _mainWindowViewModel.PlayerBar.PropertyChanged -= OnPlayerBarPropertyChanged;
             _mainWindowViewModel.PlayerBar.TrackChanged -= OnTrackChanged;
         }
 
-        if (_playerService is not null && _isMediaTransportWired)
+        if (_playerService is not null && _isMediaTransportStateWired)
         {
             _playerService.PlaybackStateChanged -= OnPlaybackStateChanged;
             _playerService.PositionChanged -= OnPlayerPositionChanged;
+            _isMediaTransportStateWired = false;
         }
+    }
+
+    private void UnwireMediaTransportCommands()
+    {
+        if (_mediaTransportService is null || !_isMediaTransportCommandsWired)
+        {
+            return;
+        }
+
+        _mediaTransportService.PlayRequested -= OnMediaTransportPlayRequested;
+        _mediaTransportService.PauseRequested -= OnMediaTransportPauseRequested;
+        _mediaTransportService.NextRequested -= OnMediaTransportNextRequested;
+        _mediaTransportService.PreviousRequested -= OnMediaTransportPreviousRequested;
+        _mediaTransportService.SeekRequested -= OnMediaTransportSeekRequested;
+        _isMediaTransportCommandsWired = false;
     }
 
     private void OnDesktopShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
@@ -875,6 +890,7 @@ public partial class App : Application
         }
 
         UnwireRuntimeEvents();
+        UnwireMediaTransportCommands();
 
         if (_desktop is not null)
         {
