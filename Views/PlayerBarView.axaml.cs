@@ -27,6 +27,19 @@ public partial class PlayerBarView : UserControl
         DataContextChanged += OnDataContextChanged;
         AttachedToVisualTree += OnAttachedToVisualTree;
         DetachedFromVisualTree += OnDetachedFromVisualTree;
+
+        AddHandler(SizeChangedEvent, OnPlaybackContentSizeChanged);
+    }
+
+    private void OnPlaybackContentSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (_viewModel is null)
+            return;
+
+        // Calculate cover size as a fraction of available width, clamped to reasonable range
+        var availableWidth = e.NewSize.Width - 112; // 56+56 margin from outer Grid
+        var coverSize = Math.Clamp(availableWidth * 0.55, 160.0, 400.0);
+        _viewModel.CoverSize = Math.Round(coverSize);
     }
 
     private void OnSliderPointerPressed(object? sender, PointerPressedEventArgs e)

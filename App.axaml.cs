@@ -101,7 +101,7 @@ public partial class App : Application
         services.AddSingleton<INetworkAccessService, NetworkAccessService>();
         services.AddSingleton<ITrackScannerService, TrackScannerService>();
         services.AddScoped<IPlaylistService, PlaylistService>();
-        services.AddScoped<IPlayerService, MpvPlayerService>();
+        services.AddScoped<IPlayerService, MiniAudioPlayerService>();
         services.AddScoped<IAlbumArtService, AlbumArtService>();
 
         services.AddScoped<ILyricsProvider, LrcLibProvider>();
@@ -691,7 +691,18 @@ public partial class App : Application
         if (_playerService?.IsPlaying == true)
         {
             _isIdleRuntimeReleaseScheduled = false;
-            _logger?.LogInformation("[LightweightMode] 当前正在播放，保留播放运行时。");
+
+            // Release ViewModel visual state and event wiring, but keep player service alive
+            if (_mainWindowViewModel is not null)
+            {
+                _mainWindowViewModel.PlayerBar.SuspendVisualHydration();
+                _mainWindowViewModel.ReleaseWindowState();
+                UnwirePlayerBarEvents();
+                _mainWindowViewModel = null;
+                _isPlayerBarWired = false;
+            }
+
+            _logger?.LogInformation("[LightweightMode] 当前正在播放，保留播放运行时，已释放 UI 状态。");
             return;
         }
 
@@ -707,6 +718,19 @@ public partial class App : Application
         _isMediaTransportWired = false;
         _isIdleRuntimeReleaseScheduled = false;
         _logger?.LogInformation("[LightweightMode] 已释放空闲播放/UI运行时。");
+    }
+
+    private void UnwirePlayerBarEvents()
+    {
+        if (_mainWindowViewModel is null)
+            return;
+
+        if (_isPlayerBarWired)
+        {
+            _mainWindowViewModel.PlayerBar.PropertyChanged -= OnPlayerBarPropertyChanged;
+            _mainWindowViewModel.PlayerBar.TrackChanged -= OnTrackChanged;
+            _isPlayerBarWired = false;
+        }
     }
 
     private void ScheduleIdleRuntimeRelease()

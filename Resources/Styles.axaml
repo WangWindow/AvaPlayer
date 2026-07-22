@@ -801,4 +801,89 @@
     <Setter Property="Background" Value="#04000000" />
   </Style>
 
+  <!-- ============================================ -->
+  <!-- Custom Titlebar                              -->
+  <!-- ============================================ -->
+  <Style Selector="Border.titlebar">
+    <Setter Property="Background" Value="#C014101D" />
+  </Style>
+  <Style Selector=":light Border.titlebar">
+    <Setter Property="Background" Value="#E0F4F1F0" />
+  </Style>
+
+  <!-- Titlebar icon buttons (playlist, settings) -->
+  <Style Selector="Button.titlebar-icon-button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Width" Value="40" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontSize" Value="16" />
+  </Style>
+  <Style Selector="Button.titlebar-icon-button:pointerover">
+    <Setter Property="Background" Value="#26FFFFFF" />
+  </Style>
+  <Style Selector="Button.titlebar-icon-button:pressed">
+    <Setter Property="Background" Value="#40FFFFFF" />
+  </Style>
+  <Style Selector=":light Button.titlebar-icon-button">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+  <Style Selector=":light Button.titlebar-icon-button:pointerover">
+    <Setter Property="Background" Value="#12000000" />
+  </Style>
+  <Style Selector=":light Button.titlebar-icon-button:pressed">
+    <Setter Property="Background" Value="#1E000000" />
+  </Style>
+
+  <Style Selector="Button.titlebar-button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Width" Value="46" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+  <Style Selector="Button.titlebar-button:pointerover">
+    <Setter Property="Background" Value="#26FFFFFF" />
+  </Style>
+  <Style Selector="Button.titlebar-button:pressed">
+    <Setter Property="Background" Value="#40FFFFFF" />
+  </Style>
+  <Style Selector=":light Button.titlebar-button">
+    <Setter Property="Foreground" Value="#1A1A1A" />
+  </Style>
+  <Style Selector=":light Button.titlebar-button:pointerover">
+    <Setter Property="Background" Value="#12000000" />
+  </Style>
+  <Style Selector=":light Button.titlebar-button:pressed">
+    <Setter Property="Background" Value="#1E000000" />
+  </Style>
+
+  <!-- Close button (red hover like Windows 11) -->
+  <Style Selector="Button.titlebar-close:pointerover">
+    <Setter Property="Background" Value="#E81123" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.titlebar-close:pressed">
+    <Setter Property="Background" Value="#BF0F1D" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector=":light Button.titlebar-close:pointerover">
+    <Setter Property="Background" Value="#E81123" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector=":light Button.titlebar-close:pressed">
+    <Setter Property="Background" Value="#BF0F1D" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+
 </Styles>

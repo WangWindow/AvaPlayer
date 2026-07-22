@@ -4,7 +4,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Resources\logo.ico</ApplicationIcon>
@@ -20,6 +19,7 @@
     <DebugSymbols>false</DebugSymbols>
     <PublishAot>true</PublishAot>
     <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+    <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
@@ -31,12 +31,13 @@
     <DefineConstants>$(DefineConstants);WINDOWS_SMTC</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Version>$(VersionPrefix)</Version>
+    <AssemblyVersion>1.1.6</AssemblyVersion>
+  </PropertyGroup>
+
   <ItemGroup>
     <AvaloniaResource Include="Resources\**" />
-  </ItemGroup>
-
-  <ItemGroup Condition="Exists('runtimes') and '$(MpvRuntimeRid)' != ''">
-    <None Include="runtimes\$(MpvRuntimeRid)\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -46,6 +47,7 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="FluentIcons.Avalonia" Version="2.1.331" />
+    <PackageReference Include="JAJ.Packages.MiniAudioEx" Version="3.3.5" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.9" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />

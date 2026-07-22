@@ -14,7 +14,9 @@
         Title="AvaPlayer"
         Background="{Binding PlayerBar.BackgroundBrush}">
   <Panel>
-    <Grid ColumnDefinitions="46*,54*">
+    <!-- Main content area -->
+    <Grid Margin="0,32,0,0"
+          ColumnDefinitions="46*,54*">
       <Border Grid.Column="0"
               Classes="player-panel">
         <views:PlayerBarView DataContext="{Binding PlayerBar}" />
@@ -26,16 +28,60 @@
       </Border>
     </Grid>
 
-    <Button Classes="ghost"
-            Width="40"
-            Height="40"
-            HorizontalAlignment="Left"
+    <!-- Integrated titlebar row (UWP-style) -->
+    <Border Height="32"
             VerticalAlignment="Top"
-            Margin="16,16,0,0"
-            Command="{Binding TogglePlaylistCommand}">
-      <fi:FluentIcon Icon="AppsList" FontSize="18" />
-    </Button>
+            Classes="titlebar"
+            PointerPressed="OnTitleBarPointerPressed">
+      <Grid ColumnDefinitions="40,Auto,*,40,46,46,46">
+        <!-- Playlist / sidebar toggle -->
+        <Button Grid.Column="0"
+                Classes="titlebar-icon-button"
+                Command="{Binding TogglePlaylistCommand}">
+          <fi:FluentIcon Icon="AppsList" FontSize="16" />
+        </Button>
 
+        <!-- App title -->
+        <TextBlock Grid.Column="1"
+                   Text="AvaPlayer"
+                   FontSize="13"
+                   VerticalAlignment="Center"
+                   Classes="player-title" />
+
+        <!-- Settings toggle -->
+        <Button Grid.Column="3"
+                Classes="titlebar-icon-button"
+                Command="{Binding PlayerBar.ToggleSettingsCommand}">
+          <fi:FluentIcon Icon="{Binding PlayerBar.SettingsToggleIcon}" FontSize="16" />
+        </Button>
+
+        <!-- Minimize -->
+        <Button Grid.Column="4"
+                Classes="titlebar-button"
+                Click="OnMinimizeClick">
+          <fi:FluentIcon Icon="Subtract" FontSize="12" />
+        </Button>
+
+        <!-- Maximize / Restore -->
+        <Button x:Name="MaximizeRestoreButton"
+                Grid.Column="5"
+                Classes="titlebar-button"
+                Click="OnMaximizeRestoreClick">
+          <fi:FluentIcon x:Name="MaximizeRestoreIcon"
+                         Icon="FullScreenMaximize"
+                         FontSize="12" />
+        </Button>
+
+        <!-- Close -->
+        <Button Grid.Column="6"
+                Classes="titlebar-button titlebar-close"
+                Click="OnCloseClick">
+          <fi:FluentIcon Icon="Dismiss" FontSize="12" />
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- Playlist drawer -->
     <Grid Classes="playlist-drawer-host"
           Classes.open="{Binding IsPlaylistVisible}">
       <Border Classes="playlist-drawer-scrim"
@@ -52,11 +98,9 @@
                          FontSize="18"
                          FontWeight="SemiBold"
                          VerticalAlignment="Center" />
-
               <Button DockPanel.Dock="Right"
                       Classes="ghost"
-                      Width="36"
-                      Height="36"
+                      Width="36" Height="36"
                       Command="{Binding ClosePlaylistCommand}">
                 <fi:FluentIcon Icon="Dismiss" FontSize="16" />
               </Button>

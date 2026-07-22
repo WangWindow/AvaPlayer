@@ -101,6 +101,9 @@ public partial class PlayerBarViewModel : ViewModelBase
     public partial double Duration { get; set; } = 1;
 
     [ObservableProperty]
+    public partial double CoverSize { get; set; } = 260;
+
+    [ObservableProperty]
     public partial string PositionText { get; set; } = "0:00";
 
     [ObservableProperty]
@@ -204,6 +207,12 @@ public partial class PlayerBarViewModel : ViewModelBase
         ShowAlbumArtPlaceholder = true;
         BackgroundBrush = ColorExtractor.DefaultBackground();
         Lyrics.ClearLyrics();
+        // Reset display state to initial values
+        TitleDisplay = "AvaPlayer";
+        ArtistDisplay = "从左上角添加音乐文件夹";
+        PositionText = "0:00";
+        DurationText = "0:00";
+        CoverSize = 260;
     }
 
     public Task PersistSessionAsync(CancellationToken cancellationToken = default) =>
@@ -691,7 +700,12 @@ public partial class PlayerBarViewModel : ViewModelBase
 
     private static string FormatTime(double seconds)
     {
-        var time = TimeSpan.FromSeconds(Math.Max(0, seconds));
+        if (double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds < 0)
+        {
+            return "0:00";
+        }
+
+        var time = TimeSpan.FromSeconds(seconds);
         return time.Hours > 0
             ? $"{time.Hours}:{time.Minutes:D2}:{time.Seconds:D2}"
             : $"{time.Minutes}:{time.Seconds:D2}";
