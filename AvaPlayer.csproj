@@ -9,7 +9,7 @@
     <ApplicationIcon>Resources\logo.ico</ApplicationIcon>
     <AssemblyTitle>AvaPlayer</AssemblyTitle>
     <Version>$(VersionPrefix)</Version>
-    <AssemblyVersion>1.2.0</AssemblyVersion>
+    <AssemblyVersion>1.2.1</AssemblyVersion>
     <MpvRuntimeRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</MpvRuntimeRid>
     <MpvRuntimeRid Condition="'$(MpvRuntimeRid)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</MpvRuntimeRid>
   </PropertyGroup>
