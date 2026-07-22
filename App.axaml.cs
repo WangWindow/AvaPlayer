@@ -51,6 +51,7 @@ public partial class App : Application
     private bool _isPlayerBarWired;
     private bool _isMediaTransportWired;
     private bool _isIdleRuntimeReleaseScheduled;
+    private int _pendingTrayPlaybackOperations;
 
     public override void Initialize()
     {
@@ -337,26 +338,38 @@ public partial class App : Application
 
     private async Task HandleMediaTransportPlayRequestedAsync()
     {
-        var viewModel = await EnsureRuntimeForTrayAsync();
-        Dispatcher.UIThread.Post(() => viewModel.PlayerBar.ResumeCommand.Execute(null));
+        await ExecuteTrayPlaybackCommandAsync(
+            playerBar =>
+            {
+                playerBar.ResumeCommand.Execute(null);
+                return Task.CompletedTask;
+            },
+            "媒体控制播放");
     }
 
     private async Task HandleMediaTransportPauseRequestedAsync()
     {
-        var viewModel = await EnsureRuntimeForTrayAsync();
-        Dispatcher.UIThread.Post(() => viewModel.PlayerBar.PauseCommand.Execute(null));
+        await ExecuteTrayPlaybackCommandAsync(
+            playerBar =>
+            {
+                playerBar.PauseCommand.Execute(null);
+                return Task.CompletedTask;
+            },
+            "媒体控制暂停");
     }
 
     private async Task HandleMediaTransportNextRequestedAsync()
     {
-        var viewModel = await EnsureRuntimeForTrayAsync();
-        Dispatcher.UIThread.Post(async () => await viewModel.PlayerBar.NextCommand.ExecuteAsync(null));
+        await ExecuteTrayPlaybackCommandAsync(
+            playerBar => playerBar.NextCommand.ExecuteAsync(null),
+            "媒体控制下一首");
     }
 
     private async Task HandleMediaTransportPreviousRequestedAsync()
     {
-        var viewModel = await EnsureRuntimeForTrayAsync();
-        Dispatcher.UIThread.Post(async () => await viewModel.PlayerBar.PreviousCommand.ExecuteAsync(null));
+        await ExecuteTrayPlaybackCommandAsync(
+            playerBar => playerBar.PreviousCommand.ExecuteAsync(null),
+            "媒体控制上一首");
     }
 
     private void OnMediaTransportSeekRequested(object? sender, TimeSpan position)
@@ -440,22 +453,74 @@ public partial class App : Application
 
     private async void OnPreviousTrackClick(object? sender, EventArgs e)
     {
-        var viewModel = await EnsureRuntimeForTrayAsync();
-
-        _ = viewModel.PlayerBar.PreviousCommand.ExecuteAsync(null);
+        await ExecuteTrayPlaybackCommandAsync(
+            playerBar => playerBar.PreviousCommand.ExecuteAsync(null),
+            "托盘上一首");
     }
 
     private async void OnPlayPauseClick(object? sender, EventArgs e)
     {
-        var viewModel = await EnsureRuntimeForTrayAsync();
-        viewModel.PlayerBar.PlayPauseCommand.Execute(null);
+        await ExecuteTrayPlaybackCommandAsync(
+            playerBar =>
+            {
+                playerBar.PlayPauseCommand.Execute(null);
+                return Task.CompletedTask;
+            },
+            "托盘播放暂停");
     }
 
     private async void OnNextTrackClick(object? sender, EventArgs e)
     {
-        var viewModel = await EnsureRuntimeForTrayAsync();
+        await ExecuteTrayPlaybackCommandAsync(
+            playerBar => playerBar.NextCommand.ExecuteAsync(null),
+            "托盘下一首");
+    }
 
-        _ = viewModel.PlayerBar.NextCommand.ExecuteAsync(null);
+    private async Task ExecuteTrayPlaybackCommandAsync(
+        Func<PlayerBarViewModel, Task> command,
+        string operationName)
+    {
+        Interlocked.Increment(ref _pendingTrayPlaybackOperations);
+
+        try
+        {
+            var viewModel = await EnsureRuntimeForTrayAsync();
+            var commandCompletion = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            Dispatcher.UIThread.Post(async () =>
+            {
+                try
+                {
+                    await command(viewModel.PlayerBar);
+                    commandCompletion.SetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    commandCompletion.SetException(ex);
+                }
+            });
+            await commandCompletion.Task;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[App] {Operation}执行失败: {Message}", operationName, ex.Message);
+        }
+        finally
+        {
+            if (Interlocked.Decrement(ref _pendingTrayPlaybackOperations) == 0)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (Volatile.Read(ref _pendingTrayPlaybackOperations) == 0
+                        && _isLightweightModeEnabled
+                        && _mainWindow is null
+                        && _playerService?.IsPlaying != true)
+                    {
+                        ScheduleIdleRuntimeRelease();
+                    }
+                });
+            }
+        }
     }
 
     private async void OnExitClick(object? sender, EventArgs e)
@@ -685,6 +750,12 @@ public partial class App : Application
     {
         if (_runtimeScope is null)
         {
+            return;
+        }
+
+        if (Volatile.Read(ref _pendingTrayPlaybackOperations) > 0)
+        {
+            _isIdleRuntimeReleaseScheduled = false;
             return;
         }
 
