@@ -6,8 +6,69 @@ ROOT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 PROJECT_PATH="${ROOT_DIR}/AvaPlayer.csproj"
 
 APP_NAME="AvaPlayer"
-RID="${RID:-linux-x64}"
+
+detect_default_rid() {
+  case "$(uname -m)" in
+    x86_64|amd64) printf 'linux-x64\n' ;;
+    aarch64|arm64) printf 'linux-arm64\n' ;;
+    *)
+      echo "Unsupported host architecture: $(uname -m). Pass --rid linux-x64 or --rid linux-arm64." >&2
+      exit 1
+      ;;
+  esac
+}
+
+RID="${RID:-$(detect_default_rid)}"
 CONFIGURATION="${CONFIGURATION:-Release}"
+APPIMAGE_TOOL_PATH="${APPIMAGE_TOOL_PATH:-}"
+SKIP_APPIMAGE="${SKIP_APPIMAGE:-false}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --rid|-r)
+      [[ $# -ge 2 ]] || { echo "Missing value for $1." >&2; exit 2; }
+      RID="$2"
+      shift 2
+      ;;
+    --configuration|-c)
+      [[ $# -ge 2 ]] || { echo "Missing value for $1." >&2; exit 2; }
+      CONFIGURATION="$2"
+      shift 2
+      ;;
+    --version)
+      [[ $# -ge 2 ]] || { echo "Missing value for $1." >&2; exit 2; }
+      VERSION="$2"
+      shift 2
+      ;;
+    --appimage-tool)
+      [[ $# -ge 2 ]] || { echo "Missing value for $1." >&2; exit 2; }
+      APPIMAGE_TOOL_PATH="$2"
+      shift 2
+      ;;
+    --skip-appimage)
+      SKIP_APPIMAGE=true
+      shift
+      ;;
+    --help|-h)
+      cat <<'EOF'
+Usage: scripts/package-linux.sh [options]
+
+Options:
+  -r, --rid RID                  Target RID (default: host architecture)
+  -c, --configuration CONFIG     Build configuration (default: Release)
+      --version VERSION          Override application version
+      --appimage-tool PATH       Use a specific appimagetool binary
+      --skip-appimage            Skip AppImage generation
+EOF
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1. Use --help for usage." >&2
+      exit 2
+      ;;
+  esac
+done
+
 VERSION="${VERSION:-$(sed -n 's:.*<AssemblyVersion>\(.*\)</AssemblyVersion>.*:\1:p' "${PROJECT_PATH}" | head -n 1)}"
 VERSION="${VERSION:-1.0.0}"
 
@@ -37,8 +98,15 @@ detect_appimage_tool() {
     return 0
   fi
 
-  if [[ -x "${ROOT_DIR}/artifacts/appimagetool-x86_64.AppImage" ]]; then
-    printf '%s\n' "${ROOT_DIR}/artifacts/appimagetool-x86_64.AppImage"
+  local tool_name
+  case "${RID}" in
+    linux-x64) tool_name="appimagetool-x86_64.AppImage" ;;
+    linux-arm64) tool_name="appimagetool-aarch64.AppImage" ;;
+    *) return 1 ;;
+  esac
+
+  if [[ -x "${ROOT_DIR}/artifacts/${tool_name}" ]]; then
+    printf '%s\n' "${ROOT_DIR}/artifacts/${tool_name}"
     return 0
   fi
 
@@ -69,9 +137,9 @@ note_missing_appimagetool() {
 Skipping AppImage because appimagetool was not found.
 Download one of the official binaries and point the script at it:
   mkdir -p artifacts/
-  curl -L https://github.com/AppImage/appimagetool/releases/latest/download/appimagetool-x86_64.AppImage -o artifacts/appimagetool-x86_64.AppImage
-  chmod +x artifacts/appimagetool-x86_64.AppImage
-  APPIMAGE_TOOL_PATH="$PWD/artifacts/appimagetool-x86_64.AppImage" scripts/package-linux.sh
+  curl -L https://github.com/AppImage/appimagetool/releases/latest/download/appimagetool-<arch>.AppImage -o artifacts/appimagetool-<arch>.AppImage
+  chmod +x artifacts/appimagetool-<arch>.AppImage
+  scripts/package-linux.sh --appimage-tool "$PWD/artifacts/appimagetool-<arch>.AppImage"
 EOF
 }
 
@@ -100,6 +168,11 @@ EOF
 
 package_appimage() {
   local tool_path arch
+  if [[ "${SKIP_APPIMAGE}" == "true" ]]; then
+    echo "Skipping AppImage because it was disabled."
+    return 0
+  fi
+
   if ! tool_path="$(detect_appimage_tool)"; then
     note_missing_appimagetool
     return 0
