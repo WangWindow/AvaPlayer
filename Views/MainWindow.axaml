@@ -26,6 +26,11 @@
               Classes="lyrics-panel">
         <views:LyricsView DataContext="{Binding PlayerBar.Lyrics}" />
       </Border>
+
+      <Border Grid.Column="1"
+              Background="Transparent">
+        <views:Settings DataContext="{Binding PlayerBar}" />
+      </Border>
     </Grid>
 
     <!-- Integrated titlebar row (UWP-style) -->
