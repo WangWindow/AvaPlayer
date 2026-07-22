@@ -120,12 +120,6 @@ dotnet publish -c Release -r linux-x64 --self-contained true
 dotnet publish -c Release -r win-x64 --self-contained true
 ```
 
-如果在非 Windows 主机上交叉发布 Windows：
-
-```bash
-dotnet restore -r win-x64 -p:EnableWindowsTargeting=true -p:TargetFramework=net10.0-windows10.0.19041.0
-dotnet publish -c Release -r win-x64 --self-contained true -p:EnableWindowsTargeting=true -p:TargetFramework=net10.0-windows10.0.19041.0
-```
 
 发布输出通常位于：
 
