@@ -3,7 +3,7 @@
 一个基于 **.NET 10 + Avalonia 12** 的本地桌面音乐播放器，目标是提供：
 
 - 本地优先、尽量少联网的音乐播放体验
-- `libmpv` 驱动的高兼容音频播放
+- `MiniAudioExNET` 驱动的本地音频播放
 - SQLite 本地数据存储
 - 歌词、封面、播放列表、系统托盘、会话恢复
 - Linux MPRIS / Windows 系统媒体控制联动
@@ -25,7 +25,7 @@
   - 上一首 / 播放暂停 / 下一首
   - 顺序播放、列表循环、单曲循环、随机播放
   - 进度拖动、音量调节
-  - 关闭窗口保留托盘，支持轻量模式
+  - 关闭窗口保留托盘，轻量模式下释放主窗口与空闲运行时
 
 - **歌词体验**
   - 优先本地 `.lrc`
@@ -51,7 +51,7 @@
 | 运行时 | .NET 10 |
 | 架构 | MVVM、依赖注入（`Microsoft.Extensions.DependencyInjection`） |
 | ViewModel | CommunityToolkit.Mvvm |
-| 音频后端 | `libmpv` |
+| 音频后端 | `JAJ.Packages.MiniAudioEx` v3.3.5 |
 | 本地数据库 | SQLite（`Microsoft.Data.Sqlite`） |
 | 元数据读取 | TagLibSharp |
 | 网络能力 | `HttpClientFactory` |
@@ -66,61 +66,18 @@ App.axaml / App.axaml.cs          应用生命周期、托盘、轻量模式
 Program.cs                        Avalonia 启动入口
 Views/                            Avalonia 视图
 ViewModels/                       MVVM 视图模型
-Services/Audio/                   libmpv 加载与播放器控制
+Services/Audio/                   MiniAudioEx 音频播放与控制
 Services/Playlist/                曲库扫描、播放队列
 Services/Lyrics/                  歌词抓取、缓存与质量筛选
 Services/AlbumArt/                封面读取与缓存
 Services/Database/                SQLite 持久化
 Resources/Styles.axaml            公共样式与动画
-runtimes/                         可选的按 RID 放置的 libmpv 原生库
 assets/                           README 截图素材
 ```
 
 ## 环境要求
 
 - **.NET 10 SDK**
-- 对应平台可用的 **libmpv 原生库**
-
-## 获取 libmpv
-
-应用启动时会按以下顺序查找 `libmpv`：
-
-1. 程序输出目录根目录
-2. `runtimes/<RID>/native/`
-3. 系统动态库搜索路径
-
-当前代码内置的文件名约定如下：
-
-| 平台 | 期望文件名 |
-| --- | --- |
-| Windows x64 | `libmpv-2.dll` |
-| Linux x64 | `libmpv.so.2` 或 `libmpv.so` |
-| macOS x64 | `libmpv.2.dylib` 或 `libmpv.dylib` |
-| macOS arm64 | `libmpv.2.dylib` 或 `libmpv.dylib` |
-
-### 方式一：随项目一起分发（推荐）
-
-把对应平台的原生库放到下面的目录中：
-
-```text
-runtimes/
-  win-x64/native/libmpv-2.dll
-  linux-x64/native/libmpv.so.2
-  osx-x64/native/libmpv.2.dylib
-  osx-arm64/native/libmpv.2.dylib
-```
-
-这样在 `dotnet build` / `dotnet publish` 时，项目会只复制**当前 RID** 对应的 `runtimes/<RID>` 子目录，不会把所有平台的库一起打包。
-
-### 方式二：使用系统安装的 libmpv
-
-也可以直接使用系统已安装的 `libmpv`：
-
-- **Windows**：从 mpv/libmpv 对应发行包中获取 `libmpv-2.dll`
-- **Linux**：安装提供 `libmpv.so.2` 的发行版包 (仅本地测试，发现需要安装 luajit 否则加载失败)
-- **macOS**：通过 Homebrew 或其他方式安装可提供 `libmpv.dylib` 的 mpv/libmpv
-
-如果系统库已在动态库搜索路径中，项目可以直接加载，无需放进 `runtimes/`。
 
 ## 本地开发
 
@@ -141,8 +98,6 @@ dotnet build
 ```bash
 dotnet run
 ```
-
-> 首次运行前请先确认 `libmpv` 已就绪，否则播放器会提示 `libmpv 不可用，无法播放`。
 
 ## 发布
 
@@ -233,42 +188,16 @@ artifacts/package/<RID>/<Version>/
 
 ### GitHub Actions
 
-仓库内置了发布工作流：
+仓库内置了统一发布工作流：
 
-- `.github/workflows/release-linux.yml`
-- `.github/workflows/release-windows.yml`
+- `.github/workflows/release.yml`
 
 它会在 **tag push** 或手动触发时：
 
-1. 安装 Linux 打包依赖
-2. 从下面的 release 下载 `linux-x64` 的 `libmpv` 运行时包
-3. 调用 `scripts/package-linux.sh`
-4. 上传 `tar.gz` / `zip` / `AppImage` / `SHA256SUMS.txt`
-5. 如果提供了 release tag，则自动发布到 GitHub Release
-
-当前使用的运行时下载地址：
-
-```text
-https://github.com/WangWindow/AvaPlayer/releases/download/v1.0.0/linux-x64.zip
-```
-
-默认使用 `v1.0.0` 这份 runtime release 资源；如果后续 runtime 资产迁移到了别的 tag，可以在手动触发 workflow 时覆盖 `runtime_release_tag`。
-
-Windows workflow 会：
-
-1. 在 `windows-latest` 上安装 **Inno Setup** 和 **WiX CLI**
-2. 从下面的 release 下载 `win-x64` 的 `libmpv` 运行时包
-3. 调用 `scripts/package-windows.ps1`
-4. 上传 `zip` / `exe` / `msi` / `SHA256SUMS.txt`
-5. 在 tag push 或提供 `release_tag` 时同步发布到 GitHub Release
-
-当前使用的 Windows 运行时下载地址：
-
-```text
-https://github.com/WangWindow/AvaPlayer/releases/download/v1.0.0/win-x64.zip
-```
-
-同样，Windows workflow 默认使用 `v1.0.0` 这份 runtime release 资源，也支持在手动触发时覆盖 `runtime_release_tag`。
+1. 按矩阵构建 Windows 和 Linux 的 x64/arm64 产物
+2. 调用对应平台的打包脚本
+3. 上传归档、安装包和 SHA256 校验和
+4. 根据相邻版本 tag 生成 GitHub Release 说明
 
 ## 数据与缓存目录
 
@@ -303,4 +232,4 @@ https://github.com/WangWindow/AvaPlayer/releases/download/v1.0.0/win-x64.zip
 - 数据绑定：默认启用 Compiled Bindings
 - 架构：以服务层 + ViewModel 为中心，不在 UI 中写业务逻辑
 - 数据库：SQLite + 手写 SQL
-- 音频解码/播放：通过 `libmpv` 间接使用底层音频能力，不直接操作编解码细节
+- 音频播放：使用 `JAJ.Packages.MiniAudioEx` 提供的音频后端
