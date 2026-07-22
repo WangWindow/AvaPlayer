@@ -9,6 +9,7 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IPlaylistService _playlistService;
     private bool _isInitialized;
+    private bool _windowEventsWired;
 
     public MainWindowViewModel(
         PlayerBarViewModel playerBar,
@@ -19,8 +20,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Playlist = playlist;
         _playlistService = playlistService;
 
-        Playlist.TrackSelected += OnTrackSelected;
-        PlayerBar.TrackChanged += OnTrackChanged;
+        WireWindowEvents();
     }
 
     public PlayerBarViewModel PlayerBar { get; }
@@ -55,12 +55,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (hydrateVisuals)
         {
+            WireWindowEvents();
             Playlist.Activate();
             Playlist.MarkCurrentTrack(_playlistService.CurrentTrack);
         }
         else
         {
             Playlist.Deactivate();
+            UnwireWindowEvents();
         }
     }
 
@@ -72,6 +74,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IsPlaylistVisible = false;
         Playlist.Deactivate();
         PlayerBar.SuspendVisualHydration();
+        UnwireWindowEvents();
     }
 
     private void OnTrackSelected(object? sender, Track track)
@@ -89,8 +92,31 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (disposing)
         {
-            Playlist.TrackSelected -= OnTrackSelected;
-            PlayerBar.TrackChanged -= OnTrackChanged;
+            UnwireWindowEvents();
         }
+    }
+
+    private void WireWindowEvents()
+    {
+        if (_windowEventsWired)
+        {
+            return;
+        }
+
+        Playlist.TrackSelected += OnTrackSelected;
+        PlayerBar.TrackChanged += OnTrackChanged;
+        _windowEventsWired = true;
+    }
+
+    private void UnwireWindowEvents()
+    {
+        if (!_windowEventsWired)
+        {
+            return;
+        }
+
+        Playlist.TrackSelected -= OnTrackSelected;
+        PlayerBar.TrackChanged -= OnTrackChanged;
+        _windowEventsWired = false;
     }
 }

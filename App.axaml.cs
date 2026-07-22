@@ -778,9 +778,7 @@ public partial class App : Application
             {
                 _mainWindowViewModel.PlayerBar.SuspendVisualHydration();
                 _mainWindowViewModel.ReleaseWindowState();
-                UnwirePlayerBarEvents();
                 _mainWindowViewModel = null;
-                _isPlayerBarWired = false;
             }
 
             _logger?.LogInformation("[LightweightMode] 当前正在播放，保留播放运行时，已释放 UI 状态。");
