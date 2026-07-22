@@ -192,7 +192,7 @@ public sealed class MiniAudioPlayerService : IPlayerService
     {
         lock (_gate)
         {
-            if (_source is null)
+            if (_source is null || _clip is null)
                 return;
 
             _pausedCursor = _source.Cursor;
@@ -211,11 +211,11 @@ public sealed class MiniAudioPlayerService : IPlayerService
     {
         lock (_gate)
         {
-            if (_source is null)
+            if (_source is null || _clip is null)
                 return;
 
+            _source.Play(_clip);
             _source.Cursor = _pausedCursor;
-            _source.Play();
             _pausedCursor = 0;
             _trackingPlayback = true;
             IsPlaying = true;

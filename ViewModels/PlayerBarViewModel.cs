@@ -345,6 +345,11 @@ public partial class PlayerBarViewModel : ViewModelBase
     {
         IsPlaying = isPlaying;
         PlayPauseIcon = isPlaying ? Icon.Pause : Icon.Play;
+
+        if (!isPlaying && CurrentTrack is not null)
+        {
+            _ = PersistPlaybackPositionAsync(Position);
+        }
     }
 
     private void OnPositionChanged(object? sender, double position)
