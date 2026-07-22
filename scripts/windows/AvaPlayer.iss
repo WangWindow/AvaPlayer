@@ -48,8 +48,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#MyPublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\AvaPlayer"; Filename: "{app}\AvaPlayer.exe"; IconFilename: "{#MyRepoRoot}\Resources\logo.ico"
-Name: "{autodesktop}\AvaPlayer"; Filename: "{app}\AvaPlayer.exe"; Tasks: desktopicon; IconFilename: "{#MyRepoRoot}\Resources\logo.ico"
+Name: "{autoprograms}\AvaPlayer"; Filename: "{app}\AvaPlayer.exe"
+Name: "{autodesktop}\AvaPlayer"; Filename: "{app}\AvaPlayer.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\AvaPlayer.exe"; Description: "Run AvaPlayer"; Flags: nowait postinstall skipifsilent

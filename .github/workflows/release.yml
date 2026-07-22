@@ -20,15 +20,20 @@ env:
 jobs:
   build-windows:
     name: Build Windows ${{ matrix.rid }}
-    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
-        rid:
-          - win-x64
-          - win-arm64
+        include:
+          - rid: win-x64
+            runner: windows-2025
+            installer_platform: x64
+          - rid: win-arm64
+            runner: windows-11-arm
+            installer_platform: arm64
+    runs-on: ${{ matrix.runner }}
     env:
       RID: ${{ matrix.rid }}
+      INSTALLER_PLATFORM: ${{ matrix.installer_platform }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -72,7 +77,7 @@ jobs:
               Configuration = "Release"
               Rid = $env:RID
               Version = $env:VERSION
-              SkipMsi = $true
+              InstallerPlatform = $env:INSTALLER_PLATFORM
           }
           if ($env:RID -eq "win-arm64") {
               $arguments.SkipExe = $true

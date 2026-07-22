@@ -2,6 +2,7 @@ param(
     [string]$Rid = "win-x64",
     [string]$Configuration = "Release",
     [string]$Version = "",
+    [string]$InstallerPlatform = "",
     [switch]$SkipPublish,
     [switch]$SkipZip,
     [switch]$SkipExe,
@@ -23,6 +24,14 @@ if (-not $Version) {
 
 if (-not $Version) {
     $Version = "1.0.0"
+}
+
+if (-not $InstallerPlatform) {
+    $InstallerPlatform = switch ($Rid) {
+        "win-x64" { "x64" }
+        "win-arm64" { "arm64" }
+        default { throw "Unsupported Windows RID for MSI packaging: $Rid" }
+    }
 }
 
 $ArtifactRoot = Join-Path $RepoRoot "artifacts\package\$Rid\$Version"
@@ -125,6 +134,7 @@ if (-not $SkipMsi) {
             "-c", "Release",
             "-p:AppPublishDir=$PublishDir",
             "-p:AppVersion=$Version",
+            "-p:InstallerPlatform=$InstallerPlatform",
             "-p:OutputPath=$wixBuildDir"
         )
 
