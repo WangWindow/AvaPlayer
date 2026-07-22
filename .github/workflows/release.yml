@@ -68,14 +68,14 @@ jobs:
         env:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          $arguments = @(
-              "-Configuration", "Release",
-              "-Rid", $env:RID,
-              "-Version", $env:VERSION,
-              "-SkipMsi"
-          )
+          $arguments = @{
+              Configuration = "Release"
+              Rid = $env:RID
+              Version = $env:VERSION
+              SkipMsi = $true
+          }
           if ($env:RID -eq "win-arm64") {
-              $arguments += @("-SkipExe")
+              $arguments.SkipExe = $true
           }
           & .\scripts\package-windows.ps1 @arguments
 
