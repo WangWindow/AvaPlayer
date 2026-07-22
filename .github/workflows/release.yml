@@ -1,0 +1,264 @@
+name: Release AvaPlayer
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to create/update. Leave empty to only upload workflow artifacts."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: 10.0.x
+
+jobs:
+  build-windows:
+    name: Build Windows ${{ matrix.rid }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid:
+          - win-x64
+          - win-arm64
+    env:
+      RID: ${{ matrix.rid }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install Inno Setup for x64 installer
+        if: matrix.rid == 'win-x64'
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $innoDirs = @(
+              (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6"),
+              (Join-Path $env:ProgramFiles "Inno Setup 6")
+          ) | Where-Object { Test-Path -LiteralPath $_ }
+          foreach ($innoDir in $innoDirs) {
+              $innoDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+      - name: Read build metadata
+        id: meta
+        shell: pwsh
+        run: |
+          [xml]$projectXml = Get-Content -LiteralPath "AvaPlayer.csproj"
+          $version = ($projectXml.Project.PropertyGroup | Where-Object { $_.AssemblyVersion } | Select-Object -First 1).AssemblyVersion
+          if (-not $version) { $version = "1.0.0" }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "artifact_dir=artifacts/package/$env:RID/$version" >> $env:GITHUB_OUTPUT
+
+      - name: Package Windows artifacts
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          $arguments = @(
+              "-Configuration", "Release",
+              "-Rid", $env:RID,
+              "-Version", $env:VERSION,
+              "-SkipMsi"
+          )
+          if ($env:RID -eq "win-arm64") {
+              $arguments += @("-SkipExe")
+          }
+          & .\scripts\package-windows.ps1 @arguments
+
+      - name: Generate checksums
+        shell: pwsh
+        env:
+          ARTIFACT_DIR: ${{ steps.meta.outputs.artifact_dir }}
+        run: |
+          $artifactDir = $env:ARTIFACT_DIR
+          $lines = Get-ChildItem -LiteralPath $artifactDir -File |
+              Where-Object { $_.Extension -in @(".zip", ".exe", ".msi") } |
+              Sort-Object Name |
+              ForEach-Object {
+                  $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+                  "$hash *$($_.Name)"
+              }
+          $lines | Set-Content -LiteralPath (Join-Path $artifactDir "SHA256SUMS-$env:RID.txt") -Encoding ascii
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: avaplayer-${{ matrix.rid }}-${{ steps.meta.outputs.version }}
+          path: |
+            ${{ steps.meta.outputs.artifact_dir }}/AvaPlayer-*
+            ${{ steps.meta.outputs.artifact_dir }}/SHA256SUMS-${{ matrix.rid }}.txt
+
+  build-linux:
+    name: Build Linux ${{ matrix.rid }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            runner: ubuntu-latest
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+    env:
+      RID: ${{ matrix.rid }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install Linux packaging dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev curl unzip zip desktop-file-utils
+
+      - name: Download appimagetool
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          curl -L https://github.com/AppImage/appimagetool/releases/latest/download/appimagetool-x86_64.AppImage \
+            -o artifacts/appimagetool-x86_64.AppImage
+          chmod +x artifacts/appimagetool-x86_64.AppImage
+
+      - name: Read build metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(sed -n 's:.*<AssemblyVersion>\(.*\)</AssemblyVersion>.*:\1:p' AvaPlayer.csproj | head -n 1)"
+          VERSION="${VERSION:-1.0.0}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "artifact_dir=artifacts/package/${RID}/${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Package Linux artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/package-linux.sh
+          CONFIGURATION=Release RID="${RID}" ./scripts/package-linux.sh
+
+      - name: Generate checksums
+        shell: bash
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          ARTIFACT_DIR: ${{ steps.meta.outputs.artifact_dir }}
+        run: |
+          set -euo pipefail
+          cd "${ARTIFACT_DIR}"
+          sha256sum AvaPlayer-* > "SHA256SUMS-${RID}.txt"
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: avaplayer-${{ matrix.rid }}-${{ steps.meta.outputs.version }}
+          path: |
+            ${{ steps.meta.outputs.artifact_dir }}/AvaPlayer-*
+            ${{ steps.meta.outputs.artifact_dir }}/SHA256SUMS-${{ matrix.rid }}.txt
+
+  release:
+    name: Create GitHub Release
+    needs:
+      - build-windows
+      - build-linux
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: avaplayer-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Determine release tags
+        id: meta
+        shell: bash
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="${INPUT_RELEASE_TAG}"
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
+            RELEASE_TAG="${GITHUB_REF_NAME}"
+          fi
+          if [[ -z "${RELEASE_TAG}" ]]; then
+            echo "release_tag is required for workflow_dispatch without a tag ref." >&2
+            exit 1
+          fi
+
+          PREVIOUS_TAG=""
+          while IFS= read -r tag; do
+            if [[ "${tag}" != "${RELEASE_TAG}" ]]; then
+              PREVIOUS_TAG="${tag}"
+              break
+            fi
+          done < <(git tag --sort=-version:refname)
+
+          echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "previous_tag=${PREVIOUS_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Create release with generated changelog
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.meta.outputs.release_tag }}
+          PREVIOUS_TAG: ${{ steps.meta.outputs.previous_tag }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            release_args=(
+              release create "${RELEASE_TAG}"
+              --target "${GITHUB_SHA}"
+              --title "${RELEASE_TAG}"
+              --generate-notes
+            )
+            if [[ -n "${PREVIOUS_TAG}" ]]; then
+              release_args+=(--notes-start-tag "${PREVIOUS_TAG}")
+            fi
+            gh "${release_args[@]}"
+          fi
+
+      - name: Upload all release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.meta.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find release-assets -type f \( \
+            -name '*.zip' -o -name '*.tar.gz' -o -name '*.AppImage' -o \
+            -name '*.exe' -o -name '*.msi' -o -name 'SHA256SUMS-*.txt' \
+          \) -print)
+          if (( ${#files[@]} == 0 )); then
+            echo "No release assets were produced." >&2
+            exit 1
+          fi
+          gh release upload "${RELEASE_TAG}" "${files[@]}" --clobber
