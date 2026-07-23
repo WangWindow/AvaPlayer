@@ -22,6 +22,7 @@ public partial class LyricsView : UserControl
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         LyricsScroller.SizeChanged += OnLyricsScrollerSizeChanged;
+        AttachedToVisualTree += OnAttachedToVisualTree;
         DetachedFromVisualTree += OnDetachedFromVisualTree;
     }
 
@@ -236,5 +237,10 @@ public partial class LyricsView : UserControl
             _viewModel.ScrollToLineRequested -= OnScrollToLineRequested;
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         }
+    }
+
+    private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        OnDataContextChanged(this, EventArgs.Empty);
     }
 }

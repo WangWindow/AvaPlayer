@@ -33,7 +33,7 @@ public partial class LyricLineViewModel : ObservableObject
     public TimeSpan Time { get; init; }
 }
 
-public partial class LyricsViewModel : ViewModelBase
+public partial class LyricsViewModel : ObservableObject
 {
     private const string FontPresetSettingKey = "lyrics-font-preset";
     private const string AutoCenterSettingKey = "lyrics-auto-center";

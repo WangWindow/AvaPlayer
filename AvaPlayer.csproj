@@ -8,10 +8,9 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Resources\logo.ico</ApplicationIcon>
     <AssemblyTitle>AvaPlayer</AssemblyTitle>
+    <VersionPrefix>1.2.2</VersionPrefix>
     <Version>$(VersionPrefix)</Version>
-    <AssemblyVersion>1.2.1</AssemblyVersion>
-    <MpvRuntimeRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</MpvRuntimeRid>
-    <MpvRuntimeRid Condition="'$(MpvRuntimeRid)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</MpvRuntimeRid>
+    <AssemblyVersion>$(VersionPrefix)</AssemblyVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
@@ -31,16 +30,8 @@
     <DefineConstants>$(DefineConstants);WINDOWS_SMTC</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <Version>$(VersionPrefix)</Version>
-    <AssemblyVersion>1.1.6</AssemblyVersion>
-  </PropertyGroup>
-
   <ItemGroup>
     <AvaloniaResource Include="Resources\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />
@@ -61,9 +52,5 @@
     <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.0" PrivateAssets="All" />
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" PrivateAssets="All" />
     <PackageReference Include="HotAvalonia" Version="3.1.4" PrivateAssets="All" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(Configuration)' == 'Release'">
-    <TrimmerRootAssembly Include="TagLibSharp" />
   </ItemGroup>
 </Project>

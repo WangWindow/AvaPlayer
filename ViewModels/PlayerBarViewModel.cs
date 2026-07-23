@@ -16,10 +16,11 @@ using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.ViewModels;
 
-public partial class PlayerBarViewModel : ViewModelBase
+public partial class PlayerBarViewModel : ObservableObject, IDisposable
 {
     private const string PlaybackPositionSettingKey = "playback-position-seconds";
     private const string VolumeSettingKey = "player-volume";
+    private const string TrayIconStyleSettingKey = "tray-icon-style";
 
     private readonly IDatabaseService _databaseService;
     private readonly IPlayerService _player;
@@ -34,8 +35,10 @@ public partial class PlayerBarViewModel : ViewModelBase
     private bool _isInitialized;
     private bool _isLoadingSettings;
     private bool _isVisualHydrationEnabled = true;
+    private int _isAdvancing;
     private int _visualHydrationVersion;
     private string? _hydratedTrackPath;
+    private bool _disposed;
 
     public PlayerBarViewModel(
         IPlayerService player,
@@ -130,6 +133,12 @@ public partial class PlayerBarViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool IsNetworkEnabled { get; set; } = true;
 
+    [ObservableProperty]
+    public partial string TrayIconStyle { get; set; } = "dark";
+
+    public bool IsTrayIconLight => TrayIconStyle == "light";
+    public bool IsTrayIconDark => TrayIconStyle == "dark";
+
     public LyricsViewModel Lyrics { get; }
 
     public event EventHandler<Track?>? TrackChanged;
@@ -173,6 +182,7 @@ public partial class PlayerBarViewModel : ViewModelBase
         SyncStateFromServices();
         await Lyrics.InitializeAsync(cancellationToken);
         await RestoreVolumeAsync(cancellationToken);
+        await RestoreTrayIconStyleAsync(cancellationToken);
         await RestorePlaybackSessionAsync(cancellationToken);
         _isInitialized = true;
     }
@@ -305,6 +315,12 @@ public partial class PlayerBarViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleSettings() => IsSettingsVisible = !IsSettingsVisible;
 
+    [RelayCommand]
+    private void UseLightTrayIcon() => TrayIconStyle = "light";
+
+    [RelayCommand]
+    private void UseDarkTrayIcon() => TrayIconStyle = "dark";
+
     partial void OnVolumeChanged(double value)
     {
         if (_player.IsReady)
@@ -345,6 +361,13 @@ public partial class PlayerBarViewModel : ViewModelBase
 
     partial void OnPlaybackModeChanged(PlaybackMode value) => UpdatePlaybackModeDisplay();
 
+    partial void OnTrayIconStyleChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsTrayIconLight));
+        OnPropertyChanged(nameof(IsTrayIconDark));
+        _ = _databaseService.SaveSettingAsync(TrayIconStyleSettingKey, value);
+    }
+
     private void OnPlaybackStateChanged(object? sender, bool isPlaying)
     {
         IsPlaying = isPlaying;
@@ -376,23 +399,46 @@ public partial class PlayerBarViewModel : ViewModelBase
         }
     }
 
-    private async void OnTrackEnded(object? sender, EventArgs e)
+    private void OnTrackEnded(object? sender, EventArgs e)
     {
-        var next = _playlist.GetNextTrack();
-        if (next is null)
+        if (Interlocked.Exchange(ref _isAdvancing, 1) != 0)
         {
-            _logger.LogInformation("[Player] 当前曲目播放结束，没有可自动切换的下一首。");
-            IsPlaying = false;
-            PlayPauseIcon = Icon.Play;
             return;
         }
 
-        _logger.LogInformation("[Player] 当前曲目播放结束，准备自动切换到: {Title}", next.DisplayTitle);
-        var started = await TryStartTrackAsync(next, "自动切换下一首");
-        if (!started)
+        _ = AdvanceAfterTrackEndedAsync();
+    }
+
+    private async Task AdvanceAfterTrackEndedAsync()
+    {
+        try
         {
+            var next = _playlist.GetNextTrack();
+            if (next is null)
+            {
+                _logger.LogInformation("[Player] 当前曲目播放结束，没有可自动切换的下一首。");
+                IsPlaying = false;
+                PlayPauseIcon = Icon.Play;
+                return;
+            }
+
+            _logger.LogInformation("[Player] 当前曲目播放结束，准备自动切换到: {Title}", next.DisplayTitle);
+            var started = await TryStartTrackAsync(next, "自动切换下一首");
+            if (!started)
+            {
+                IsPlaying = false;
+                PlayPauseIcon = Icon.Play;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Player] 自动切换下一首失败: {Message}", ex.Message);
             IsPlaying = false;
             PlayPauseIcon = Icon.Play;
+        }
+        finally
+        {
+            Volatile.Write(ref _isAdvancing, 0);
         }
     }
 
@@ -458,6 +504,8 @@ public partial class PlayerBarViewModel : ViewModelBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[Player] {Reason}失败: {Title} ({FilePath}) - {Message}", reason, track.DisplayTitle, track.FilePath, ex.Message);
+            IsPlaying = false;
+            PlayPauseIcon = Icon.Play;
             return false;
         }
 
@@ -580,6 +628,12 @@ public partial class PlayerBarViewModel : ViewModelBase
     private void OnLyricsSeekRequested(object? sender, TimeSpan time)
     {
         Position = Math.Clamp(time.TotalSeconds, 0, Duration);
+
+        if (!_player.IsPlaying)
+        {
+            _player.Resume();
+        }
+
         _player.Seek(time.TotalSeconds);
     }
 
@@ -637,6 +691,25 @@ public partial class PlayerBarViewModel : ViewModelBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[Player] 读取音量设置失败: {Message}", ex.Message);
+        }
+    }
+
+    private async Task RestoreTrayIconStyleAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var savedStyle = await _databaseService.GetSettingAsync(TrayIconStyleSettingKey, cancellationToken);
+            if (savedStyle is "light" or "dark")
+            {
+                TrayIconStyle = savedStyle;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Player] 读取托盘图标设置失败: {Message}", ex.Message);
         }
     }
 
@@ -716,13 +789,14 @@ public partial class PlayerBarViewModel : ViewModelBase
             : $"{time.Minutes}:{time.Seconds:D2}";
     }
 
-    protected override void Dispose(bool disposing)
+    public void Dispose()
     {
-        if (!disposing)
+        if (_disposed)
         {
             return;
         }
 
+        _disposed = true;
         CancelLyricsLoading();
         CancelAlbumArtLoading();
         ReplaceAlbumArt(null);

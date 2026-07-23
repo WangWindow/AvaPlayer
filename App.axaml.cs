@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Runtime;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -26,8 +25,8 @@ namespace AvaPlayer;
 public partial class App : Application
 {
     private const string LightweightModeSettingKey = "lightweight-mode-enabled";
-    private const string DarkTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray-light.ico";
-    private const string LightTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray.ico";
+    private const string DarkTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray.ico";
+    private const string LightTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray-light.ico";
 
     private ServiceProvider? _services;
     private IServiceScope? _runtimeScope;
@@ -294,8 +293,7 @@ public partial class App : Application
     {
         _darkTrayIcon = LoadWindowIcon(DarkTrayIconResourceUri);
         _lightTrayIcon = LoadWindowIcon(LightTrayIconResourceUri);
-        ActualThemeVariantChanged += OnActualThemeVariantChanged;
-        UpdateTrayIconTheme();
+        ApplyTrayIconStyle("dark");
     }
 
     private void WireMediaTransport()
@@ -405,7 +403,18 @@ public partial class App : Application
 
     private void OnPlayerBarPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (_mediaTransportService is null || sender is not PlayerBarViewModel playerBar)
+        if (sender is not PlayerBarViewModel playerBar)
+        {
+            return;
+        }
+
+        if (e.PropertyName == nameof(PlayerBarViewModel.TrayIconStyle))
+        {
+            ApplyTrayIconStyle(playerBar.TrayIconStyle);
+            return;
+        }
+
+        if (_mediaTransportService is null)
         {
             return;
         }
@@ -639,7 +648,6 @@ public partial class App : Application
             await PersistPlaybackSessionAsync();
             _mainWindowViewModel?.ReleaseWindowState();
             DisposeRuntimeIfIdle();
-            await TrimLightweightMemoryAsync("轻量模式无窗口");
             return;
         }
 
@@ -752,7 +760,6 @@ public partial class App : Application
         {
             _mainWindowViewModel?.ReleaseWindowState();
             DisposeRuntimeIfIdle();
-            _ = TrimLightweightMemoryAsync("主窗口关闭后");
         }
     }
 
@@ -833,7 +840,6 @@ public partial class App : Application
         await PersistPlaybackSessionAsync();
         _mainWindowViewModel?.ReleaseWindowState();
         DisposeRuntimeIfIdle();
-        await TrimLightweightMemoryAsync("轻量模式播放停止后");
     }
 
     private void UnwireRuntimeEvents()
@@ -880,8 +886,6 @@ public partial class App : Application
             _desktop.Exit -= OnDesktopExit;
         }
 
-        ActualThemeVariantChanged -= OnActualThemeVariantChanged;
-
         if (_singleInstanceManager is not null)
         {
             _singleInstanceManager.ActivationRequested -= OnSingleInstanceActivationRequested;
@@ -905,15 +909,6 @@ public partial class App : Application
         _services?.Dispose();
     }
 
-    private static async Task TrimLightweightMemoryAsync(string reason)
-    {
-        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
-        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
-    }
-
     private void SyncLightweightModeMenuState()
     {
         if (_lightweightModeMenuItem is not null)
@@ -922,9 +917,7 @@ public partial class App : Application
         }
     }
 
-    private void OnActualThemeVariantChanged(object? sender, EventArgs e) => UpdateTrayIconTheme();
-
-    private void UpdateTrayIconTheme()
+    private void ApplyTrayIconStyle(string style)
     {
         var trayIcons = TrayIcon.GetIcons(this);
         if (trayIcons is null)
@@ -932,10 +925,7 @@ public partial class App : Application
             return;
         }
 
-        var selectedIcon = ActualThemeVariant == ThemeVariant.Light
-            ? _lightTrayIcon ?? _darkTrayIcon
-            : _darkTrayIcon ?? _lightTrayIcon;
-
+        var selectedIcon = style == "light" ? _lightTrayIcon : _darkTrayIcon;
         if (selectedIcon is null)
         {
             return;

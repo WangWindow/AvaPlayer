@@ -27,9 +27,9 @@ jobs:
           - rid: win-x64
             runner: windows-2025
             installer_platform: x64
-          - rid: win-arm64
-            runner: windows-11-arm
-            installer_platform: arm64
+          # - rid: win-arm64
+          #   runner: windows-11-arm
+          #   installer_platform: arm64
     runs-on: ${{ matrix.runner }}
     env:
       RID: ${{ matrix.rid }}
@@ -115,9 +115,9 @@ jobs:
       matrix:
         include:
           - rid: linux-x64
-            runner: ubuntu-latest
-          - rid: linux-arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-24.04
+          # - rid: linux-arm64
+          #   runner: ubuntu-24.04-arm
     env:
       RID: ${{ matrix.rid }}
     steps:

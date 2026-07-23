@@ -107,13 +107,17 @@ public sealed class MiniAudioPlayerService : IPlayerService
 
         if (!IsReady)
         {
-            Console.Error.WriteLine($"[AvaPlayer] MiniAudioEx 不可用，无法播放: {filePath}");
-            return Task.CompletedTask;
+            throw new InvalidOperationException(
+                $"MiniAudioEx 音频引擎不可用，无法播放: {filePath}. " +
+                (InitializationError ?? "未提供初始化错误信息。"));
         }
+
+        bool wasPlaying;
+        Exception? loadError = null;
 
         lock (_gate)
         {
-            // Release previous resources before loading new track
+            wasPlaying = IsPlaying;
             DisposeCurrentInternal();
 
             AudioClip? clip = null;
@@ -172,9 +176,18 @@ public sealed class MiniAudioPlayerService : IPlayerService
                 IsPlaying = false;
                 _pausedCursor = 0;
 
-                Console.Error.WriteLine($"[AvaPlayer] 加载音频文件失败: {filePath} - {ex.Message}");
-                return Task.CompletedTask;
+                loadError = new InvalidOperationException($"加载音频文件失败: {filePath}", ex);
             }
+        }
+
+        if (loadError is not null)
+        {
+            if (wasPlaying)
+            {
+                PlaybackStateChanged?.Invoke(this, false);
+            }
+
+            throw loadError;
         }
 
         // Fire events outside lock to avoid nested lock risk from subscribers

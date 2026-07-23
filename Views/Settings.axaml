@@ -102,6 +102,33 @@
           </Border>
 
           <Border Classes="settings-section">
+            <StackPanel Spacing="14">
+              <StackPanel Spacing="4">
+                <TextBlock Text="托盘图标"
+                           Classes="settings-label"
+                           FontSize="14"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="选择浅色或深色托盘图标。"
+                           Classes="settings-description"
+                           FontSize="12"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="settings-chip"
+                        Classes.selected="{Binding IsTrayIconLight}"
+                        Command="{Binding UseLightTrayIconCommand}">
+                  <TextBlock Text="浅色" />
+                </Button>
+                <Button Classes="settings-chip"
+                        Classes.selected="{Binding IsTrayIconDark}"
+                        Command="{Binding UseDarkTrayIconCommand}">
+                  <TextBlock Text="深色" />
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="settings-section">
             <Grid ColumnDefinitions="*,Auto"
                   RowDefinitions="Auto,Auto"
                   RowSpacing="4">

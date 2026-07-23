@@ -5,11 +5,12 @@ using AvaPlayer.Services.Playlist;
 
 namespace AvaPlayer.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ObservableObject, IDisposable
 {
     private readonly IPlaylistService _playlistService;
     private bool _isInitialized;
     private bool _windowEventsWired;
+    private bool _disposed;
 
     public MainWindowViewModel(
         PlayerBarViewModel playerBar,
@@ -88,12 +89,15 @@ public partial class MainWindowViewModel : ViewModelBase
         Playlist.MarkCurrentTrack(track);
     }
 
-    protected override void Dispose(bool disposing)
+    public void Dispose()
     {
-        if (disposing)
+        if (_disposed)
         {
-            UnwireWindowEvents();
+            return;
         }
+
+        _disposed = true;
+        UnwireWindowEvents();
     }
 
     private void WireWindowEvents()

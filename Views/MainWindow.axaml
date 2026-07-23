@@ -16,7 +16,7 @@
   <Panel>
     <!-- Main content area -->
     <Grid Margin="0,32,0,0"
-          ColumnDefinitions="46*,54*">
+           ColumnDefinitions="50*,50*">
       <Border Grid.Column="0"
               Classes="player-panel">
         <views:PlayerBarView DataContext="{Binding PlayerBar}" />
@@ -28,7 +28,8 @@
       </Border>
 
       <Border Grid.Column="1"
-              Background="Transparent">
+              Background="Transparent"
+              IsHitTestVisible="{Binding PlayerBar.IsSettingsVisible}">
         <views:Settings DataContext="{Binding PlayerBar}" />
       </Border>
     </Grid>

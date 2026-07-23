@@ -44,13 +44,14 @@ public partial class TrackItemViewModel : ObservableObject
     }
 }
 
-public partial class PlaylistViewModel : ViewModelBase
+public partial class PlaylistViewModel : ObservableObject, IDisposable
 {
     private readonly IPlaylistService _playlistService;
     private readonly ILogger<PlaylistViewModel> _logger;
     private readonly Dictionary<string, TrackItemViewModel> _trackCache = new(StringComparer.OrdinalIgnoreCase);
     private bool _refreshScheduled;
     private bool _isUiActive;
+    private bool _disposed;
 
     public PlaylistViewModel(IPlaylistService playlistService, ILogger<PlaylistViewModel> logger)
     {
@@ -407,13 +408,14 @@ public partial class PlaylistViewModel : ViewModelBase
         _refreshScheduled = false;
     }
 
-    protected override void Dispose(bool disposing)
+    public void Dispose()
     {
-        if (!disposing)
+        if (_disposed)
         {
             return;
         }
 
+        _disposed = true;
         _playlistService.Queue.CollectionChanged -= OnQueueCollectionChanged;
         ClearTrackCache();
     }
