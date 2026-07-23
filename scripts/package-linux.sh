@@ -69,6 +69,7 @@ EOF
   esac
 done
 
+VERSION="${VERSION:-$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' "${PROJECT_PATH}" | head -n 1)}"
 VERSION="${VERSION:-$(sed -n 's:.*<AssemblyVersion>\(.*\)</AssemblyVersion>.*:\1:p' "${PROJECT_PATH}" | head -n 1)}"
 VERSION="${VERSION:-1.0.0}"
 
@@ -153,6 +154,7 @@ Type=Application
 Terminal=false
 Categories=AudioVideo;Audio;Player;
 Keywords=music;audio;player;
+X-AppImage-Version=${VERSION}
 EOF
 }
 
@@ -164,6 +166,28 @@ export LD_LIBRARY_PATH="$HERE/usr/bin${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 exec "$HERE/usr/bin/AvaPlayer" "$@"
 EOF
   chmod +x "${APPDIR}/AppRun"
+}
+
+create_metainfo() {
+  local metainfo_dir="${APPDIR}/usr/share/metainfo"
+  mkdir -p "${metainfo_dir}"
+  cat > "${metainfo_dir}/${APP_NAME}.metainfo.xml" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>${APP_NAME}</id>
+  <name>${APP_NAME}</name>
+  <summary>Audio player</summary>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>A lightweight audio player built with Avalonia.</p>
+  </description>
+  <releases>
+    <release version="${VERSION}" date="$(date +%Y-%m-%d)" />
+  </releases>
+  <update_contact></update_contact>
+</component>
+EOF
 }
 
 package_appimage() {
@@ -187,6 +211,7 @@ package_appimage() {
   cp "${ICON_PATH}" "${APPDIR}/.DirIcon"
   create_desktop_file
   create_apprun
+  create_metainfo
 
   if command -v desktop-file-validate >/dev/null 2>&1; then
     desktop-file-validate "${APPDIR}/${APP_NAME}.desktop"
@@ -195,7 +220,7 @@ package_appimage() {
   fi
 
   mkdir -p "$(dirname "${APPIMAGE_PATH}")"
-  APPIMAGE_EXTRACT_AND_RUN=1 ARCH="${arch}" "${tool_path}" "${APPDIR}" "${APPIMAGE_PATH}"
+  VERSION="${VERSION}" APPIMAGE_EXTRACT_AND_RUN=1 ARCH="${arch}" "${tool_path}" "${APPDIR}" "${APPIMAGE_PATH}"
 }
 
 main() {
@@ -210,6 +235,9 @@ main() {
     -r "${RID}" \
     --self-contained true \
     -o "${PUBLISH_DIR}"
+
+  # Remove debug symbol files (.pdb) from publish output before packaging
+  find "${PUBLISH_DIR}" -name '*.pdb' -type f -delete
 
   tar -C "${PUBLISH_DIR}" -czf "${TAR_PATH}" .
 

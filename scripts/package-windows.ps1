@@ -19,7 +19,10 @@ $WindowsTargetFramework = "net10.0-windows10.0.19041.0"
 
 if (-not $Version) {
     [xml]$ProjectXml = Get-Content -LiteralPath $ProjectPath
-    $Version = ($ProjectXml.Project.PropertyGroup | Where-Object { $_.AssemblyVersion } | Select-Object -First 1).AssemblyVersion
+    $Version = ($ProjectXml.Project.PropertyGroup | Select-Object -First 1).VersionPrefix
+    if (-not $Version) {
+        $Version = ($ProjectXml.Project.PropertyGroup | Where-Object { $_.AssemblyVersion } | Select-Object -First 1).AssemblyVersion
+    }
 }
 
 if (-not $Version) {
@@ -77,6 +80,11 @@ if (-not $SkipPublish) {
         "-p:TargetFramework=$WindowsTargetFramework",
         "-o", $PublishDir
     )
+}
+
+# Remove debug symbol files (.pdb) from publish output before packaging
+if (Test-Path -LiteralPath $PublishDir) {
+    Get-ChildItem -Path $PublishDir -Recurse -Filter '*.pdb' -File | Remove-Item -Force
 }
 
 New-Item -ItemType Directory -Path $ArtifactRoot -Force | Out-Null
