@@ -55,6 +55,14 @@ public partial class PlayerBarView : UserControl
         if (DataContext is PlayerBarViewModel viewModel)
         {
             viewModel.IsUserSeeking = false;
+
+            // If paused, resume before seek so the new position takes effect
+            // instead of being silently discarded by the saved pause cursor.
+            if (!viewModel.IsPlaying)
+            {
+                viewModel.ResumeCommand.Execute(null);
+            }
+
             viewModel.SeekCommand.Execute(viewModel.Position);
         }
     }

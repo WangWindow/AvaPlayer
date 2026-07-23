@@ -264,6 +264,9 @@ public sealed class MiniAudioPlayerService : IPlayerService
     /// <summary>
     /// Seeks to the specified position in seconds.
     /// Uses <see cref="AudioSource.Cursor"/> to set the PCM frame position.
+    /// While paused, also mirrors the new position into <see cref="_pausedCursor"/>
+    /// so that the next <see cref="Resume"/> reads the up-to-date value instead of
+    /// the position captured at <see cref="Pause"/> time.
     /// </summary>
     public void Seek(double seconds)
     {
@@ -282,6 +285,14 @@ public sealed class MiniAudioPlayerService : IPlayerService
             frame = Math.Min(frame, length > 0 ? length - 1UL : 0UL);
 
             _source.Cursor = frame;
+
+            // Keep _pausedCursor in sync when paused: Resume() reads from
+            // _pausedCursor, so without this mirror a seek-while-paused would
+            // be silently discarded when the user resumes playback.
+            if (!_trackingPlayback)
+            {
+                _pausedCursor = frame;
+            }
         }
     }
 
@@ -370,23 +381,46 @@ public sealed class MiniAudioPlayerService : IPlayerService
             return;
 
         // Step 2: Poll current position and fire PositionChanged
+        double position;
+        bool reachedEnd;
         try
         {
             var cursor = source.Cursor;
+            var length = source.Length;
             var sampleRate = AudioContext.SampleRate;
-            var position = sampleRate > 0 ? (double)cursor / sampleRate : 0.0;
-            PositionChanged?.Invoke(this, position);
+            position = sampleRate > 0 ? (double)cursor / sampleRate : 0.0;
+
+            // Source of truth for "playback finished": cursor reached the end.
+            // MiniAudioEx's IsPlaying flag is not always cleared on natural
+            // completion, so we must not rely on it alone for state transitions.
+            reachedEnd = length > 0 && cursor >= length;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[AvaPlayer] 获取播放位置失败: {ex.Message}");
+            return;
         }
 
-        // Step 3: Detect natural track end (source stopped without user intervention)
-        if (trackingPlayback && !source.IsPlaying)
+        // Step 3: Detect natural track end and reconcile state machine
+        // Trigger condition is either:
+        //   (a) source.IsPlaying has gone false (engine notified us), or
+        //   (b) cursor reached the end (definitive: position >= duration)
+        // In case (b) we must explicitly Stop the source so the engine state
+        // matches our local state; otherwise the engine keeps reporting
+        // IsPlaying=true and the state machine drifts out of sync.
+        if (trackingPlayback && (!source.IsPlaying || reachedEnd))
         {
             lock (_gate)
             {
+                if (reachedEnd && source.IsPlaying)
+                {
+                    try { source.Stop(); }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"[AvaPlayer] 曲终停止 source 失败: {ex.Message}");
+                    }
+                }
+
                 _trackingPlayback = false;
                 IsPlaying = false;
             }
@@ -413,5 +447,8 @@ public sealed class MiniAudioPlayerService : IPlayerService
                 TrackEnded?.Invoke(this, EventArgs.Empty);
             }
         }
+
+        // Step 4: Publish the (possibly clamped) position to listeners
+        PositionChanged?.Invoke(this, position);
     }
 }
