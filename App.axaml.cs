@@ -25,6 +25,7 @@ namespace AvaPlayer;
 public partial class App : Application
 {
     private const string LightweightModeSettingKey = "lightweight-mode-enabled";
+    private const string TrayIconStyleSettingKey = "tray-icon-style";
     private const string DarkTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray.ico";
     private const string LightTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray-light.ico";
 
@@ -293,7 +294,29 @@ public partial class App : Application
     {
         _darkTrayIcon = LoadWindowIcon(DarkTrayIconResourceUri);
         _lightTrayIcon = LoadWindowIcon(LightTrayIconResourceUri);
-        ApplyTrayIconStyle("dark");
+
+        // Read persisted tray icon style from DB (initialized earlier by
+        // LoadLightweightModeSetting). This ensures the tray icon respects
+        // the user's saved preference even when starting in lightweight
+        // (tray-only) mode, before the ViewModel is ever created.
+        var style = "dark";
+        try
+        {
+            if (_databaseService is not null)
+            {
+                var saved = Task.Run(async () =>
+                    await _databaseService.GetSettingAsync(TrayIconStyleSettingKey)
+                ).GetAwaiter().GetResult();
+                if (saved is "light" or "dark")
+                    style = saved;
+            }
+        }
+        catch
+        {
+            // Default to dark on any error
+        }
+
+        ApplyTrayIconStyle(style);
     }
 
     private void WireMediaTransport()
