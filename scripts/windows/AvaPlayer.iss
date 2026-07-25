@@ -1,7 +1,7 @@
 #define MyAppName "AvaPlayer"
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.0"
+  #error MyAppVersion is not defined.
 #endif
 
 #ifndef MyPublishDir
@@ -26,7 +26,7 @@ DefaultGroupName=AvaPlayer
 DisableProgramGroupPage=yes
 OutputDir={#MyOutputDir}
 OutputBaseFilename=AvaPlayer-{#MyAppVersion}-win-x64-setup
-SetupIconFile={#MyRepoRoot}\Resources\logo.ico
+SetupIconFile={#MyRepoRoot}\AvaPlayer\Resources\logo.ico
 UninstallDisplayIcon={app}\AvaPlayer.exe
 Compression=lzma2/ultra64
 SolidCompression=yes

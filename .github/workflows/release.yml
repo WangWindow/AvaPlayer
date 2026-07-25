@@ -62,9 +62,12 @@ jobs:
         id: meta
         shell: pwsh
         run: |
-          [xml]$projectXml = Get-Content -LiteralPath "AvaPlayer/AvaPlayer.csproj"
-          $version = ($projectXml.Project.PropertyGroup | Select-Object -First 1).Version
-          if (-not $version) { $version = "1.0.0" }
+          [xml]$buildPropsXml = Get-Content -LiteralPath "Directory.Build.props"
+          $versionNode = $buildPropsXml.Project.PropertyGroup.Version | Select-Object -First 1
+          $version = if ($null -ne $versionNode) { $versionNode.InnerText.Trim() }
+          if ([string]::IsNullOrWhiteSpace($version)) {
+              throw "Version is not defined in Directory.Build.props."
+          }
           "version=$version" >> $env:GITHUB_OUTPUT
           "artifact_dir=artifacts/package/$env:RID/$version" >> $env:GITHUB_OUTPUT
 
@@ -153,17 +156,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' AvaPlayer/AvaPlayer.csproj | head -n 1)"
-          VERSION="${VERSION:-1.0.0}"
+          VERSION="$(sed -n 's:.*<Version[^>]*>\([^<]*\)</Version>.*:\1:p' Directory.Build.props | head -n 1)"
+          if [[ -z "${VERSION}" ]]; then
+            echo "Version is not defined in Directory.Build.props." >&2
+            exit 1
+          fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "artifact_dir=artifacts/package/${RID}/${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Package Linux artifacts
         shell: bash
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
           chmod +x scripts/package-linux.sh
-          ./scripts/package-linux.sh --rid "${RID}" --configuration Release
+          ./scripts/package-linux.sh --rid "${RID}" --configuration Release --version "${VERSION}"
 
       - name: Generate checksums
         shell: bash

@@ -70,7 +70,10 @@ EOF
 done
 
 VERSION="${VERSION:-$(sed -n 's:.*<Version[^>]*>\([^<]*\)</Version>.*:\1:p' "${ROOT_DIR}/Directory.Build.props" | head -n 1)}"
-VERSION="${VERSION:-1.0.0}"
+if [[ -z "${VERSION}" ]]; then
+  echo "Version is not defined. Pass --version or define it in Directory.Build.props." >&2
+  exit 1
+fi
 
 ARTIFACT_ROOT="${ROOT_DIR}/artifacts/package/${RID}/${VERSION}"
 PUBLISH_DIR="${ARTIFACT_ROOT}/publish"

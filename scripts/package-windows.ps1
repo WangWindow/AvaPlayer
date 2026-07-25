@@ -20,11 +20,14 @@ $WindowsTargetFramework = "net10.0-windows10.0.19041.0"
 
 if (-not $Version) {
     [xml]$BuildPropsXml = Get-Content -LiteralPath $BuildPropsPath
-    $Version = ($BuildPropsXml.Project.PropertyGroup.Version | Select-Object -First 1)
+    $versionNode = $BuildPropsXml.Project.PropertyGroup.Version | Select-Object -First 1
+    if ($null -ne $versionNode) {
+        $Version = $versionNode.InnerText.Trim()
+    }
 }
 
 if (-not $Version) {
-    $Version = "1.0.0"
+    throw "Version is not defined. Pass -Version or define it in Directory.Build.props."
 }
 
 if (-not $InstallerPlatform) {
