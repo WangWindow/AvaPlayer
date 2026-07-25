@@ -52,7 +52,6 @@ public partial class App : Application
     private bool _isMediaTransportInitialized;
     private bool _isPlayerBarWired;
     private bool _isIdleRuntimeReleaseScheduled;
-    private bool _lastKnownIsPlaying;
     private IDisposable? _mediaTransportSnapshotSubscription;
     private IPlaybackSessionClient? _playbackSession;
 
@@ -334,7 +333,6 @@ public partial class App : Application
         _mediaTransportService.PreviousRequested += OnMediaTransportPreviousRequested;
         _mediaTransportService.SeekRequested += OnMediaTransportSeekRequested;
 
-        _lastKnownIsPlaying = _playbackSession?.LatestSnapshot.IsPlaying ?? false;
         _mediaTransportSnapshotSubscription = _playbackSession?.Subscribe(OnMediaTransportSnapshot);
     }
 
@@ -382,13 +380,19 @@ public partial class App : Application
             TimeSpan.FromSeconds(Math.Max(0, snapshot.Duration)));
         _mediaTransportService.UpdatePlaybackMode(snapshot.PlaybackMode);
 
-        if (_lastKnownIsPlaying && !snapshot.IsPlaying
+        // A natural track end is reported by the audio service as a transient
+        // non-playing state before TrackEnded enqueues the auto-advance command.
+        // Releasing the lightweight runtime on that transient state can race
+        // with auto-advance and leave the player stuck until the tray Play
+        // command reactivates it. Only release after the session has settled
+        // into the terminal Stopped state (end of queue or failed transition).
+        if (snapshot.Status == PlaybackStatus.Stopped
+            && snapshot.HasTrack
             && _isLightweightModeEnabled && _mainWindow is null)
         {
             ScheduleIdleRuntimeRelease();
         }
 
-        _lastKnownIsPlaying = snapshot.IsPlaying;
     }
 
     private void WireSingleInstanceActivation()
