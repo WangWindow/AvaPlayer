@@ -12,17 +12,15 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
-$ProjectPath = Join-Path $RepoRoot "AvaPlayer.csproj"
+$ProjectPath = Join-Path $RepoRoot "AvaPlayer\AvaPlayer.csproj"
+$BuildPropsPath = Join-Path $RepoRoot "Directory.Build.props"
 $IssPath = Join-Path $RepoRoot "scripts\windows\AvaPlayer.iss"
 $WixProjPath = Join-Path $RepoRoot "scripts\windows\AvaPlayer.wixproj"
 $WindowsTargetFramework = "net10.0-windows10.0.19041.0"
 
 if (-not $Version) {
-    [xml]$ProjectXml = Get-Content -LiteralPath $ProjectPath
-    $Version = ($ProjectXml.Project.PropertyGroup | Select-Object -First 1).VersionPrefix
-    if (-not $Version) {
-        $Version = ($ProjectXml.Project.PropertyGroup | Where-Object { $_.AssemblyVersion } | Select-Object -First 1).AssemblyVersion
-    }
+    [xml]$BuildPropsXml = Get-Content -LiteralPath $BuildPropsPath
+    $Version = ($BuildPropsXml.Project.PropertyGroup.Version | Select-Object -First 1)
 }
 
 if (-not $Version) {

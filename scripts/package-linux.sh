@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-PROJECT_PATH="${ROOT_DIR}/AvaPlayer.csproj"
+PROJECT_PATH="${ROOT_DIR}/AvaPlayer/AvaPlayer.csproj"
 
 APP_NAME="AvaPlayer"
 
@@ -69,8 +69,7 @@ EOF
   esac
 done
 
-VERSION="${VERSION:-$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' "${PROJECT_PATH}" | head -n 1)}"
-VERSION="${VERSION:-$(sed -n 's:.*<AssemblyVersion>\(.*\)</AssemblyVersion>.*:\1:p' "${PROJECT_PATH}" | head -n 1)}"
+VERSION="${VERSION:-$(sed -n 's:.*<Version[^>]*>\([^<]*\)</Version>.*:\1:p' "${ROOT_DIR}/Directory.Build.props" | head -n 1)}"
 VERSION="${VERSION:-1.0.0}"
 
 ARTIFACT_ROOT="${ROOT_DIR}/artifacts/package/${RID}/${VERSION}"

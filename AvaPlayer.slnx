@@ -1,3 +1,4 @@
 <Solution>
-  <Project Path="AvaPlayer.csproj" />
+  <Project Path="AvaPlayer/AvaPlayer.csproj" />
+  <Project Path="AvaPlayer.Tests/AvaPlayer.Tests.csproj" />
 </Solution>

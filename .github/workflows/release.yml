@@ -62,8 +62,8 @@ jobs:
         id: meta
         shell: pwsh
         run: |
-          [xml]$projectXml = Get-Content -LiteralPath "AvaPlayer.csproj"
-          $version = ($projectXml.Project.PropertyGroup | Select-Object -First 1).VersionPrefix
+          [xml]$projectXml = Get-Content -LiteralPath "AvaPlayer/AvaPlayer.csproj"
+          $version = ($projectXml.Project.PropertyGroup | Select-Object -First 1).Version
           if (-not $version) { $version = "1.0.0" }
           "version=$version" >> $env:GITHUB_OUTPUT
           "artifact_dir=artifacts/package/$env:RID/$version" >> $env:GITHUB_OUTPUT
@@ -153,7 +153,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' AvaPlayer.csproj | head -n 1)"
+          VERSION="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' AvaPlayer/AvaPlayer.csproj | head -n 1)"
           VERSION="${VERSION:-1.0.0}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "artifact_dir=artifacts/package/${RID}/${VERSION}" >> "$GITHUB_OUTPUT"

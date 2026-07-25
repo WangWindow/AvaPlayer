@@ -1,0 +1,178 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AvaPlayer.ViewModels"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             x:Class="AvaPlayer.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+  <Border Background="{Binding BackgroundBrush}"
+          Classes="settings-stage"
+          Classes.settings-page-stage="True"
+          Classes.open="{Binding IsSettingsVisible}">
+    <Border Classes="settings-panel"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="560"
+                    Margin="48,16,48,40"
+                    HorizontalAlignment="Stretch"
+                    Spacing="18">
+          <Grid>
+            <TextBlock Text="设置"
+                       Classes="settings-title"
+                       FontSize="26"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+          </Grid>
+
+          <Border Classes="settings-section">
+            <StackPanel Spacing="14">
+              <StackPanel Spacing="4">
+                <TextBlock Text="歌词字号"
+                           Classes="settings-label"
+                           FontSize="14"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="调整当前行与上下文歌词的整体字号层级。"
+                           Classes="settings-description"
+                           FontSize="12"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="settings-chip"
+                         Classes.selected="{Binding IsSmallFontPreset}"
+                         Command="{Binding UseSmallFontCommand}">
+                  <TextBlock Text="小" />
+                </Button>
+                <Button Classes="settings-chip"
+                         Classes.selected="{Binding IsMediumFontPreset}"
+                         Command="{Binding UseMediumFontCommand}">
+                  <TextBlock Text="中" />
+                </Button>
+                <Button Classes="settings-chip"
+                         Classes.selected="{Binding IsLargeFontPreset}"
+                         Command="{Binding UseLargeFontCommand}">
+                  <TextBlock Text="大" />
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="settings-section">
+            <Grid ColumnDefinitions="*,Auto"
+                  RowDefinitions="Auto,Auto"
+                  RowSpacing="4">
+              <TextBlock Text="自动居中"
+                         Classes="settings-label"
+                         FontSize="14"
+                         FontWeight="SemiBold" />
+              <TextBlock Grid.Row="1"
+                         Text="播放时让当前歌词尽量稳定停留在视觉中心附近。"
+                         Classes="settings-description"
+                         FontSize="12"
+                         TextWrapping="Wrap" />
+              <ToggleSwitch Grid.Column="1"
+                            Grid.RowSpan="2"
+                            Classes="settings-toggle-switch"
+                            Margin="18,0,0,0"
+                            VerticalAlignment="Center"
+                             IsChecked="{Binding LyricsPreferences.IsAutoCenterEnabled, Mode=TwoWay}" />
+            </Grid>
+          </Border>
+
+          <Border Classes="settings-section">
+            <Grid ColumnDefinitions="*,Auto"
+                  RowDefinitions="Auto,Auto"
+                  RowSpacing="4">
+              <TextBlock Text="点击歌词跳转"
+                         Classes="settings-label"
+                         FontSize="14"
+                         FontWeight="SemiBold" />
+              <TextBlock Grid.Row="1"
+                         Text="允许直接点按某一行歌词，立即跳转到对应时间戳。"
+                         Classes="settings-description"
+                         FontSize="12"
+                         TextWrapping="Wrap" />
+              <ToggleSwitch Grid.Column="1"
+                            Grid.RowSpan="2"
+                            Classes="settings-toggle-switch"
+                            Margin="18,0,0,0"
+                            VerticalAlignment="Center"
+                             IsChecked="{Binding LyricsPreferences.IsLyricClickSeekEnabled, Mode=TwoWay}" />
+            </Grid>
+          </Border>
+
+          <Border Classes="settings-section">
+            <Grid ColumnDefinitions="*,Auto"
+                  RowDefinitions="Auto,Auto"
+                  RowSpacing="4">
+              <TextBlock Text="记忆播放进度"
+                         Classes="settings-label"
+                         FontSize="14"
+                         FontWeight="SemiBold" />
+              <TextBlock Grid.Row="1"
+                         Text="关闭后启动时将从头开始播放。"
+                         Classes="settings-description"
+                         FontSize="12"
+                         TextWrapping="Wrap" />
+              <ToggleSwitch Grid.Column="1"
+                            Grid.RowSpan="2"
+                            Classes="settings-toggle-switch"
+                            Margin="18,0,0,0"
+                            VerticalAlignment="Center"
+                            IsChecked="{Binding IsPlaybackPositionMemoryEnabled, Mode=TwoWay}" />
+            </Grid>
+          </Border>
+
+          <Border Classes="settings-section">
+            <StackPanel Spacing="14">
+              <StackPanel Spacing="4">
+                <TextBlock Text="托盘图标"
+                           Classes="settings-label"
+                           FontSize="14"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="选择浅色或深色托盘图标。"
+                           Classes="settings-description"
+                           FontSize="12"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="settings-chip"
+                        Classes.selected="{Binding IsTrayIconLight}"
+                        Command="{Binding UseLightTrayIconCommand}">
+                  <TextBlock Text="浅色" />
+                </Button>
+                <Button Classes="settings-chip"
+                        Classes.selected="{Binding IsTrayIconDark}"
+                        Command="{Binding UseDarkTrayIconCommand}">
+                  <TextBlock Text="深色" />
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="settings-section">
+            <Grid ColumnDefinitions="*,Auto"
+                  RowDefinitions="Auto,Auto"
+                  RowSpacing="4">
+              <TextBlock Text="联网功能"
+                         Classes="settings-label"
+                         FontSize="14"
+                         FontWeight="SemiBold" />
+              <TextBlock Grid.Row="1"
+                         Text="允许自动从网络获取封面和歌词。关闭后仅使用本地缓存，需重启生效。"
+                         Classes="settings-description"
+                         FontSize="12"
+                         TextWrapping="Wrap" />
+              <ToggleSwitch Grid.Column="1"
+                            Grid.RowSpan="2"
+                            Classes="settings-toggle-switch"
+                            Margin="18,0,0,0"
+                            VerticalAlignment="Center"
+                            IsChecked="{Binding IsNetworkEnabled, Mode=TwoWay}" />
+            </Grid>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+  </Border>
+</UserControl>
