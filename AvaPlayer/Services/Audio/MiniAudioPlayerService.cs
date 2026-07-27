@@ -170,6 +170,7 @@ public sealed class MiniAudioPlayerService : IPlayerService
 
                 // Start playback from the beginning
                 source.Play(clip);
+                source.End += OnSourceEnded;
 
                 // Seek to requested position if specified
                 ulong requestedFrame = 0;
@@ -379,6 +380,7 @@ public sealed class MiniAudioPlayerService : IPlayerService
     {
         if (_source is not null)
         {
+            _source.End -= OnSourceEnded;
             _source.Dispose();
             _source = null;
         }
@@ -387,6 +389,63 @@ public sealed class MiniAudioPlayerService : IPlayerService
         {
             _clip.Dispose();
             _clip = null;
+        }
+    }
+
+    private void OnSourceEnded()
+    {
+        AudioSource? source;
+        lock (_gate)
+        {
+            source = _source;
+        }
+
+        if (source is not null)
+        {
+            SignalTrackEnded(source);
+        }
+    }
+
+    private void SignalTrackEnded(AudioSource source)
+    {
+        bool shouldFireEnded;
+
+        lock (_gate)
+        {
+            if (_disposed || !_trackingPlayback || !ReferenceEquals(_source, source))
+            {
+                return;
+            }
+
+            if (source.IsPlaying)
+            {
+                try { source.Stop(); }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[AvaPlayer] 曲终停止 source 失败: {ex.Message}");
+                }
+            }
+
+            _trackingPlayback = false;
+            IsPlaying = false;
+
+            if (!_trackEndSignaled)
+            {
+                _trackEndSignaled = true;
+                shouldFireEnded = true;
+            }
+            else
+            {
+                shouldFireEnded = false;
+            }
+        }
+
+        PlaybackStateChanged?.Invoke(this, false);
+
+        if (shouldFireEnded)
+        {
+            Console.WriteLine("[AvaPlayer] 检测到曲目播放结束");
+            TrackEnded?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -478,42 +537,7 @@ public sealed class MiniAudioPlayerService : IPlayerService
         // IsPlaying=true and the state machine drifts out of sync.
         if (trackingPlayback && (!source.IsPlaying || reachedEnd))
         {
-            lock (_gate)
-            {
-                if (reachedEnd && source.IsPlaying)
-                {
-                    try { source.Stop(); }
-                    catch (Exception ex)
-                    {
-                        Console.Error.WriteLine($"[AvaPlayer] 曲终停止 source 失败: {ex.Message}");
-                    }
-                }
-
-                _trackingPlayback = false;
-                IsPlaying = false;
-            }
-
-            PlaybackStateChanged?.Invoke(this, false);
-
-            bool shouldFireEnded;
-            lock (_gate)
-            {
-                if (!_trackEndSignaled)
-                {
-                    _trackEndSignaled = true;
-                    shouldFireEnded = true;
-                }
-                else
-                {
-                    shouldFireEnded = false;
-                }
-            }
-
-            if (shouldFireEnded)
-            {
-                Console.WriteLine("[AvaPlayer] 检测到曲目播放结束");
-                TrackEnded?.Invoke(this, EventArgs.Empty);
-            }
+            SignalTrackEnded(source);
         }
 
         // Step 4: Publish the (possibly clamped) position to listeners
