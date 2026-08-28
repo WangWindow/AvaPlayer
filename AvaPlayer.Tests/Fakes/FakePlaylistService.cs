@@ -15,6 +15,9 @@ public sealed class FakePlaylistService : IPlaylistService
     private int _currentIndex = -1;
 
     public ObservableCollection<Track> Queue { get; } = new();
+    public ObservableCollection<PlaylistInfo> Playlists { get; } = new();
+    public PlaylistInfo? SelectedPlaylist { get; private set; }
+    public event EventHandler? SelectedPlaylistChanged;
     public Track? CurrentTrack { get; private set; }
     public PlaybackMode PlaybackMode { get; set; }
 
@@ -56,14 +59,82 @@ public sealed class FakePlaylistService : IPlaylistService
         Queue.Add(track);
     }
 
+    public void AddPlaylist(PlaylistInfo playlist)
+    {
+        Playlists.Add(playlist);
+        if (SelectedPlaylist is null)
+        {
+            SelectedPlaylist = playlist;
+        }
+    }
+
     public Task LoadAsync(CancellationToken cancellationToken = default)
     {
         LoadCallCount++;
         return Task.CompletedTask;
     }
 
-    public Task AddFolderAsync(string folderPath, CancellationToken cancellationToken = default)
+    public Task AddPlaylistAsync(string name, string folderPath, CancellationToken cancellationToken = default)
     {
+        var playlist = new PlaylistInfo
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = string.IsNullOrWhiteSpace(name) ? Path.GetFileName(folderPath) : name,
+            FolderPath = folderPath
+        };
+        Playlists.Add(playlist);
+        SelectedPlaylist = playlist;
+        SelectedPlaylistChanged?.Invoke(this, EventArgs.Empty);
+        return Task.CompletedTask;
+    }
+
+    public Task RenamePlaylistAsync(string playlistId, string newName, CancellationToken cancellationToken = default)
+    {
+        var index = Playlists.IndexOf(Playlists.FirstOrDefault(p => p.Id == playlistId)!);
+        if (index >= 0)
+        {
+            var existing = Playlists[index];
+            Playlists[index] = new PlaylistInfo
+            {
+                Id = existing.Id,
+                Name = newName,
+                FolderPath = existing.FolderPath,
+                TrackCount = existing.TrackCount
+            };
+            if (SelectedPlaylist?.Id == playlistId)
+            {
+                SelectedPlaylist = Playlists[index];
+            }
+            SelectedPlaylistChanged?.Invoke(this, EventArgs.Empty);
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task RemovePlaylistAsync(string playlistId, CancellationToken cancellationToken = default)
+    {
+        var existing = Playlists.FirstOrDefault(p => p.Id == playlistId);
+        if (existing is not null)
+        {
+            Playlists.Remove(existing);
+        }
+        if (SelectedPlaylist?.Id == playlistId)
+        {
+            SelectedPlaylist = Playlists.FirstOrDefault();
+            SelectedPlaylistChanged?.Invoke(this, EventArgs.Empty);
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task SelectPlaylistAsync(string? playlistId, CancellationToken cancellationToken = default)
+    {
+        var target = playlistId is null ? null : Playlists.FirstOrDefault(p => p.Id == playlistId);
+        if (ReferenceEquals(target, SelectedPlaylist))
+        {
+            return Task.CompletedTask;
+        }
+
+        SelectedPlaylist = target;
+        SelectedPlaylistChanged?.Invoke(this, EventArgs.Empty);
         return Task.CompletedTask;
     }
 
