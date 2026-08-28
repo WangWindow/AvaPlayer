@@ -52,13 +52,36 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
     private bool _refreshScheduled;
     private bool _isUiActive;
     private bool _disposed;
+    private bool _syncingPlaylistSelection;
 
     public PlaylistViewModel(IPlaylistService playlistService, ILogger<PlaylistViewModel> logger)
     {
         _playlistService = playlistService;
         _logger = logger;
         _playlistService.Queue.CollectionChanged += OnQueueCollectionChanged;
+        _playlistService.Playlists.CollectionChanged += OnPlaylistsCollectionChanged;
+        _playlistService.SelectedPlaylistChanged += OnServiceSelectedPlaylistChanged;
     }
+
+    public ObservableCollection<PlaylistInfo> Playlists => _playlistService.Playlists;
+
+    [ObservableProperty]
+    public partial PlaylistInfo? SelectedPlaylist { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsRenamingPlaylist { get; set; }
+
+    [ObservableProperty]
+    public partial string EditingPlaylistName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string EmptyStateText { get; set; } = "还没有歌单，点击 ＋ 添加";
+
+    public bool HasPlaylists => Playlists.Count > 0;
+
+    public bool ShowPlaylistSelector => HasPlaylists && !IsRenamingPlaylist;
+
+    public bool HasSelectedPlaylist => SelectedPlaylist is not null;
 
     public ObservableCollection<TrackItemViewModel> Tracks { get; } = [];
     public ObservableCollection<TrackItemViewModel> VisibleTracks { get; } = [];
@@ -109,7 +132,7 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
         : $"没有匹配“{SearchText.Trim()}”的歌曲";
 
     [RelayCommand]
-    private async Task AddFolderAsync()
+    private async Task AddPlaylistAsync()
     {
         if (FolderPickRequested is null)
         {
@@ -125,7 +148,7 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
 
         try
         {
-            await _playlistService.AddFolderAsync(folderPath);
+            await _playlistService.AddPlaylistAsync(name: string.Empty, folderPath);
             RefreshTracks();
         }
         catch (OperationCanceledException)
@@ -134,7 +157,66 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[Playlist] 添加文件夹失败: {Message}", ex.Message);
+            _logger.LogError(ex, "[Playlist] 添加歌单失败: {Message}", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private void BeginRenamePlaylist()
+    {
+        if (SelectedPlaylist is null)
+        {
+            return;
+        }
+
+        EditingPlaylistName = SelectedPlaylist.Name;
+        IsRenamingPlaylist = true;
+    }
+
+    [RelayCommand]
+    private async Task ConfirmRenamePlaylistAsync()
+    {
+        if (SelectedPlaylist is null)
+        {
+            IsRenamingPlaylist = false;
+            return;
+        }
+
+        var newName = EditingPlaylistName.Trim();
+        if (newName.Length > 0 && newName != SelectedPlaylist.Name)
+        {
+            try
+            {
+                await _playlistService.RenamePlaylistAsync(SelectedPlaylist.Id, newName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Playlist] 重命名歌单失败: {Message}", ex.Message);
+            }
+        }
+
+        IsRenamingPlaylist = false;
+    }
+
+    [RelayCommand]
+    private void CancelRenamePlaylist() => IsRenamingPlaylist = false;
+
+    [RelayCommand]
+    private async Task DeletePlaylistAsync()
+    {
+        if (SelectedPlaylist is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _playlistService.RemovePlaylistAsync(SelectedPlaylist.Id);
+            RefreshTracks();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Playlist] 删除歌单失败: {Message}", ex.Message);
         }
     }
 
@@ -219,6 +301,7 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
 
         _isUiActive = false;
         IsEditMode = false;
+        IsRenamingPlaylist = false;
         CurrentTrack = null;
         ClearTrackSelection();
         ClearTrackCache();
@@ -307,6 +390,68 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
     }
 
     private void OnQueueCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => ScheduleRefresh();
+
+    private void OnPlaylistsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(HasPlaylists));
+        OnPropertyChanged(nameof(ShowPlaylistSelector));
+        UpdateEmptyStateText();
+    }
+
+    private void OnServiceSelectedPlaylistChanged(object? sender, EventArgs e)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            SyncSelectedPlaylist();
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(SyncSelectedPlaylist, DispatcherPriority.Background);
+        }
+    }
+
+    private void SyncSelectedPlaylist()
+    {
+        _syncingPlaylistSelection = true;
+        try
+        {
+            SelectedPlaylist = _playlistService.SelectedPlaylist;
+        }
+        finally
+        {
+            _syncingPlaylistSelection = false;
+        }
+    }
+
+    partial void OnSelectedPlaylistChanged(PlaylistInfo? value)
+    {
+        OnPropertyChanged(nameof(HasSelectedPlaylist));
+        if (!_syncingPlaylistSelection && value is not null && value.Id != _playlistService.SelectedPlaylist?.Id)
+        {
+            _ = SelectPlaylistSafeAsync(value.Id);
+        }
+    }
+
+    partial void OnIsRenamingPlaylistChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowPlaylistSelector));
+    }
+
+    private async Task SelectPlaylistSafeAsync(string playlistId)
+    {
+        try
+        {
+            await _playlistService.SelectPlaylistAsync(playlistId);
+            RefreshTracks();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Playlist] 切换歌单失败: {Message}", ex.Message);
+        }
+    }
+
+    private void UpdateEmptyStateText() =>
+        EmptyStateText = HasPlaylists ? "这个歌单还没有歌曲" : "还没有歌单，点击 ＋ 添加";
 
     private void ScheduleRefresh()
     {
@@ -417,6 +562,8 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
 
         _disposed = true;
         _playlistService.Queue.CollectionChanged -= OnQueueCollectionChanged;
+        _playlistService.Playlists.CollectionChanged -= OnPlaylistsCollectionChanged;
+        _playlistService.SelectedPlaylistChanged -= OnServiceSelectedPlaylistChanged;
         ClearTrackCache();
     }
 }

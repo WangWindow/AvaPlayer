@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AvaPlayer.ViewModels"
+             xmlns:models="using:AvaPlayer.Models"
              xmlns:fi="using:FluentIcons.Avalonia"
              x:Name="Root"
              x:Class="AvaPlayer.Views.PlaylistView"
@@ -103,89 +104,142 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,Auto,*"
+  <Grid RowDefinitions="Auto,Auto,*"
         Margin="16,0,16,16">
-    <Grid ColumnDefinitions="*,Auto"
-          ColumnSpacing="10">
-      <Button Grid.Column="0"
-              Classes="ghost"
-              HorizontalAlignment="Left"
-              Padding="14,8"
-              Command="{Binding AddFolderCommand}">
-        <StackPanel Orientation="Horizontal"
-                    Spacing="8">
-          <fi:FluentIcon Icon="FolderAdd" FontSize="16" />
-          <TextBlock Text="添加文件夹" Classes="playlist-toolbar-label" />
-        </StackPanel>
+    <Grid ColumnDefinitions="*,Auto,Auto,Auto"
+          ColumnSpacing="8">
+      <ComboBox Grid.Column="0"
+                MinWidth="0"
+                HorizontalAlignment="Stretch"
+                IsVisible="{Binding ShowPlaylistSelector}"
+                ItemsSource="{Binding Playlists}"
+                SelectedItem="{Binding SelectedPlaylist, Mode=TwoWay}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="models:PlaylistInfo">
+            <StackPanel Orientation="Horizontal"
+                        Spacing="8">
+              <TextBlock Text="{Binding Name}"
+                         TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding DisplayTrackCount}"
+                         Classes="playlist-subtitle" />
+            </StackPanel>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+
+      <TextBox Grid.Column="0"
+               PlaceholderText="歌单名称"
+               Text="{Binding EditingPlaylistName, Mode=TwoWay}"
+               IsVisible="{Binding IsRenamingPlaylist}" />
+
+      <Button Grid.Column="1"
+              Classes="ghost playlist-toolbar-icon"
+              Command="{Binding AddPlaylistCommand}"
+              ToolTip.Tip="添加歌单（选择一个音乐文件夹）">
+        <fi:FluentIcon Icon="FolderAdd"
+                       FontSize="16" />
       </Button>
+
+      <Button Grid.Column="2"
+              Classes="ghost playlist-toolbar-icon"
+              Command="{Binding BeginRenamePlaylistCommand}"
+              IsEnabled="{Binding HasSelectedPlaylist}"
+              IsVisible="{Binding ShowPlaylistSelector}"
+              ToolTip.Tip="重命名歌单">
+        <fi:FluentIcon Icon="Edit"
+                       FontSize="16" />
+      </Button>
+
+      <Button Grid.Column="3"
+              Classes="ghost playlist-toolbar-icon"
+              Command="{Binding DeletePlaylistCommand}"
+              IsEnabled="{Binding HasSelectedPlaylist}"
+              IsVisible="{Binding ShowPlaylistSelector}"
+              ToolTip.Tip="删除当前歌单（仅移除索引，不删除磁盘文件）">
+        <fi:FluentIcon Icon="Delete"
+                       FontSize="16" />
+      </Button>
+
+      <Button Grid.Column="2"
+              Classes="ghost"
+              Height="36"
+              Padding="12,8"
+              Command="{Binding ConfirmRenamePlaylistCommand}"
+              IsVisible="{Binding IsRenamingPlaylist}">
+        <TextBlock Text="确定"
+                   Classes="playlist-toolbar-label" />
+      </Button>
+    </Grid>
+
+    <Grid Grid.Row="1"
+          ColumnDefinitions="*,Auto"
+          ColumnSpacing="8"
+          Margin="0,12,0,0">
+      <Border Grid.Column="0"
+              Classes="playlist-search-bar"
+              Padding="12,0"
+              IsVisible="{Binding ShowSearchBar}">
+        <Grid ColumnDefinitions="Auto,*,Auto"
+              ColumnSpacing="8">
+          <fi:FluentIcon Icon="Search"
+                         Classes="playlist-search-icon"
+                         FontSize="14"
+                         VerticalAlignment="Center" />
+
+          <TextBox Grid.Column="1"
+                   Classes="playlist-search-text"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   PlaceholderText="搜索当前播放列表"
+                   Text="{Binding SearchText, Mode=TwoWay}" />
+
+          <Button Grid.Column="2"
+                  Classes="ghost"
+                  Width="28"
+                  Height="28"
+                  Padding="0"
+                  Command="{Binding ClearSearchCommand}"
+                  IsVisible="{Binding ShowClearSearch}">
+            <fi:FluentIcon Icon="Dismiss"
+                           FontSize="14" />
+          </Button>
+        </Grid>
+      </Border>
 
       <StackPanel Grid.Column="1"
                   Orientation="Horizontal"
-                  Spacing="8"
-                  IsVisible="{Binding ShowNormalToolbar}">
+                  Spacing="8">
         <Button Classes="ghost playlist-toolbar-icon"
                 Command="{Binding BeginEditCommand}"
+                IsVisible="{Binding ShowSearchBar}"
                 ToolTip.Tip="编辑播放列表">
           <fi:FluentIcon Icon="Edit"
                          FontSize="16" />
         </Button>
-      </StackPanel>
 
-      <StackPanel Grid.Column="1"
-                  Orientation="Horizontal"
-                  Spacing="8"
-                  IsVisible="{Binding ShowEditToolbar}">
-        <Button Classes="ghost"
-                Height="36"
-                Padding="12,8"
-                Command="{Binding RemoveSelectedCommand}"
-                IsEnabled="{Binding CanRemoveSelected}">
-          <TextBlock Text="删除"
-                     Classes="playlist-toolbar-label" />
-        </Button>
-        <Button Classes="ghost"
-                Height="36"
-                Padding="12,8"
-                Command="{Binding CancelEditCommand}">
-          <TextBlock Text="取消"
-                     Classes="playlist-toolbar-label" />
-        </Button>
+        <StackPanel Orientation="Horizontal"
+                    Spacing="8"
+                    IsVisible="{Binding ShowEditToolbar}">
+          <Button Classes="ghost"
+                  Height="36"
+                  Padding="12,8"
+                  Command="{Binding RemoveSelectedCommand}"
+                  IsEnabled="{Binding CanRemoveSelected}">
+            <TextBlock Text="删除"
+                       Classes="playlist-toolbar-label" />
+          </Button>
+          <Button Classes="ghost"
+                  Height="36"
+                  Padding="12,8"
+                  Command="{Binding CancelEditCommand}">
+            <TextBlock Text="取消"
+                       Classes="playlist-toolbar-label" />
+          </Button>
+        </StackPanel>
       </StackPanel>
     </Grid>
 
-    <Border Grid.Row="1"
-            Classes="playlist-search-bar"
-            Margin="0,12,0,0"
-            Padding="12,0"
-            IsVisible="{Binding ShowSearchBar}">
-      <Grid ColumnDefinitions="Auto,*,Auto"
-            ColumnSpacing="8">
-        <fi:FluentIcon Icon="Search"
-                       Classes="playlist-search-icon"
-                       FontSize="14"
-                       VerticalAlignment="Center" />
-
-        <TextBox Grid.Column="1"
-                 Classes="playlist-search-text"
-                 Background="Transparent"
-                 BorderThickness="0"
-                 PlaceholderText="搜索当前播放列表"
-                 Text="{Binding SearchText, Mode=TwoWay}" />
-
-        <Button Grid.Column="2"
-                Classes="ghost"
-                Width="28"
-                Height="28"
-                Padding="0"
-                Command="{Binding ClearSearchCommand}"
-                IsVisible="{Binding ShowClearSearch}">
-          <fi:FluentIcon Icon="Dismiss"
-                         FontSize="14" />
-        </Button>
-      </Grid>
-    </Border>
-
-    <Grid Grid.Row="3"
+    <Grid Grid.Row="2"
           Margin="0,12,0,0">
       <StackPanel HorizontalAlignment="Center"
                   VerticalAlignment="Center"
@@ -195,7 +249,7 @@
                        FontSize="44"
                        Foreground="#55FFFFFF"
                        HorizontalAlignment="Center" />
-        <TextBlock Text="还没有歌曲"
+        <TextBlock Text="{Binding EmptyStateText}"
                    Foreground="#75FFFFFF"
                    FontSize="14"
                    HorizontalAlignment="Center" />
