@@ -10,6 +10,7 @@ public sealed class Track
     public string Artist { get; init; } = string.Empty;
     public string Album { get; init; } = string.Empty;
     public double DurationSeconds { get; init; }
+    public string PlaylistId { get; init; } = string.Empty;
 
     public string DisplayTitle =>
         string.IsNullOrWhiteSpace(Title)
