@@ -1,5 +1,4 @@
-using System.Security.Cryptography;
-using System.Text;
+using AvaPlayer.Helpers;
 using AvaPlayer.Models;
 using Microsoft.Extensions.Logging;
 
@@ -91,9 +90,5 @@ public sealed class TrackScannerService : ITrackScannerService
         }, cancellationToken);
     }
 
-    private static string BuildTrackId(string filePath)
-    {
-        var bytes = SHA1.HashData(Encoding.UTF8.GetBytes(filePath.ToLowerInvariant()));
-        return Convert.ToHexString(bytes);
-    }
+    private static string BuildTrackId(string filePath) => StableId.ForPath(filePath);
 }
