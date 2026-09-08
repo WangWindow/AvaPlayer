@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Net;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -99,7 +100,36 @@ public partial class App : Application
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.AddConsole());
 
+        // 统一的出站 HTTP 配置:通过 Defaults 生效于所有 IHttpClientFactory.CreateClient()
+        // 调用(含各歌词/封面 provider),无需命名客户端。只保留高收益项:
+        // 压缩、连接池生命周期、HTTP/2 协商。刻意不做 Expect100Continue(GET 不发 Expect 头)、
+        // EnableMultipleHttp2Connections(违反 RFC 9113)、KeepAlivePing*(已有 5 分钟生命周期
+        // 回收)、Happy-Eyeballs(OS 已处理);也不引入 Polly 弹性包(hedging 会把公共 API
+        // 请求量翻倍、易被限流,且 PublishAot 下有裁剪风险)——延迟收益由 provider 竞速达成。
         services.AddHttpClient();
+        services.ConfigureHttpClientDefaults(builder => builder
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                // gzip/deflate/brotli/zstd:歌词与 JSON 响应以文本为主,压缩是收益最高的一项。
+                AutomaticDecompression = DecompressionMethods.All,
+                // 连接 5 分钟强制轮换(兼顾 DNS 变更),空闲 2 分钟回收,避免复用陈旧连接。
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+                // 快速失败:建连 5 秒即放弃,配合 provider 竞速不拖慢换曲体验。
+                ConnectTimeout = TimeSpan.FromSeconds(5),
+                // 提前取消时最多再花 5 秒排空响应体,防止连接被直接丢弃而污染池。
+                ResponseDrainTimeout = TimeSpan.FromSeconds(5),
+                // 竞速时多个 provider 并行请求同一主机,放宽每服务器连接上限。
+                MaxConnectionsPerServer = 16,
+            })
+            .ConfigureHttpClient(client =>
+            {
+                // 整体请求 15 秒上限(覆盖慢响应体);超时后由竞速的其他 provider 兜底。
+                client.Timeout = TimeSpan.FromSeconds(15);
+                // HTTP/2 优先、1.1 回退:对支持 h2 的端点省一次握手/TTFB,不支持则自动降级。
+                client.DefaultRequestVersion = HttpVersion.Version20;
+                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            }));
 
         services.AddSingleton<ICacheService, CacheService>();
         services.AddSingleton<IDatabaseService, SqliteDatabaseService>();
