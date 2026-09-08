@@ -18,6 +18,9 @@
     <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
+  <!-- LINUX_MPRIS / LINUX_WAYLAND are defined by the *build machine* OS, not a
+       runtime check; Release publishes are self-contained/AOT per-platform anyway.
+       Program.cs pairs LINUX_WAYLAND with a runtime OperatingSystem.IsLinux() guard. -->
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <DefineConstants>$(DefineConstants);LINUX_MPRIS;LINUX_WAYLAND</DefineConstants>
   </PropertyGroup>
@@ -33,6 +36,7 @@
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
+    <!-- Native Wayland windowing backend (Linux only); gates Program.cs's LINUX_WAYLAND block above. -->
     <PackageReference Include="Avalonia.Wayland" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="FluentIcons.Avalonia" />
