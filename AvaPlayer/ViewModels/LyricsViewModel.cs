@@ -32,6 +32,7 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
     private readonly ILyricPreferencesService _preferences;
     private readonly ILogger<LyricsViewModel> _logger;
     private int _currentLineIndex = -1;
+    private bool _linesSortedAscending = true;
     private bool _disposed;
 
     public LyricsViewModel(ILyricPreferencesService preferences, ILogger<LyricsViewModel> logger)
@@ -154,6 +155,9 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
         HasLyrics = Lines.Count > 0;
         IsLoading = false;
         ShowEmptyState = !HasLyrics;
+        // LyricsService orders lines by time, but verify once here so the
+        // incremental/binary lookup below is only trusted on genuinely sorted data.
+        _linesSortedAscending = IsLinesSortedAscending();
         RefreshLineVisuals();
     }
 
@@ -173,17 +177,7 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
             return;
         }
 
-        var playbackTime = TimeSpan.FromSeconds(positionSeconds);
-        var newIndex = -1;
-
-        for (var i = Lines.Count - 1; i >= 0; i--)
-        {
-            if (Lines[i].Time <= playbackTime)
-            {
-                newIndex = i;
-                break;
-            }
-        }
+        var newIndex = FindCurrentLineIndex(positionSeconds);
 
         if (newIndex == _currentLineIndex)
         {
@@ -197,6 +191,78 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
         {
             ScrollToLineRequested?.Invoke(this, newIndex);
         }
+    }
+
+    // Amortized O(1) lookup of the last line whose time <= positionSeconds.
+    // Normal playback only advances the cursor by 0~1 lines per tick; backward
+    // seeks (or a cold cursor) fall back to binary search on sorted data, and
+    // unsorted data degrades to the original full linear scan.
+    private int FindCurrentLineIndex(double positionSeconds)
+    {
+        if (!_linesSortedAscending)
+        {
+            for (var i = Lines.Count - 1; i >= 0; i--)
+            {
+                if (Lines[i].Time.TotalSeconds <= positionSeconds)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        var index = _currentLineIndex;
+        if (index >= 0)
+        {
+            while (index + 1 < Lines.Count && Lines[index + 1].Time.TotalSeconds <= positionSeconds)
+            {
+                index++;
+            }
+
+            if (Lines[index].Time.TotalSeconds <= positionSeconds)
+            {
+                return index;
+            }
+        }
+
+        return BinarySearchLastAtOrBefore(positionSeconds);
+    }
+
+    private int BinarySearchLastAtOrBefore(double positionSeconds)
+    {
+        var low = 0;
+        var high = Lines.Count - 1;
+        var result = -1;
+
+        while (low <= high)
+        {
+            var mid = low + (high - low) / 2;
+            if (Lines[mid].Time.TotalSeconds <= positionSeconds)
+            {
+                result = mid;
+                low = mid + 1;
+            }
+            else
+            {
+                high = mid - 1;
+            }
+        }
+
+        return result;
+    }
+
+    private bool IsLinesSortedAscending()
+    {
+        for (var i = 1; i < Lines.Count; i++)
+        {
+            if (Lines[i].Time < Lines[i - 1].Time)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // ── Preference change propagation ──

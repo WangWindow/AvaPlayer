@@ -34,6 +34,10 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
     private string? _hydratedTrackPath;
     private bool _disposed;
 
+    // Whole-second part last rendered into PositionText (-1 = cache invalid).
+    // The m:ss display only changes when this value changes.
+    private long _formattedPositionSeconds = -1;
+
     public PlayerBarViewModel(
         IAlbumArtService albumArtService,
         ILyricsService lyricsService,
@@ -192,6 +196,7 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
         TitleDisplay = "AvaPlayer";
         ArtistDisplay = "从左上角添加音乐文件夹";
         PositionText = "0:00";
+        _formattedPositionSeconds = -1;
         DurationText = "0:00";
         CoverSize = 260;
     }
@@ -232,6 +237,15 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
 
     partial void OnPositionChanged(double value)
     {
+        // PositionText renders m:ss, so it can only change when the whole-second
+        // part changes; skip the TimeSpan/string formatting work on other ticks.
+        var wholeSeconds = (long)value;
+        if (wholeSeconds == _formattedPositionSeconds)
+        {
+            return;
+        }
+
+        _formattedPositionSeconds = wholeSeconds;
         PositionText = FormatTime(value);
     }
 

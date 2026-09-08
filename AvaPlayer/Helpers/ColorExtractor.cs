@@ -10,6 +10,11 @@ public static class ColorExtractor
     private static readonly Color DefaultStart = Color.FromRgb(0x14, 0x0E, 0x1E);
     private static readonly Color DefaultEnd = Color.FromRgb(0x0D, 0x09, 0x1A);
 
+    // Only a 16x16 grid is sampled, so a full-size CopyPixels (e.g. 360x360x4
+    // = 518KB per track change) is wasted work. Downscale to this edge length
+    // first: the copy buffer drops to 64x64x4 = 16KB.
+    private const int ThumbnailEdge = 64;
+
     public static LinearGradientBrush DefaultBackground() => CreateBrush(DefaultStart, DefaultEnd);
 
     public static LinearGradientBrush ExtractBackground(Bitmap bitmap)
@@ -19,75 +24,95 @@ public static class ColorExtractor
             return DefaultBackground();
         }
 
-        var width = bitmap.PixelSize.Width;
-        var height = bitmap.PixelSize.Height;
-        var stride = width * 4;
-        var byteCount = stride * height;
-        var buffer = Marshal.AllocHGlobal(byteCount);
+        // Runs on the UI thread only: Avalonia Bitmaps are thread-affine, so the
+        // pixel read must not move to a background thread. At 64px the cost is
+        // negligible there.
+        Bitmap? thumbnail = null;
+        var source = bitmap;
+        if (bitmap.PixelSize.Width > ThumbnailEdge || bitmap.PixelSize.Height > ThumbnailEdge)
+        {
+            thumbnail = bitmap.CreateScaledBitmap(
+                new PixelSize(ThumbnailEdge, ThumbnailEdge),
+                BitmapInterpolationMode.MediumQuality);
+            source = thumbnail;
+        }
 
         try
         {
-            bitmap.CopyPixels(new PixelRect(0, 0, width, height), buffer, byteCount, stride);
+            var width = source.PixelSize.Width;
+            var height = source.PixelSize.Height;
+            var stride = width * 4;
+            var byteCount = stride * height;
+            var buffer = Marshal.AllocHGlobal(byteCount);
 
-            double totalWeight = 0;
-            double redSum = 0;
-            double greenSum = 0;
-            double blueSum = 0;
-
-            const int samples = 16;
-
-            for (var y = 0; y < samples; y++)
+            try
             {
-                var pixelY = (height - 1) * y / (samples - 1);
+                source.CopyPixels(new PixelRect(0, 0, width, height), buffer, byteCount, stride);
 
-                for (var x = 0; x < samples; x++)
+                double totalWeight = 0;
+                double redSum = 0;
+                double greenSum = 0;
+                double blueSum = 0;
+
+                const int samples = 16;
+
+                for (var y = 0; y < samples; y++)
                 {
-                    var pixelX = (width - 1) * x / (samples - 1);
-                    var offset = pixelY * stride + pixelX * 4;
+                    var pixelY = (height - 1) * y / (samples - 1);
 
-                    var blue = Marshal.ReadByte(buffer, offset);
-                    var green = Marshal.ReadByte(buffer, offset + 1);
-                    var red = Marshal.ReadByte(buffer, offset + 2);
-                    var alpha = Marshal.ReadByte(buffer, offset + 3);
-
-                    if (alpha < 24)
+                    for (var x = 0; x < samples; x++)
                     {
-                        continue;
+                        var pixelX = (width - 1) * x / (samples - 1);
+                        var offset = pixelY * stride + pixelX * 4;
+
+                        var blue = Marshal.ReadByte(buffer, offset);
+                        var green = Marshal.ReadByte(buffer, offset + 1);
+                        var red = Marshal.ReadByte(buffer, offset + 2);
+                        var alpha = Marshal.ReadByte(buffer, offset + 3);
+
+                        if (alpha < 24)
+                        {
+                            continue;
+                        }
+
+                        var max = Math.Max(red, Math.Max(green, blue));
+                        var min = Math.Min(red, Math.Min(green, blue));
+                        var saturation = max == 0 ? 0 : (max - min) / (double)max;
+                        var weight = saturation * saturation + 0.05;
+
+                        redSum += red * weight;
+                        greenSum += green * weight;
+                        blueSum += blue * weight;
+                        totalWeight += weight;
                     }
-
-                    var max = Math.Max(red, Math.Max(green, blue));
-                    var min = Math.Min(red, Math.Min(green, blue));
-                    var saturation = max == 0 ? 0 : (max - min) / (double)max;
-                    var weight = saturation * saturation + 0.05;
-
-                    redSum += red * weight;
-                    greenSum += green * weight;
-                    blueSum += blue * weight;
-                    totalWeight += weight;
                 }
-            }
 
-            if (totalWeight <= double.Epsilon)
+                if (totalWeight <= double.Epsilon)
+                {
+                    return DefaultBackground();
+                }
+
+                var extracted = Color.FromRgb(
+                    (byte)Math.Round(redSum / totalWeight),
+                    (byte)Math.Round(greenSum / totalWeight),
+                    (byte)Math.Round(blueSum / totalWeight));
+
+                var darkened = ClampLuminance(extracted, 45);
+                if (GetLuminance(darkened) < 8)
+                {
+                    return DefaultBackground();
+                }
+
+                return CreateBrush(darkened, Scale(darkened, 0.65));
+            }
+            finally
             {
-                return DefaultBackground();
+                Marshal.FreeHGlobal(buffer);
             }
-
-            var extracted = Color.FromRgb(
-                (byte)Math.Round(redSum / totalWeight),
-                (byte)Math.Round(greenSum / totalWeight),
-                (byte)Math.Round(blueSum / totalWeight));
-
-            var darkened = ClampLuminance(extracted, 45);
-            if (GetLuminance(darkened) < 8)
-            {
-                return DefaultBackground();
-            }
-
-            return CreateBrush(darkened, Scale(darkened, 0.65));
         }
         finally
         {
-            Marshal.FreeHGlobal(buffer);
+            thumbnail?.Dispose();
         }
     }
 
