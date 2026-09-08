@@ -14,6 +14,11 @@ public sealed class MprisMediaTransportService : IMediaTransportService
     private const string PlayerInterface = "org.mpris.MediaPlayer2.Player";
     private const string PropertiesInterface = "org.freedesktop.DBus.Properties";
 
+    // MPRIS 建议 Position 以约 1Hz 上报，客户端会在两次上报之间按播放速率自行插值。
+    private const long PositionUpdateIntervalMs = 1_000;
+    // 与上次上报位置相差超过该阈值视为 seek / 换曲跳变，立即上报，不受 1Hz 节流限制。
+    private const long PositionJumpThresholdUs = 1_500_000;
+
     private static readonly ReadOnlyMemory<byte>[] IntrospectionXml =
     [
         Encoding.UTF8.GetBytes("""
@@ -73,6 +78,14 @@ public sealed class MprisMediaTransportService : IMediaTransportService
     private PlaybackMode _playbackMode = PlaybackMode.Sequential;
     private bool _initialized;
 
+    // 「上次已发送值」快照，仅在 _gate 内读写，用于属性级 diff，避免每 tick 重复 emit。
+    private Track? _lastMetadataTrack;
+    private bool _lastCanControl;
+    private string? _lastPlaybackStatus;
+    private long _lastPositionUs = -1;
+    private long _lastPositionEmitMs;
+    private bool _positionForceEmit;
+
     public MprisMediaTransportService(ILogger<MprisMediaTransportService> logger)
     {
         _logger = logger;
@@ -117,6 +130,7 @@ public sealed class MprisMediaTransportService : IMediaTransportService
 
     public Task UpdateTrackAsync(Track? track, CancellationToken cancellationToken = default)
     {
+        Dictionary<string, VariantValue>? changed = null;
         lock (_gate)
         {
             var isNewTrack = !ReferenceEquals(_currentTrack, track);
@@ -124,65 +138,108 @@ public sealed class MprisMediaTransportService : IMediaTransportService
             if (isNewTrack)
             {
                 _position = TimeSpan.Zero;
+                _positionForceEmit = true;
             }
 
             _duration = track is null
                 ? TimeSpan.Zero
                 : TimeSpan.FromSeconds(Math.Max(0, track.DurationSeconds));
+
+            if (!ReferenceEquals(_lastMetadataTrack, track))
+            {
+                _lastMetadataTrack = track;
+                changed ??= new Dictionary<string, VariantValue>();
+                changed["Metadata"] = GetMetadataVariant();
+            }
+
+            var canControl = track is not null;
+            if (canControl != _lastCanControl)
+            {
+                _lastCanControl = canControl;
+                changed ??= new Dictionary<string, VariantValue>();
+                changed["CanPlay"] = canControl;
+                changed["CanPause"] = canControl;
+                changed["CanSeek"] = canControl;
+            }
         }
 
-        EmitPropertiesChanged(PlayerInterface, new Dictionary<string, VariantValue>
-        {
-            ["Metadata"] = GetMetadataVariant(),
-            ["CanPlay"] = track is not null,
-            ["CanPause"] = track is not null,
-            ["CanSeek"] = track is not null
-        });
+        EmitPropertiesChanged(PlayerInterface, changed);
 
         return Task.CompletedTask;
     }
 
     public void UpdatePlaybackState(bool isPlaying)
     {
+        Dictionary<string, VariantValue>? changed = null;
         lock (_gate)
         {
+            if (isPlaying != _isPlaying)
+            {
+                _positionForceEmit = true;
+            }
+
             _isPlaying = isPlaying;
+
+            var playbackStatus = GetPlaybackStatus();
+            if (playbackStatus != _lastPlaybackStatus)
+            {
+                _lastPlaybackStatus = playbackStatus;
+                changed = new Dictionary<string, VariantValue>
+                {
+                    ["PlaybackStatus"] = playbackStatus
+                };
+            }
         }
 
-        EmitPropertiesChanged(PlayerInterface, new Dictionary<string, VariantValue>
-        {
-            ["PlaybackStatus"] = GetPlaybackStatus()
-        });
+        EmitPropertiesChanged(PlayerInterface, changed);
     }
 
     public void UpdatePosition(TimeSpan position, TimeSpan duration)
     {
-        long posUs;
+        Dictionary<string, VariantValue>? changed = null;
         lock (_gate)
         {
             _position = position;
             _duration = duration;
-            posUs = ToMicroseconds(_position);
+
+            var positionUs = ToMicroseconds(position);
+            if (positionUs != _lastPositionUs)
+            {
+                var nowMs = Environment.TickCount64;
+                var isJump = _lastPositionUs < 0 || Math.Abs(positionUs - _lastPositionUs) > PositionJumpThresholdUs;
+                if (_positionForceEmit || isJump || nowMs - _lastPositionEmitMs >= PositionUpdateIntervalMs)
+                {
+                    _lastPositionUs = positionUs;
+                    _lastPositionEmitMs = nowMs;
+                    _positionForceEmit = false;
+                    changed = new Dictionary<string, VariantValue>
+                    {
+                        ["Position"] = positionUs
+                    };
+                }
+            }
         }
 
-        EmitPropertiesChanged(PlayerInterface, new Dictionary<string, VariantValue>
-        {
-            ["Position"] = posUs
-        });
+        EmitPropertiesChanged(PlayerInterface, changed);
     }
 
     public void UpdatePlaybackMode(PlaybackMode playbackMode)
     {
+        Dictionary<string, VariantValue>? changed = null;
         lock (_gate)
         {
-            _playbackMode = playbackMode;
+            if (playbackMode != _playbackMode)
+            {
+                _playbackMode = playbackMode;
+                changed = new Dictionary<string, VariantValue>
+                {
+                    ["LoopStatus"] = GetLoopStatus(),
+                    ["Shuffle"] = GetShuffle()
+                };
+            }
         }
 
-        EmitPropertiesChanged(PlayerInterface, new Dictionary<string, VariantValue>
-        {
-            ["LoopStatus"] = GetLoopStatus(),
-            ["Shuffle"] = GetShuffle()
-        });
+        EmitPropertiesChanged(PlayerInterface, changed);
     }
 
     public void Dispose()
@@ -354,9 +411,9 @@ public sealed class MprisMediaTransportService : IMediaTransportService
         return properties;
     }
 
-    private void EmitPropertiesChanged(string interfaceName, Dictionary<string, VariantValue> changedProperties)
+    private void EmitPropertiesChanged(string interfaceName, Dictionary<string, VariantValue>? changedProperties)
     {
-        if (!_initialized || _connection is null || changedProperties.Count == 0)
+        if (!_initialized || _connection is null || changedProperties is null || changedProperties.Count == 0)
         {
             return;
         }
