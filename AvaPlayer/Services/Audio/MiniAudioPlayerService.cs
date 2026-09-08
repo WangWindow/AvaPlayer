@@ -10,11 +10,18 @@ namespace AvaPlayer.Services.Audio;
 public sealed class MiniAudioPlayerService : IPlayerService
 {
     private const int TimerIntervalMs = 50;
+    // The audio pump and the UI position publish have different frequency needs:
+    // MiniAudioEx requires AudioContext.Update() at ~50ms to advance its state and
+    // dispatch source End events, but every PositionChanged re-runs the downstream
+    // snapshot fan-out (PlayerBar, MPRIS). 10Hz is enough for the UI, so the pump
+    // keeps the 50ms tick and only the publish is throttled to 100ms.
+    private const int PositionPublishIntervalMs = 100;
     private const int DefaultSampleRate = 44100;
     private const int DefaultChannels = 2;
 
     private readonly object _gate = new();
     private readonly DispatcherTimer _timer;
+    private long _lastPositionPublishMs;
     private AudioSource? _source;
     private AudioClip? _clip;
     private double _volume = 80;
@@ -41,11 +48,14 @@ public sealed class MiniAudioPlayerService : IPlayerService
             Console.Error.WriteLine($"[AvaPlayer] {InitializationError}");
         }
 
+        // The (interval, priority, callback) overload auto-starts the timer, which would
+        // pump 20 ticks/s forever even with no track loaded. Use the dispatcher overload
+        // and start/stop on demand via SetPumpActive() instead.
         _timer = new DispatcherTimer(
             TimeSpan.FromMilliseconds(TimerIntervalMs),
             DispatcherPriority.Background,
-            OnTimerTick);
-        _timer.Start();
+            Dispatcher.CurrentDispatcher);
+        _timer.Tick += OnTimerTick;
     }
 
     public bool IsReady { get; }
@@ -164,6 +174,9 @@ public sealed class MiniAudioPlayerService : IPlayerService
                 _trackEndSignaled = false;
                 _pausedCursor = 0;
                 _pendingResumeCursor = 0;
+                // Reset the publish throttle so the first tick of the new track
+                // emits its position immediately instead of waiting out the window.
+                Interlocked.Exchange(ref _lastPositionPublishMs, 0);
 
                 // Apply current volume to the new source
                 source.Volume = (float)(_volume / 100.0);
@@ -221,6 +234,9 @@ public sealed class MiniAudioPlayerService : IPlayerService
 
         if (loadError is not null)
         {
+            // The replaced track's pump must not survive a failed load: no source is left.
+            SetPumpActive(false);
+
             if (wasPlaying)
             {
                 PlaybackStateChanged?.Invoke(this, false);
@@ -228,6 +244,10 @@ public sealed class MiniAudioPlayerService : IPlayerService
 
             throw loadError;
         }
+
+        // The pump only earns CPU while a source is actively playing;
+        // startPaused leaves the engine idle until Resume().
+        SetPumpActive(IsPlaying);
 
         // Fire events outside lock to avoid nested lock risk from subscribers
         PlaybackStateChanged?.Invoke(this, IsPlaying);
@@ -253,6 +273,9 @@ public sealed class MiniAudioPlayerService : IPlayerService
             IsPlaying = false;
         }
 
+        // Source is stopped: nothing left to pump until Resume()/PlayAsync().
+        SetPumpActive(false);
+
         PlaybackStateChanged?.Invoke(this, false);
     }
 
@@ -275,6 +298,11 @@ public sealed class MiniAudioPlayerService : IPlayerService
             IsPlaying = true;
         }
 
+        // The pump must stay active after Resume(): the first tick is what
+        // reconciles _pendingResumeCursor against MiniAudioEx's delayed cursor
+        // application, so the timer has to run at least once from here on.
+        SetPumpActive(true);
+
         PlaybackStateChanged?.Invoke(this, true);
     }
 
@@ -296,6 +324,9 @@ public sealed class MiniAudioPlayerService : IPlayerService
             _pendingResumeCursor = 0;
             DisposeCurrentInternal();
         }
+
+        // No source left: the pump has nothing to advance.
+        SetPumpActive(false);
 
         if (hadResources)
         {
@@ -373,6 +404,26 @@ public sealed class MiniAudioPlayerService : IPlayerService
     }
 
     /// <summary>
+    /// Starts/stops the 50ms dispatcher pump. The pump only earns its CPU while a
+    /// source is actively tracking playback: MiniAudioEx advances and dispatches
+    /// source End events inside AudioContext.Update(), and with the source stopped
+    /// (no track / paused / ended / disposed) there is nothing to pump.
+    /// The timer is owned by the UI dispatcher while Play/Pause/Resume/Stop may be
+    /// called from the PlaybackSession command loop, so every request is marshalled
+    /// to the UI thread instead of touching the timer directly.
+    /// Requests are always posted - never applied inline - because the dispatcher
+    /// queue is FIFO and mixing direct calls with posted ones would let an already
+    /// queued Stop land after a later Start (killing a freshly started pump).
+    /// </summary>
+    private void SetPumpActive(bool active)
+    {
+        if (_disposed)
+            return;
+
+        Dispatcher.UIThread.Post(active ? _timer.Start : _timer.Stop);
+    }
+
+    /// <summary>
     /// Releases the current <see cref="AudioSource"/> and <see cref="AudioClip"/>.
     /// Caller must hold <see cref="_gate"/> lock.
     /// </summary>
@@ -440,6 +491,13 @@ public sealed class MiniAudioPlayerService : IPlayerService
             }
         }
 
+        // The track is over and the source is stopped, so the pump can idle.
+        // Safe w.r.t. MiniAudioEx's end flag: End is only dispatched inside
+        // AudioContext.Update(), and this source is disposed (removed from the
+        // engine's source list) by the next PlayAsync()/Stop() before the pump
+        // runs again, so a late End for it can never fire on the next track.
+        SetPumpActive(false);
+
         PlaybackStateChanged?.Invoke(this, false);
 
         if (shouldFireEnded)
@@ -450,10 +508,11 @@ public sealed class MiniAudioPlayerService : IPlayerService
     }
 
     /// <summary>
-    /// Timer callback running on UI thread (~50ms interval).
+    /// Timer callback running on UI thread (~50ms interval, only while playing).
     /// Performs three tasks:
     ///   1. Pumps <see cref="AudioContext.Update()"/> (required by MiniAudioEx)
     ///   2. Polls playback position and fires <see cref="PositionChanged"/>
+    ///      (publish only, throttled to 10Hz; the polling itself runs every tick)
     ///   3. Detects natural track end and fires <see cref="TrackEnded"/>
     /// </summary>
     private void OnTimerTick(object? sender, EventArgs e)
@@ -540,7 +599,17 @@ public sealed class MiniAudioPlayerService : IPlayerService
             SignalTrackEnded(source);
         }
 
-        // Step 4: Publish the (possibly clamped) position to listeners
-        PositionChanged?.Invoke(this, position);
+        // Step 4: Publish the (possibly clamped) position to listeners, throttled
+        // to 10Hz. The pump (step 1) and the end-of-track/state-machine work
+        // (steps 2-3) above run on every 50ms tick regardless; only this UI
+        // publish is rate-limited because each PositionChanged re-runs the whole
+        // snapshot fan-out downstream (PlayerBar, MPRIS) at no visual benefit
+        // beyond 10Hz.
+        var nowMs = Environment.TickCount64;
+        if (nowMs - Interlocked.Read(ref _lastPositionPublishMs) >= PositionPublishIntervalMs)
+        {
+            Interlocked.Exchange(ref _lastPositionPublishMs, nowMs);
+            PositionChanged?.Invoke(this, position);
+        }
     }
 }
