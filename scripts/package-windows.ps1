@@ -5,7 +5,6 @@ param(
     [string]$InstallerPlatform = "",
     [switch]$SkipPublish,
     [switch]$SkipZip,
-    [switch]$SkipExe,
     [switch]$SkipMsi
 )
 
@@ -14,7 +13,6 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $ProjectPath = Join-Path $RepoRoot "AvaPlayer\AvaPlayer.csproj"
 $BuildPropsPath = Join-Path $RepoRoot "Directory.Build.props"
-$IssPath = Join-Path $RepoRoot "scripts\windows\AvaPlayer.iss"
 $WixProjPath = Join-Path $RepoRoot "scripts\windows\AvaPlayer.wixproj"
 $WindowsTargetFramework = "net10.0-windows10.0.19041.0"
 
@@ -41,7 +39,6 @@ if (-not $InstallerPlatform) {
 $ArtifactRoot = Join-Path $RepoRoot "artifacts\package\$Rid\$Version"
 $PublishDir = Join-Path $ArtifactRoot "publish"
 $ZipPath = Join-Path $ArtifactRoot "AvaPlayer-$Version-$Rid.zip"
-$ExeOutputPath = Join-Path $ArtifactRoot "AvaPlayer-$Version-$Rid-setup.exe"
 $MsiPath = Join-Path $ArtifactRoot "AvaPlayer-$Version-$Rid.msi"
 
 function Invoke-Step {
@@ -98,37 +95,6 @@ if (-not $SkipZip) {
     Compress-Archive -Path (Join-Path $PublishDir "*") -DestinationPath $ZipPath -Force
 }
 
-if (-not $SkipExe) {
-    $iscc = Get-Command "ISCC.exe" -ErrorAction SilentlyContinue
-    if ($null -eq $iscc) {
-        Write-Warning "Inno Setup not found. Install it from https://jrsoftware.org/isinfo.php, then rerun this script to build the EXE installer."
-    }
-    else {
-        $innoDir = Split-Path -Parent $iscc.Source
-        $chineseMessagesFile = @(
-            (Join-Path $innoDir "Languages\ChineseSimplified.isl"),
-            (Join-Path $innoDir "Languages\Unofficial\ChineseSimplified.isl")
-        ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-
-        $innoArguments = @(
-            "/DMyAppVersion=$Version",
-            "/DMyPublishDir=$PublishDir",
-            "/DMyOutputDir=$ArtifactRoot",
-            "/DMyRepoRoot=$RepoRoot",
-            $IssPath
-        )
-
-        if ($chineseMessagesFile) {
-            $innoArguments = @("/DChineseMessagesFile=$chineseMessagesFile") + $innoArguments
-        }
-        else {
-            Write-Warning "ChineseSimplified.isl was not found in the Inno Setup installation. Building the installer with English messages only."
-        }
-
-        Invoke-Step $iscc.Source $innoArguments
-    }
-}
-
 if (-not $SkipMsi) {
     if (-not (Test-Path -LiteralPath $WixProjPath)) {
         Write-Warning "WiX project not found at $WixProjPath. Skipping MSI build."
@@ -162,9 +128,6 @@ Write-Host ""
 Write-Host "Artifacts written to: $ArtifactRoot"
 if (Test-Path -LiteralPath $ZipPath) {
     Write-Host "  ZIP : $ZipPath"
-}
-if (Test-Path -LiteralPath $ExeOutputPath) {
-    Write-Host "  EXE : $ExeOutputPath"
 }
 if (Test-Path -LiteralPath $MsiPath) {
     Write-Host "  MSI : $MsiPath"
