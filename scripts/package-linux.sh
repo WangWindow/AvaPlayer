@@ -80,6 +80,7 @@ PUBLISH_DIR="${ARTIFACT_ROOT}/publish"
 APPDIR="${ARTIFACT_ROOT}/${APP_NAME}.AppDir"
 ZIP_PATH="${ARTIFACT_ROOT}/${APP_NAME}-${VERSION}-${RID}.zip"
 APPIMAGE_PATH="${ARTIFACT_ROOT}/${APP_NAME}-${VERSION}-${RID}.AppImage"
+DEB_PATH="${ARTIFACT_ROOT}/${APP_NAME}-${VERSION}-${RID}.deb"
 ICON_PATH="${ROOT_DIR}/assets/logo.png"
 
 require_tool() {
@@ -121,6 +122,17 @@ map_arch() {
     linux-arm64) printf 'aarch64\n' ;;
     *)
       echo "Unsupported AppImage RID: $1" >&2
+      exit 1
+      ;;
+  esac
+}
+
+map_deb_arch() {
+  case "$1" in
+    linux-x64) printf 'amd64\n' ;;
+    linux-arm64) printf 'arm64\n' ;;
+    *)
+      echo "Unsupported Debian package RID: $1" >&2
       exit 1
       ;;
   esac
@@ -224,6 +236,58 @@ package_appimage() {
   VERSION="${VERSION}" APPIMAGE_EXTRACT_AND_RUN=1 ARCH="${arch}" "${tool_path}" "${APPDIR}" "${APPIMAGE_PATH}"
 }
 
+package_deb() {
+  local deb_arch deb_root installed_size
+  require_tool dpkg-deb
+
+  deb_arch="$(map_deb_arch "${RID}")"
+  deb_root="${ARTIFACT_ROOT}/deb-root"
+
+  rm -rf "${deb_root}"
+  mkdir -p "${deb_root}/DEBIAN"
+  mkdir -p "${deb_root}/opt/${APP_NAME}"
+  mkdir -p "${deb_root}/usr/bin"
+  mkdir -p "${deb_root}/usr/share/applications"
+  mkdir -p "${deb_root}/usr/share/icons/hicolor/512x512/apps"
+
+  cp -a "${PUBLISH_DIR}/." "${deb_root}/opt/${APP_NAME}/"
+  cp "${ICON_PATH}" "${deb_root}/usr/share/icons/hicolor/512x512/apps/avaplayer.png"
+
+  cat > "${deb_root}/usr/share/applications/avaplayer.desktop" <<EOF
+[Desktop Entry]
+Name=${APP_NAME}
+Exec=avaplayer
+Icon=avaplayer
+Type=Application
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+Keywords=music;audio;player;
+EOF
+
+  cat > "${deb_root}/usr/bin/avaplayer" <<EOF
+#!/bin/sh
+exec /opt/${APP_NAME}/${APP_NAME} "\$@"
+EOF
+  chmod +x "${deb_root}/usr/bin/avaplayer"
+  ln -sf avaplayer "${deb_root}/usr/bin/${APP_NAME}"
+
+  installed_size="$(du -sk "${deb_root}/opt/${APP_NAME}" | awk '{print $1}')"
+  cat > "${deb_root}/DEBIAN/control" <<EOF
+Package: avaplayer
+Version: ${VERSION}
+Section: sound
+Priority: optional
+Architecture: ${deb_arch}
+Maintainer: AvaPlayer
+Installed-Size: ${installed_size}
+Description: AvaPlayer audio player
+ A lightweight audio player built with Avalonia.
+EOF
+
+  dpkg-deb --build "${deb_root}" "${DEB_PATH}"
+  rm -rf "${deb_root}"
+}
+
 main() {
   require_tool dotnet
 
@@ -249,11 +313,16 @@ main() {
   fi
 
   package_appimage
+  package_deb
 
   cat <<EOF
 Artifacts written to:
   ${ARTIFACT_ROOT}
 EOF
+
+  if [[ -f "${DEB_PATH}" ]]; then
+    echo "  DEB : ${DEB_PATH}"
+  fi
 }
 
 main "$@"

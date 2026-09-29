@@ -71,28 +71,12 @@ jobs:
           }
           & .\scripts\package-windows.ps1 @arguments
 
-      - name: Generate checksums
-        shell: pwsh
-        env:
-          ARTIFACT_DIR: ${{ steps.meta.outputs.artifact_dir }}
-        run: |
-          $artifactDir = $env:ARTIFACT_DIR
-          $lines = Get-ChildItem -LiteralPath $artifactDir -File |
-              Where-Object { $_.Extension -in @(".zip", ".msi") } |
-              Sort-Object Name |
-              ForEach-Object {
-                  $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-                  "$hash *$($_.Name)"
-              }
-          $lines | Set-Content -LiteralPath (Join-Path $artifactDir "SHA256SUMS-$env:RID.txt") -Encoding ascii
-
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: avaplayer-${{ matrix.rid }}-${{ steps.meta.outputs.version }}
           path: |
             ${{ steps.meta.outputs.artifact_dir }}/AvaPlayer-*
-            ${{ steps.meta.outputs.artifact_dir }}/SHA256SUMS-${{ matrix.rid }}.txt
 
   build-linux:
     name: Build Linux ${{ matrix.rid }}
@@ -158,23 +142,12 @@ jobs:
           chmod +x scripts/package-linux.sh
           ./scripts/package-linux.sh --rid "${RID}" --configuration Release --version "${VERSION}"
 
-      - name: Generate checksums
-        shell: bash
-        env:
-          VERSION: ${{ steps.meta.outputs.version }}
-          ARTIFACT_DIR: ${{ steps.meta.outputs.artifact_dir }}
-        run: |
-          set -euo pipefail
-          cd "${ARTIFACT_DIR}"
-          sha256sum AvaPlayer-* > "SHA256SUMS-${RID}.txt"
-
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: avaplayer-${{ matrix.rid }}-${{ steps.meta.outputs.version }}
           path: |
             ${{ steps.meta.outputs.artifact_dir }}/AvaPlayer-*
-            ${{ steps.meta.outputs.artifact_dir }}/SHA256SUMS-${{ matrix.rid }}.txt
 
   release:
     name: Create GitHub Release
@@ -254,7 +227,7 @@ jobs:
           set -euo pipefail
           mapfile -t files < <(find release-assets -type f \( \
             -name '*.zip' -o -name '*.AppImage' -o \
-            -name '*.msi' -o -name 'SHA256SUMS-*.txt' \
+            -name '*.msi' -o -name '*.deb' \
           \) -print)
           if (( ${#files[@]} == 0 )); then
             echo "No release assets were produced." >&2
