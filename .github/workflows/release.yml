@@ -27,9 +27,9 @@ jobs:
           - rid: win-x64
             runner: windows-2025
             installer_platform: x64
-          # - rid: win-arm64
-          #   runner: windows-11-arm
-          #   installer_platform: arm64
+          - rid: win-arm64
+            runner: windows-11-arm
+            installer_platform: arm64
     runs-on: ${{ matrix.runner }}
     env:
       RID: ${{ matrix.rid }}
@@ -103,8 +103,8 @@ jobs:
         include:
           - rid: linux-x64
             runner: ubuntu-24.04
-          # - rid: linux-arm64
-          #   runner: ubuntu-24.04-arm
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
     env:
       RID: ${{ matrix.rid }}
     steps:
@@ -126,14 +126,15 @@ jobs:
           sudo apt-get install -y clang zlib1g-dev curl unzip zip desktop-file-utils
 
       - name: Download appimagetool
-        if: matrix.rid == 'linux-x64'
         shell: bash
+        env:
+          APPIMAGE_TOOL: ${{ matrix.rid == 'linux-arm64' && 'appimagetool-aarch64.AppImage' || 'appimagetool-x86_64.AppImage' }}
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          curl -L https://github.com/AppImage/appimagetool/releases/latest/download/appimagetool-x86_64.AppImage \
-            -o artifacts/appimagetool-x86_64.AppImage
-          chmod +x artifacts/appimagetool-x86_64.AppImage
+          curl -L "https://github.com/AppImage/appimagetool/releases/latest/download/${APPIMAGE_TOOL}" \
+            -o "artifacts/${APPIMAGE_TOOL}"
+          chmod +x "artifacts/${APPIMAGE_TOOL}"
 
       - name: Read build metadata
         id: meta
@@ -252,7 +253,7 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t files < <(find release-assets -type f \( \
-            -name '*.zip' -o -name '*.tar.gz' -o -name '*.AppImage' -o \
+            -name '*.zip' -o -name '*.AppImage' -o \
             -name '*.msi' -o -name 'SHA256SUMS-*.txt' \
           \) -print)
           if (( ${#files[@]} == 0 )); then

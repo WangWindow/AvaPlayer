@@ -78,7 +78,6 @@ fi
 ARTIFACT_ROOT="${ROOT_DIR}/artifacts/package/${RID}/${VERSION}"
 PUBLISH_DIR="${ARTIFACT_ROOT}/publish"
 APPDIR="${ARTIFACT_ROOT}/${APP_NAME}.AppDir"
-TAR_PATH="${ARTIFACT_ROOT}/${APP_NAME}-${VERSION}-${RID}.tar.gz"
 ZIP_PATH="${ARTIFACT_ROOT}/${APP_NAME}-${VERSION}-${RID}.zip"
 APPIMAGE_PATH="${ARTIFACT_ROOT}/${APP_NAME}-${VERSION}-${RID}.AppImage"
 ICON_PATH="${ROOT_DIR}/assets/logo.png"
@@ -227,7 +226,6 @@ package_appimage() {
 
 main() {
   require_tool dotnet
-  require_tool tar
 
   rm -rf "${ARTIFACT_ROOT}"
   mkdir -p "${ARTIFACT_ROOT}"
@@ -240,8 +238,6 @@ main() {
 
   # Remove debug symbol files (.pdb) from publish output before packaging
   find "${PUBLISH_DIR}" -name '*.pdb' -type f -delete
-
-  tar -C "${PUBLISH_DIR}" -czf "${TAR_PATH}" .
 
   if command -v zip >/dev/null 2>&1; then
     (
