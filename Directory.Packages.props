@@ -13,7 +13,7 @@
     <PackageVersion Include="Avalonia.Wayland" Version="12.1.2" />
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageVersion Include="FluentIcons.Avalonia" Version="2.1.339" />
+    <PackageVersion Include="FluentIcons.Avalonia" Version="2.1.343" />
     <PackageVersion Include="HotAvalonia" Version="3.1.5" />
     <PackageVersion Include="JAJ.Packages.MiniAudioEx" Version="3.3.6" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.12" />
