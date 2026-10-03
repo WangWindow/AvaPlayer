@@ -87,12 +87,12 @@ sealed class Program
                     // ExtendClientAreaToDecorationsHint.
                 });
         }
-        // Tray caveat: on Wayland the tray is exported over DBus
-        // StatusNotifierItem/AppIndicator, which generally expects PNG pixmaps
-        // (or icon-theme names), while App.axaml feeds it .ico - the tray icon
-        // may render poorly or be dropped on some Wayland desktops.
-        // On X11 Avalonia uses XEmbed, which handles .ico fine.
-        // Follow-up (out of scope here): ship a 22-32 px PNG.
+        // Tray caveat: on Wayland the tray is exported over DBus as a
+        // StatusNotifierItem/AppIndicator. App.axaml therefore uses PNG assets
+        // rather than Windows-only .ico resources. A desktop still needs a
+        // StatusNotifier host (for example an AppIndicator/Wayland tray
+        // extension) to display the item; without one no application can make a
+        // tray icon visible.
 #endif
 
 #if DEBUG

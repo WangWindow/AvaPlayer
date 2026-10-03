@@ -29,8 +29,8 @@ public partial class App : Application
 {
     private const string LightweightModeSettingKey = "lightweight-mode-enabled";
     private const string TrayIconStyleSettingKey = "tray-icon-style";
-    private const string DarkTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray.ico";
-    private const string LightTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray-light.ico";
+    private const string DarkTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray.png";
+    private const string LightTrayIconResourceUri = "avares://AvaPlayer/Resources/logo-tray-light.png";
 
     private ServiceProvider? _services;
     private IServiceScope? _runtimeScope;
@@ -77,7 +77,10 @@ public partial class App : Application
             _isLightweightModeEnabled = LoadLightweightModeSetting();
             if (!_isLightweightModeEnabled)
             {
-                _ = EnsureRuntimeServices();
+                // Create the window shell before resolving runtime services. The
+                // audio backend, SQLite and DBus are initialized asynchronously
+                // after the desktop lifetime has started, so a slow ARM board
+                // can still show a window and tray immediately.
                 EnsureMainWindow();
             }
 
@@ -89,10 +92,33 @@ public partial class App : Application
             WireMediaTransport();
             WireSingleInstanceActivation();
 
-            _ = InitializeApplicationAsync();
         }
 
         base.OnFrameworkInitializationCompleted();
+
+        // Do not run database/audio/DBus initialization inline while Avalonia is
+        // completing its framework initialization. The desktop lifetime cannot
+        // map the window (or finish registering the tray) until this callback
+        // returns; on slower ARM systems that made the application look stuck.
+        if (_desktop is not null)
+        {
+            Dispatcher.UIThread.Post(StartApplicationInitialization, DispatcherPriority.Background);
+        }
+    }
+
+    private async void StartApplicationInitialization()
+    {
+        try
+        {
+            // Let the first window/tray frame be processed before any potentially
+            // blocking native or database initialization runs on the UI thread.
+            await Task.Yield();
+            await InitializeApplicationAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[App] 启动初始化失败: {Message}", ex.Message);
+        }
     }
 
     private static ServiceProvider ConfigureServices()
@@ -172,6 +198,8 @@ public partial class App : Application
 
     private async Task InitializeApplicationAsync()
     {
+        await RestoreTrayIconThemeAsync();
+
         if (_isLightweightModeEnabled)
         {
             _logger?.LogInformation("[App] 轻量模式启动，初始化运行时。");
@@ -182,7 +210,13 @@ public partial class App : Application
 
     private async Task InitializeRuntimeAsync(bool hydrateVisuals)
     {
-        EnsureRuntimeServices();
+        var mainWindowViewModel = EnsureRuntimeServices();
+
+        if (_mainWindow is not null
+            && !ReferenceEquals(_mainWindow.DataContext, mainWindowViewModel))
+        {
+            _mainWindow.DataContext = mainWindowViewModel;
+        }
 
         try
         {
@@ -212,10 +246,7 @@ public partial class App : Application
 
         try
         {
-            if (_mainWindowViewModel is not null)
-            {
-                await _mainWindowViewModel.InitializeAsync(hydrateVisuals);
-            }
+            await mainWindowViewModel.InitializeAsync(hydrateVisuals);
         }
         catch (Exception ex)
         {
@@ -272,11 +303,6 @@ public partial class App : Application
             return _mainWindow;
         }
 
-        if (_mainWindowViewModel is null)
-        {
-            throw new InvalidOperationException("主窗口视图模型尚未初始化。");
-        }
-
         _mainWindow = new MainWindow
         {
             DataContext = _mainWindowViewModel
@@ -321,25 +347,26 @@ public partial class App : Application
         _darkTrayIcon = LoadWindowIcon(DarkTrayIconResourceUri);
         _lightTrayIcon = LoadWindowIcon(LightTrayIconResourceUri);
 
-        // Read persisted tray icon style from DB (initialized earlier by
-        // LoadLightweightModeSetting). This ensures the tray icon respects
-        // the user's saved preference even when starting in lightweight
-        // (tray-only) mode, before the ViewModel is ever created.
+        // Apply a safe default synchronously. The saved preference is restored
+        // after the desktop lifetime starts so a slow database cannot delay the
+        // first tray registration.
+        ApplyTrayIconStyle("dark");
+    }
+
+    private async Task RestoreTrayIconThemeAsync()
+    {
         var style = "dark";
         try
         {
-            if (_settings is not null)
+            var saved = await _settings!.GetAsync(TrayIconStyleSettingKey);
+            if (saved is "light" or "dark")
             {
-                var saved = Task.Run(async () =>
-                    await _settings.GetAsync(TrayIconStyleSettingKey)
-                ).GetAwaiter().GetResult();
-                if (saved is "light" or "dark")
-                    style = saved;
+                style = saved;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Default to dark on any error
+            _logger?.LogDebug(ex, "[App] 读取托盘图标样式失败，使用默认样式。");
         }
 
         ApplyTrayIconStyle(style);

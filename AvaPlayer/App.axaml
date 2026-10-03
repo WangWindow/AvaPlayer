@@ -9,7 +9,7 @@
 
   <TrayIcon.Icons>
     <TrayIcons>
-      <TrayIcon Icon="/Resources/logo-tray.ico"
+      <TrayIcon Icon="/Resources/logo-tray.png"
                 ToolTipText="AvaPlayer"
                 Clicked="OnPlayPauseClick">
         <TrayIcon.Menu>
