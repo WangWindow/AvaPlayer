@@ -65,19 +65,12 @@ public sealed class TrackScannerService : ITrackScannerService
                     try
                     {
                         using var tagFile = TagLib.File.Create(filePath);
-                        tracks.Add(new Track
-                        {
-                            Id = BuildTrackId(filePath),
-                            FilePath = filePath,
-                            Title = tagFile.Tag.Title ?? string.Empty,
-                            Artist = tagFile.Tag.FirstPerformer ?? string.Empty,
-                            Album = tagFile.Tag.Album ?? string.Empty,
-                            DurationSeconds = Math.Max(0, tagFile.Properties.Duration.TotalSeconds)
-                        });
+                        tracks.Add(CreateTrackFromTag(filePath, tagFile));
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "[Scanner] 跳过文件 {FilePath}: {Message}", filePath, ex.Message);
+                        _logger.LogWarning(ex, "[Scanner] 文件 {FilePath} 元数据读取失败，使用回退信息: {Message}", filePath, ex.Message);
+                        tracks.Add(CreateFallbackTrack(filePath));
                     }
                 }
             }
@@ -91,4 +84,30 @@ public sealed class TrackScannerService : ITrackScannerService
     }
 
     private static string BuildTrackId(string filePath) => StableId.ForPath(filePath);
+
+    private static Track CreateTrackFromTag(string filePath, TagLib.File tagFile)
+    {
+        return new Track
+        {
+            Id = BuildTrackId(filePath),
+            FilePath = filePath,
+            Title = tagFile.Tag.Title ?? string.Empty,
+            Artist = tagFile.Tag.FirstPerformer ?? string.Empty,
+            Album = tagFile.Tag.Album ?? string.Empty,
+            DurationSeconds = Math.Max(0, tagFile.Properties.Duration.TotalSeconds)
+        };
+    }
+
+    private static Track CreateFallbackTrack(string filePath)
+    {
+        return new Track
+        {
+            Id = BuildTrackId(filePath),
+            FilePath = filePath,
+            Title = Path.GetFileNameWithoutExtension(filePath),
+            Artist = string.Empty,
+            Album = string.Empty,
+            DurationSeconds = 0
+        };
+    }
 }
