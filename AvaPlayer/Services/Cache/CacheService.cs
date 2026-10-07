@@ -13,7 +13,7 @@ namespace AvaPlayer.Services.Cache;
 /// stays independent of <c>Services/Database</c>. All index mutations are serialized through an async gate
 /// on a single long-lived connection; L1 mutations are serialized through a short in-memory lock.
 /// </remarks>
-public sealed class CacheService : ICacheService, IAsyncDisposable
+public sealed class CacheService : ICacheService, IAsyncDisposable, IDisposable
 {
     private const int KindValue = 0;
     private const int KindTombstone = 1;
@@ -366,6 +366,18 @@ public sealed class CacheService : ICacheService, IAsyncDisposable
         }
 
         _dbGate.Dispose();
+    }
+
+    /// <summary>
+    /// Synchronous counterpart used by <c>ServiceProvider.Dispose()</c> during
+    /// application shutdown; the async gate cannot be awaited there, so the index
+    /// connection is released directly. The provider only ever calls one of the
+    /// two disposal paths.
+    /// </summary>
+    public void Dispose()
+    {
+        _connection?.Dispose();
+        _connection = null;
     }
 
     // ---------------------------------------------------------------------------------
