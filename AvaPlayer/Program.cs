@@ -1,5 +1,6 @@
 ﻿using System;
 using Avalonia;
+using Avalonia.OpenGL;
 using AvaPlayer.Helpers;
 
 namespace AvaPlayer;
@@ -74,17 +75,27 @@ sealed class Program
                     // tray) goes through managed Tmds.DBus.Protocol, so a GLib
                     // main loop is not needed. Matches the backend default.
                     UseGLibMainLoop = false,
+                    // Start from GL profiles every relevant Wayland driver can
+                    // actually create. Avalonia picks the first entry whose EGL
+                    // *config* exists and does not fall back when
+                    // eglCreateContext later fails, so the default GL 4.0 first
+                    // entry leaves panthor (RK3588 Mali-G610: GL 3.1 / GLES 3.1
+                    // only) stuck in a failing render loop with no window.
+                    GlProfiles = new List<GlVersion>
+                    {
+                        new GlVersion(GlProfileType.OpenGL, 3, 0),
+                        new GlVersion(GlProfileType.OpenGLES, 3, 0),
+                        new GlVersion(GlProfileType.OpenGLES, 2, 0),
+                    },
                     // UseDmabufSwapchain intentionally left null: the backend
                     // decides from compositor + driver capabilities; hard-coding
                     // true is the least safe choice on e.g. NVIDIA stacks.
-                    // GlProfiles left at the default probe order (OpenGL 4.0
-                    // down to OpenGL ES 2.0); WlDisplayName left null so the
-                    // WAYLAND_DISPLAY environment variable is honoured.
-                    // ForceDrawnDecorations is an [Experimental] testing knob
-                    // (forces CSD, requires suppressing the
-                    // AVALONIA_WAYLAND_FORCE_CSD compiler diagnostic) - not set;
-                    // the main window already draws its own title bar via
-                    // ExtendClientAreaToDecorationsHint.
+                    // WlDisplayName left null so the WAYLAND_DISPLAY environment
+                    // variable is honoured. ForceDrawnDecorations is an
+                    // [Experimental] testing knob (forces CSD, requires
+                    // suppressing the AVALONIA_WAYLAND_FORCE_CSD compiler
+                    // diagnostic) - not set; the main window already draws its
+                    // own title bar via ExtendClientAreaToDecorationsHint.
                 });
         }
         // Tray caveat: on Wayland the tray is exported over DBus as a
