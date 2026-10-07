@@ -50,6 +50,10 @@
     <PackageReference Include="TagLibSharp" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(PublishAot)' == 'true'">
+    <TrimmerRootAssembly Include="TagLibSharp" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <PackageReference Include="Avalonia.Markup.Xaml.Loader" PrivateAssets="All" />
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" PrivateAssets="All" />
