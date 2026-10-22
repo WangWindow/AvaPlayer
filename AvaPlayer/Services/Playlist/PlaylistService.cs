@@ -12,6 +12,10 @@ public sealed class PlaylistService : IPlaylistService
     private readonly Random _random = new();
     private PlaybackMode _playbackMode;
     private bool _isLoading;
+    private List<Track>? _playbackQueue;
+    private string? _playbackPlaylistId;
+
+    private IList<Track> PlaybackQueue => _playbackQueue is not null ? _playbackQueue : Queue;
 
     public PlaylistService(IDatabaseService databaseService, ITrackScannerService trackScannerService)
     {
@@ -72,14 +76,23 @@ public sealed class PlaylistService : IPlaylistService
         }
     }
 
-    public async Task AddPlaylistAsync(string name, string folderPath, CancellationToken cancellationToken = default)
+    public async Task AddPlaylistAsync(string name, string folderPath, bool includeSubfolders = true, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
+
+        folderPath = FilePaths.Normalize(folderPath);
+        var existing = Playlists.FirstOrDefault(p => FilePaths.Comparer.Equals(FilePaths.Normalize(p.FolderPath), folderPath));
+        if (existing is not null)
+        {
+            await RescanPlaylistAsync(existing.Id, existing.IncludeSubfolders, cancellationToken);
+            await SelectPlaylistAsync(existing.Id, cancellationToken);
+            return;
+        }
 
         var playlistName = ResolvePlaylistName(name, folderPath);
         var playlistId = StableId.ForPath(folderPath);
 
-        var scannedTracks = await _trackScannerService.ScanFolderAsync(folderPath, cancellationToken);
+        var scannedTracks = await _trackScannerService.ScanFolderAsync(folderPath, includeSubfolders, cancellationToken);
         var tracks = scannedTracks
             .Select(track => WithPlaylist(track, playlistId))
             .ToArray();
@@ -88,7 +101,8 @@ public sealed class PlaylistService : IPlaylistService
         {
             Id = playlistId,
             Name = playlistName,
-            FolderPath = folderPath
+            FolderPath = folderPath,
+            IncludeSubfolders = includeSubfolders
         }, cancellationToken);
         await _databaseService.SaveTracksAsync(tracks, cancellationToken);
 
@@ -100,7 +114,27 @@ public sealed class PlaylistService : IPlaylistService
 
         if (CurrentTrack is null && Queue.Count > 0)
         {
-            CurrentTrack = Queue[0];
+            SetCurrentTrack(Queue[0]);
+        }
+    }
+
+    public async Task RescanPlaylistAsync(string playlistId, bool includeSubfolders, CancellationToken cancellationToken = default)
+    {
+        var playlist = Playlists.FirstOrDefault(p => p.Id == playlistId)
+            ?? throw new ArgumentException("歌单不存在", nameof(playlistId));
+        var scanned = await _trackScannerService.ScanFolderAsync(playlist.FolderPath, includeSubfolders, cancellationToken);
+        await _databaseService.ReplacePlaylistTracksAsync(playlistId,
+            scanned.Select(track => WithPlaylist(track, playlistId)), includeSubfolders, cancellationToken);
+        await ReloadPlaylistsAsync(cancellationToken);
+        if (_playbackPlaylistId == playlistId)
+        {
+            var updated = await _databaseService.GetTracksAsync(playlistId, cancellationToken);
+            _playbackQueue = OrderTracks(updated.Where(t => File.Exists(t.FilePath))).ToList();
+        }
+        if (SelectedPlaylist?.Id == playlistId)
+        {
+            await ReplaceQueueAsync(playlistId, cancellationToken);
+            SelectedPlaylistChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -140,15 +174,15 @@ public sealed class PlaylistService : IPlaylistService
         var removedPaths = tracks
             .Select(static track => track.FilePath)
             .Where(static path => !string.IsNullOrWhiteSpace(path))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .Distinct(FilePaths.Comparer)
+            .ToHashSet(FilePaths.Comparer);
 
         if (removedPaths.Count == 0)
         {
             return;
         }
 
-        await _databaseService.DeleteTracksAsync(removedPaths, cancellationToken);
+        await _databaseService.DeleteTracksAsync(removedPaths, cancellationToken, SelectedPlaylist?.Id);
 
         for (var i = Queue.Count - 1; i >= 0; i--)
         {
@@ -158,29 +192,32 @@ public sealed class PlaylistService : IPlaylistService
             }
         }
 
-        if (CurrentTrack is not null && removedPaths.Contains(CurrentTrack.FilePath))
-        {
-            CurrentTrack = null;
-        }
+        if (_playbackPlaylistId == SelectedPlaylist?.Id)
+            _playbackQueue?.RemoveAll(track => removedPaths.Contains(track.FilePath));
 
         await ReloadPlaylistsAsync(cancellationToken);
     }
 
     public void SetCurrentTrack(Track track)
     {
+        if (_playbackQueue is null || _playbackPlaylistId != track.PlaylistId)
+        {
+            _playbackQueue = Queue.ToList();
+            _playbackPlaylistId = track.PlaylistId;
+        }
         CurrentTrack = track;
     }
 
     public Track? GetNextTrack()
     {
-        if (Queue.Count == 0)
+        if (PlaybackQueue.Count == 0)
         {
             return null;
         }
 
         if (CurrentTrack is null)
         {
-            return Queue[0];
+            return PlaybackQueue[0];
         }
 
         return PlaybackMode switch
@@ -195,14 +232,14 @@ public sealed class PlaylistService : IPlaylistService
 
     public Track? GetPreviousTrack()
     {
-        if (Queue.Count == 0)
+        if (PlaybackQueue.Count == 0)
         {
             return null;
         }
 
         if (CurrentTrack is null)
         {
-            return Queue[0];
+            return PlaybackQueue[0];
         }
 
         return PlaybackMode switch
@@ -232,16 +269,16 @@ public sealed class PlaylistService : IPlaylistService
 
     private async Task ReplaceQueueAsync(string? playlistId, CancellationToken cancellationToken)
     {
-        var tracks = await _databaseService.GetTracksAsync(playlistId, cancellationToken);
+        IReadOnlyList<Track> tracks = playlistId is null
+            ? []
+            : await _databaseService.GetTracksAsync(playlistId, cancellationToken);
         Queue.Clear();
 
-        foreach (var track in tracks.Where(static track => File.Exists(track.FilePath)))
+        foreach (var track in OrderTracks(tracks.Where(static track => File.Exists(track.FilePath))))
         {
             Queue.Add(track);
         }
 
-        SortQueue();
-        CurrentTrack = null;
     }
 
     private async Task ReloadPlaylistsAsync(CancellationToken cancellationToken)
@@ -258,6 +295,7 @@ public sealed class PlaylistService : IPlaylistService
         {
             SelectedPlaylist = Playlists.FirstOrDefault(p => p.Id == SelectedPlaylist.Id);
         }
+        SelectedPlaylistChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private static string ResolvePlaylistName(string name, string folderPath)
@@ -283,60 +321,57 @@ public sealed class PlaylistService : IPlaylistService
         PlaylistId = playlistId
     };
 
+    private int FindCurrentTrackIndex()
+    {
+        for (var index = 0; index < PlaybackQueue.Count; index++)
+            if (FilePaths.Comparer.Equals(PlaybackQueue[index].FilePath, CurrentTrack?.FilePath)) return index;
+        return -1;
+    }
+
     private Track? GetSequentialTrack(int delta)
     {
-        var index = Queue.IndexOf(CurrentTrack!);
+        var index = FindCurrentTrackIndex();
         if (index < 0)
         {
-            return Queue.Count > 0 ? Queue[0] : null;
+            return PlaybackQueue.Count > 0 ? PlaybackQueue[0] : null;
         }
 
         var nextIndex = index + delta;
-        return nextIndex >= 0 && nextIndex < Queue.Count
-            ? Queue[nextIndex]
+        return nextIndex >= 0 && nextIndex < PlaybackQueue.Count
+            ? PlaybackQueue[nextIndex]
             : null;
     }
 
     private Track GetWrappedTrack(int delta)
     {
-        var index = Queue.IndexOf(CurrentTrack!);
-        var nextIndex = (index + delta) % Queue.Count;
+        var index = FindCurrentTrackIndex();
+        var nextIndex = (index + delta) % PlaybackQueue.Count;
         if (nextIndex < 0)
         {
-            nextIndex += Queue.Count;
+            nextIndex += PlaybackQueue.Count;
         }
 
-        return Queue[nextIndex];
+        return PlaybackQueue[nextIndex];
     }
 
     private Track GetRandomTrack(Track currentTrack)
     {
-        if (Queue.Count == 1)
+        if (PlaybackQueue.Count == 1)
         {
-            return currentTrack;
+            return PlaybackQueue[0];
         }
 
         Track candidate;
         do
         {
-            candidate = Queue[_random.Next(Queue.Count)];
+            candidate = PlaybackQueue[_random.Next(PlaybackQueue.Count)];
         } while (candidate.Id == currentTrack.Id);
 
         return candidate;
     }
 
-    private void SortQueue()
-    {
-        var ordered = Queue
-            .OrderBy(static track => track.Artist, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(static track => track.Album, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(static track => track.DisplayTitle, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        Queue.Clear();
-        foreach (var track in ordered)
-        {
-            Queue.Add(track);
-        }
-    }
+    private static IOrderedEnumerable<Track> OrderTracks(IEnumerable<Track> tracks) => tracks
+        .OrderBy(static track => track.Artist, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(static track => track.Album, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(static track => track.DisplayTitle, StringComparer.OrdinalIgnoreCase);
 }

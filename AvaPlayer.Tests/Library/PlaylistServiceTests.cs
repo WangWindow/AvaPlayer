@@ -2,9 +2,9 @@ using AvaPlayer.Helpers;
 using AvaPlayer.Models;
 using AvaPlayer.Services.Database;
 using AvaPlayer.Services.Playlist;
-using AvaPlayer.Application.Tests.Fakes;
+using AvaPlayer.Tests.Fakes;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 public sealed class PlaylistServiceTests : IDisposable
 {

@@ -3,11 +3,11 @@ using AvaPlayer.Models;
 using AvaPlayer.Services.AlbumArt;
 using AvaPlayer.Services.Lyrics;
 using AvaPlayer.Services.PlaybackSession;
-using AvaPlayer.Application.Tests.Fakes;
+using AvaPlayer.Tests.Fakes;
 using AvaPlayer.ViewModels;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 public sealed class PlayerBarViewModelTests
 {

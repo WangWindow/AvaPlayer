@@ -1,12 +1,12 @@
 using AvaPlayer.Services.Lyrics;
 using AvaPlayer.Services.Settings;
-using AvaPlayer.Application.Tests.Fakes;
+using AvaPlayer.Tests.Fakes;
 using AvaPlayer.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 public sealed class DependencyInjectionIdentityTests
 {

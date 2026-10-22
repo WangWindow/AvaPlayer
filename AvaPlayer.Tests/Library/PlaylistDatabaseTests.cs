@@ -2,7 +2,7 @@ using AvaPlayer.Models;
 using AvaPlayer.Services.Database;
 using Microsoft.Data.Sqlite;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 public sealed class PlaylistDatabaseTests : IDisposable
 {
@@ -133,6 +133,28 @@ public sealed class PlaylistDatabaseTests : IDisposable
 
         Assert.Equal(2, all.Count);
         Assert.Equal("t1", Assert.Single(onlyP1).Id);
+    }
+
+    [Fact]
+    public async Task Existing_playlist_schema_migrates_without_losing_membership_or_selection()
+    {
+        CreateLegacyDatabase(_dbPath);
+        using (var connection = new SqliteConnection($"Data Source={_dbPath}"))
+        {
+            connection.Open();
+            Execute(connection, "CREATE TABLE playlists (id TEXT PRIMARY KEY, name TEXT NOT NULL, folder_path TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);");
+            Execute(connection, "INSERT INTO playlists (id, name, folder_path) VALUES ('existing', 'Renamed', 'C:/LegacyMusic');");
+            Execute(connection, "ALTER TABLE tracks ADD COLUMN playlist_id TEXT NOT NULL DEFAULT 'existing';");
+            Execute(connection, "INSERT INTO settings (key, value) VALUES ('selected-playlist-id', 'existing');");
+        }
+        var database = new SqliteDatabaseService(_dbPath);
+        await database.InitializeAsync();
+        Assert.Equal(2, (await database.GetTracksAsync("existing")).Count);
+        Assert.Equal("Renamed", Assert.Single(await database.GetPlaylistsAsync()).Name);
+        Assert.Equal("existing", await database.GetSettingAsync("selected-playlist-id"));
+        var reopened = new SqliteDatabaseService(_dbPath);
+        await reopened.InitializeAsync();
+        Assert.Equal(2, (await reopened.GetTracksAsync("existing")).Count);
     }
 
     private SqliteDatabaseService CreateInitializedDb()

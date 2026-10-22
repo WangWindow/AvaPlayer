@@ -1,7 +1,7 @@
 using AvaPlayer.Models;
 using AvaPlayer.Services.Lyrics;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 public sealed class LrcApiProviderTests
 {

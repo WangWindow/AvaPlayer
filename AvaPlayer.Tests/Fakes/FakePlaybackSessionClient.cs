@@ -1,7 +1,7 @@
 using AvaPlayer.Models;
 using AvaPlayer.Services.PlaybackSession;
 
-namespace AvaPlayer.Application.Tests.Fakes;
+namespace AvaPlayer.Tests.Fakes;
 
 /// <summary>
 /// Hand-written fake of <see cref="IPlaybackSessionClient"/> for testing

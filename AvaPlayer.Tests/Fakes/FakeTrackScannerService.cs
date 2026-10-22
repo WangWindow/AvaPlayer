@@ -1,7 +1,7 @@
 using AvaPlayer.Models;
 using AvaPlayer.Services.Playlist;
 
-namespace AvaPlayer.Application.Tests.Fakes;
+namespace AvaPlayer.Tests.Fakes;
 
 public sealed class FakeTrackScannerService : ITrackScannerService
 {
@@ -9,7 +9,7 @@ public sealed class FakeTrackScannerService : ITrackScannerService
 
     public List<string> ScannedFolders { get; } = new();
 
-    public Task<IReadOnlyList<Track>> ScanFolderAsync(string folderPath, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<Track>> ScanFolderAsync(string folderPath, bool includeSubfolders = true, CancellationToken cancellationToken = default)
     {
         ScannedFolders.Add(folderPath);
         var tracks = ScanHandler?.Invoke(folderPath) ?? [];

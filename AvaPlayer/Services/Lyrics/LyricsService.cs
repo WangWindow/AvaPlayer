@@ -35,13 +35,9 @@ public sealed class LyricsService : ILyricsService
 
     public async Task<IReadOnlyList<LyricLine>> GetLyricsAsync(Track track, CancellationToken cancellationToken = default)
     {
-        // 同目录外挂 .lrc 永远是最高优先级:用户手工整理的数据,不联网、也不写进缓存。
-        var sidecarPath = Path.ChangeExtension(track.FilePath, ".lrc");
-        if (File.Exists(sidecarPath))
-        {
-            var sidecarText = await File.ReadAllTextAsync(sidecarPath, cancellationToken);
-            return LrcParser.Parse(sidecarText);
-        }
+        cancellationToken.ThrowIfCancellationRequested();
+        var localLyrics = await ReadLocalLyricsAsync(track, cancellationToken);
+        if (localLyrics.Count > 0) return localLyrics;
 
         var cacheKey = BuildCacheKey(track);
         LyricsSelection? bestFallback = null;
@@ -96,7 +92,7 @@ public sealed class LyricsService : ILyricsService
         Track track,
         CancellationToken cancellationToken)
     {
-        // 链接调用方 token:提前返回(Dispose 即取消)或调用方换曲时,撤掉仍在飞的请求。
+        // Cancel the remaining requests explicitly when a winner is found.
         using var raceCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         var pending = new List<Task<LyricsSelection?>>(_providers.Count);
@@ -120,6 +116,8 @@ public sealed class LyricsService : ILyricsService
 
             if (selection.Quality.IsAccepted)
             {
+                await raceCts.CancelAsync();
+                cancellationToken.ThrowIfCancellationRequested();
                 return (selection, null, true);
             }
 
@@ -155,6 +153,40 @@ public sealed class LyricsService : ILyricsService
             _logger.LogWarning(ex, "[Lyrics:{Provider}] 获取歌词失败: {Message}", provider.Name, ex.Message);
             return null;
         }
+    }
+
+    private async Task<IReadOnlyList<LyricLine>> ReadLocalLyricsAsync(Track track, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var embedded = await Task.Run(() =>
+            {
+                using var file = TagLib.File.Create(track.FilePath);
+                return file.Tag.Lyrics;
+            }, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!string.IsNullOrWhiteSpace(embedded))
+            {
+                var lines = LrcParser.ParseLocal(embedded);
+                if (lines.Count > 0) return lines;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "[Lyrics] Cannot read embedded lyrics: {Path}", track.FilePath);
+        }
+
+        try
+        {
+            var sidecarPath = Path.ChangeExtension(track.FilePath, ".lrc");
+            if (File.Exists(sidecarPath))
+                return LrcParser.ParseLocal(await File.ReadAllTextAsync(sidecarPath, cancellationToken));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(ex, "[Lyrics] Cannot read sidecar: {Path}", track.FilePath);
+        }
+        return [];
     }
 
     private static string BuildCacheKey(Track track)

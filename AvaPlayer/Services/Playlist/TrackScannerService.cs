@@ -13,13 +13,6 @@ public sealed class TrackScannerService : ITrackScannerService
         _logger = logger;
     }
 
-    private static readonly EnumerationOptions ScanEnumerationOptions = new()
-    {
-        IgnoreInaccessible = true,
-        RecurseSubdirectories = true,
-        ReturnSpecialDirectories = false
-    };
-
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".aac",
@@ -38,7 +31,7 @@ public sealed class TrackScannerService : ITrackScannerService
         ".wma"
     };
 
-    public async Task<IReadOnlyList<Track>> ScanFolderAsync(string folderPath, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Track>> ScanFolderAsync(string folderPath, bool includeSubfolders = true, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
 
@@ -47,43 +40,46 @@ public sealed class TrackScannerService : ITrackScannerService
             throw new DirectoryNotFoundException($"音乐文件夹不存在: {folderPath}");
         }
 
+        folderPath = FilePaths.Normalize(folderPath);
+        var options = new EnumerationOptions
+        {
+            IgnoreInaccessible = false,
+            RecurseSubdirectories = includeSubfolders,
+            AttributesToSkip = FileAttributes.ReparsePoint,
+            ReturnSpecialDirectories = false
+        };
+
         return await Task.Run(() =>
         {
             var tracks = new List<Track>();
 
-            try
+            foreach (var filePath in Directory.EnumerateFiles(folderPath, "*.*", options))
             {
-                foreach (var filePath in Directory.EnumerateFiles(folderPath, "*.*", ScanEnumerationOptions))
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (!SupportedExtensions.Contains(Path.GetExtension(filePath)))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    if (!SupportedExtensions.Contains(Path.GetExtension(filePath)))
-                    {
-                        continue;
-                    }
-
-                    try
-                    {
-                        using var tagFile = TagLib.File.Create(filePath);
-                        tracks.Add(new Track
-                        {
-                            Id = BuildTrackId(filePath),
-                            FilePath = filePath,
-                            Title = tagFile.Tag.Title ?? string.Empty,
-                            Artist = tagFile.Tag.FirstPerformer ?? string.Empty,
-                            Album = tagFile.Tag.Album ?? string.Empty,
-                            DurationSeconds = Math.Max(0, tagFile.Properties.Duration.TotalSeconds)
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "[Scanner] 跳过文件 {FilePath}: {Message}", filePath, ex.Message);
-                    }
+                    continue;
                 }
-            }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
-            {
-                _logger.LogWarning(ex, "[Scanner] 扫描文件夹 {FolderPath} 时发生错误: {Message}", folderPath, ex.Message);
+
+                try
+                {
+                    using var tagFile = TagLib.File.Create(filePath);
+                    tracks.Add(new Track
+                    {
+                        Id = BuildTrackId(filePath),
+                        FilePath = filePath,
+                        Title = tagFile.Tag.Title ?? string.Empty,
+                        Artist = tagFile.Tag.FirstPerformer ?? string.Empty,
+                        Album = tagFile.Tag.Album ?? string.Empty,
+                        DurationSeconds = Math.Max(0, tagFile.Properties.Duration.TotalSeconds)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[Scanner] 无法读取标签 {FilePath}: {Message}", filePath, ex.Message);
+                    tracks.Add(new Track { Id = BuildTrackId(filePath), FilePath = filePath });
+                }
             }
 
             return tracks;

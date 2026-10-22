@@ -1,7 +1,7 @@
 using AvaPlayer.Models;
 using AvaPlayer.Services.PlaybackSession;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 /// <summary>
 /// Tests for subscription/replay semantics of <see cref="IPlaybackSessionClient"/>.

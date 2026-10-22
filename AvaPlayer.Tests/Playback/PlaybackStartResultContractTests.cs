@@ -1,6 +1,6 @@
 using AvaPlayer.Services.PlaybackSession;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 /// <summary>
 /// Contract tests for <see cref="PlaybackStartResult"/> typed-result pattern.

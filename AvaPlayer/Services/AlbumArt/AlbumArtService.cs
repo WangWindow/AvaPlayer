@@ -38,16 +38,10 @@ public sealed class AlbumArtService : IAlbumArtService
 
     public async Task<Bitmap?> GetAlbumArtAsync(Track track, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var cacheKey = BuildCacheKey(track);
 
-        // 缓存命中但解码失败视为脏数据,继续走 provider 并覆盖写入。
-        var cachedBytes = await ReadCachedAlbumArtAsync(cacheKey, cancellationToken);
-        if (cachedBytes is { Length: > 0 } && CreateBitmap(cachedBytes) is { } cachedBitmap)
-        {
-            return cachedBitmap;
-        }
-
-        // 离线 provider(Embedded)先同步尝试:不占网络并发,命中直接落缓存返回。
+        // Read embedded artwork before the download cache so tag edits are visible immediately.
         foreach (var provider in _providers)
         {
             if (provider.RequiresNetwork)
@@ -55,13 +49,17 @@ public sealed class AlbumArtService : IAlbumArtService
                 continue;
             }
 
-            if (await QueryProviderAsync(provider, track, cancellationToken) is { Length: > 0 } embeddedBytes &&
-                CreateBitmap(embeddedBytes) is { } embeddedBitmap)
-            {
-                await _cacheService.SetBytesAsync(
-                    CacheCategory, cacheKey, embeddedBytes, AlbumArtCacheTtl, cancellationToken);
+            var embeddedBytes = await QueryProviderAsync(provider, track, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (embeddedBytes is { Length: > 0 } && CreateBitmap(embeddedBytes) is { } embeddedBitmap)
                 return embeddedBitmap;
-            }
+        }
+
+        // 缓存命中但解码失败视为脏数据,继续走 provider 并覆盖写入。
+        var cachedBytes = await ReadCachedAlbumArtAsync(cacheKey, cancellationToken);
+        if (cachedBytes is { Length: > 0 } && CreateBitmap(cachedBytes) is { } cachedBitmap)
+        {
+            return cachedBitmap;
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -72,9 +70,17 @@ public sealed class AlbumArtService : IAlbumArtService
             var (winner, attempted) = await RaceProvidersAsync(track, cancellationToken);
             if (winner is { } result)
             {
-                await _cacheService.SetBytesAsync(
-                    CacheCategory, cacheKey, result.Bytes, AlbumArtCacheTtl, cancellationToken);
-                return result.Bitmap;
+                try
+                {
+                    await _cacheService.SetBytesAsync(
+                        CacheCategory, cacheKey, result.Bytes, AlbumArtCacheTtl, cancellationToken);
+                    return result.Bitmap;
+                }
+                catch
+                {
+                    result.Bitmap.Dispose();
+                    throw;
+                }
             }
 
             if (attempted)
@@ -95,7 +101,7 @@ public sealed class AlbumArtService : IAlbumArtService
         Track track,
         CancellationToken cancellationToken)
     {
-        // 链接调用方 token:提前返回(Dispose 即取消)或调用方换曲时,撤掉仍在飞的请求。
+        // Cancel the remaining requests explicitly when a winner is found.
         using var raceCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         var pending = new List<Task<byte[]?>>(_providers.Count);
@@ -121,6 +127,12 @@ public sealed class AlbumArtService : IAlbumArtService
 
             if (CreateBitmap(bytes) is { } bitmap)
             {
+                await raceCts.CancelAsync();
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    bitmap.Dispose();
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
                 return (new AlbumArtResult(bytes, bitmap), attempted);
             }
         }

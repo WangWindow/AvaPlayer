@@ -8,6 +8,16 @@ public static partial class LrcParser
     [GeneratedRegex(@"\[(?<min>\d{1,2}):(?<sec>\d{1,2})(?:[.:](?<frac>\d{1,3}))?\]", RegexOptions.Compiled)]
     private static partial Regex TimestampRegex();
 
+    public static IReadOnlyList<LyricLine> ParseLocal(string text)
+    {
+        var timed = Parse(text);
+        return timed.Count > 0 ? timed : text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(line => line.Length > 0 && !(line.StartsWith('[') && line.EndsWith(']')))
+            .Select(line => new LyricLine { Text = line, IsTimed = false })
+            .ToArray();
+    }
+
     public static IReadOnlyList<LyricLine> Parse(string text)
     {
         var lines = new List<LyricLine>();

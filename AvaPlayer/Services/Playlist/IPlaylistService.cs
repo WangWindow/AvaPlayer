@@ -13,7 +13,8 @@ public interface IPlaylistService
     PlaybackMode PlaybackMode { get; set; }
 
     Task LoadAsync(CancellationToken cancellationToken = default);
-    Task AddPlaylistAsync(string name, string folderPath, CancellationToken cancellationToken = default);
+    Task AddPlaylistAsync(string name, string folderPath, bool includeSubfolders = true, CancellationToken cancellationToken = default);
+    Task RescanPlaylistAsync(string playlistId, bool includeSubfolders, CancellationToken cancellationToken = default);
     Task RenamePlaylistAsync(string playlistId, string newName, CancellationToken cancellationToken = default);
     Task RemovePlaylistAsync(string playlistId, CancellationToken cancellationToken = default);
     Task SelectPlaylistAsync(string? playlistId, CancellationToken cancellationToken = default);

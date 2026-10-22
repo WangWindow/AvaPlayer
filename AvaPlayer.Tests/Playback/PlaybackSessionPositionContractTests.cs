@@ -1,9 +1,9 @@
 using AvaPlayer.Models;
 using AvaPlayer.Services.PlaybackSession;
-using AvaPlayer.Application.Tests.Fakes;
+using AvaPlayer.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 /// <summary>
 /// Position contract tests using the real <see cref="PlaybackSession"/> with
@@ -15,8 +15,12 @@ public sealed class PlaybackSessionPositionContractTests : IDisposable
 {
     private static readonly Track SampleTrack = new()
     {
-        Id = "t1", FilePath = "/music/test.mp3", Title = "Test Song",
-        Artist = "Artist", Album = "Album", DurationSeconds = 240
+        Id = "t1",
+        FilePath = "/music/test.mp3",
+        Title = "Test Song",
+        Artist = "Artist",
+        Album = "Album",
+        DurationSeconds = 240
     };
 
     private readonly FakePlayerService _player = new();

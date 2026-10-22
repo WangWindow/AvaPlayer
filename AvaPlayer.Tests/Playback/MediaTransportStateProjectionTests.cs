@@ -1,8 +1,8 @@
 using AvaPlayer.Models;
 using AvaPlayer.Services.PlaybackSession;
-using AvaPlayer.Application.Tests.Fakes;
+using AvaPlayer.Tests.Fakes;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 /// <summary>
 /// Tests for snapshot-to-media-transport state projection.

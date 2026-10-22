@@ -7,11 +7,11 @@ using AvaPlayer.Services.Network;
 using AvaPlayer.Services.PlaybackSession;
 using AvaPlayer.Services.Playlist;
 using AvaPlayer.Services.Settings;
-using AvaPlayer.Application.Tests.Fakes;
+using AvaPlayer.Tests.Fakes;
 using AvaPlayer.ViewModels;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 /// <summary>
 /// Tests for <see cref="MainWindowViewModel.InitializeAsync"/> contract,

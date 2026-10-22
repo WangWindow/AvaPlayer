@@ -19,7 +19,8 @@ public interface IDatabaseService
     Task DeletePlaylistAsync(string playlistId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Track>> GetTracksAsync(string? playlistId = null, CancellationToken cancellationToken = default);
     Task SaveTracksAsync(IEnumerable<Track> tracks, CancellationToken cancellationToken = default);
-    Task DeleteTracksAsync(IEnumerable<string> filePaths, CancellationToken cancellationToken = default);
+    Task DeleteTracksAsync(IEnumerable<string> filePaths, CancellationToken cancellationToken = default, string? playlistId = null);
+    Task ReplacePlaylistTracksAsync(string playlistId, IEnumerable<Track> tracks, bool includeSubfolders, CancellationToken cancellationToken = default);
     Task SaveSettingAsync(string key, string value, CancellationToken cancellationToken = default);
     /// <summary>
     /// Saves multiple settings atomically within a single transaction.

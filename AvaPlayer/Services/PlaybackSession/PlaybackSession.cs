@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Threading.Channels;
 using AvaPlayer.Models;
+using AvaPlayer.Helpers;
 using AvaPlayer.Services.Audio;
 using AvaPlayer.Services.Playlist;
 using AvaPlayer.Services.Settings;
@@ -25,6 +26,7 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
 
     private long _revision;
     private bool _disposed;
+    private bool _isStartingTrack;
     private readonly CancellationTokenSource _loopCts = new();
     private readonly CancellationTokenSource _checkpointCts = new();
 
@@ -87,8 +89,14 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
             return;
         }
 
+        var playbackPlaylistId = await _settings.GetAsync("current-track-playlist-id", ct);
+        if (!string.IsNullOrEmpty(playbackPlaylistId)
+            && playbackPlaylistId != _playlist.SelectedPlaylist?.Id
+            && _playlist.Playlists.Any(p => p.Id == playbackPlaylistId))
+            await _playlist.SelectPlaylistAsync(playbackPlaylistId, ct);
+
         var matched = _playlist.Queue.FirstOrDefault(t =>
-            string.Equals(t.FilePath, savedPath, StringComparison.OrdinalIgnoreCase));
+            FilePaths.Comparer.Equals(t.FilePath, savedPath));
 
         if (matched is not null)
             _playlist.SetCurrentTrack(matched);
@@ -104,22 +112,26 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
     /// </summary>
     public async Task PersistAsync(CancellationToken ct = default)
     {
-        if (!LatestSnapshot.HasTrack) return;
+        var snapshot = LatestSnapshot;
+        if (snapshot.CurrentTrack is not { } track) return;
 
         var settings = new Dictionary<string, string>
         {
-            ["current-track-path"] = LatestSnapshot.CurrentTrack!.FilePath
+            ["current-track-path"] = track.FilePath
         };
+
+        if (!string.IsNullOrEmpty(track.PlaylistId))
+            settings["current-track-playlist-id"] = track.PlaylistId;
 
         if (_positionMemory.IsEnabled)
         {
-            var pos = Math.Max(0, LatestSnapshot.Position)
+            var pos = Math.Max(0, snapshot.Position)
                 .ToString("F6", CultureInfo.InvariantCulture);
             settings["playback-position-seconds"] = pos;
         }
 
         // Always persist volume alongside track/position
-        var vol = Math.Clamp(LatestSnapshot.Volume, 0, 100)
+        var vol = Math.Clamp(snapshot.Volume, 0, 100)
             .ToString(CultureInfo.InvariantCulture);
         settings["player-volume"] = vol;
 
@@ -130,8 +142,16 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
 
     public IDisposable Subscribe(Action<PlaybackSnapshot> onSnapshot)
     {
-        lock (_subscriberGate) _subscribers.Add(onSnapshot);
-        onSnapshot(LatestSnapshot);
+        lock (_subscriberGate)
+        {
+            _subscribers.Add(onSnapshot);
+            try { onSnapshot(LatestSnapshot); }
+            catch
+            {
+                _subscribers.Remove(onSnapshot);
+                throw;
+            }
+        }
         return new Unsubscriber(this, onSnapshot);
     }
 
@@ -190,39 +210,34 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
         }
     }
 
-    private async Task EnqueueAsync(CancellationToken ct, Func<CancellationToken, Task> command)
+    private Task EnqueueAsync(CancellationToken ct, Func<CancellationToken, Task> command) =>
+        EnqueueWithResultAsync(ct, async token =>
+        {
+            await command(token);
+            return true;
+        });
+
+    private async Task<T> EnqueueWithResultAsync<T>(CancellationToken ct, Func<CancellationToken, Task<T>> command)
     {
-        if (ct.IsCancellationRequested) return;
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await _commands.Writer.WriteAsync(async cmdCt =>
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ct.ThrowIfCancellationRequested();
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _loopCts.Token);
+        var token = linked.Token;
+        var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await _commands.Writer.WriteAsync(async _ =>
         {
             try
             {
-                await command(cmdCt);
-                tcs.SetResult(true);
+                token.ThrowIfCancellationRequested();
+                completion.TrySetResult(await command(token));
             }
-            catch (Exception ex)
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
-                tcs.SetException(ex);
+                completion.TrySetCanceled(token);
             }
-        }, ct);
-        await tcs.Task;
-    }
-
-    private async Task<PlaybackStartResult> EnqueueWithResultAsync(
-        CancellationToken ct,
-        Func<CancellationToken, Task<PlaybackStartResult>> command)
-    {
-        if (ct.IsCancellationRequested)
-            return new PlaybackStartResult.Failed(PlaybackStartFailureKind.EngineUnavailable, "cancelled");
-
-        var tcs = new TaskCompletionSource<PlaybackStartResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await _commands.Writer.WriteAsync(async cmdCt =>
-        {
-            try { tcs.SetResult(await command(cmdCt)); }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }, ct);
-        return await tcs.Task;
+            catch (Exception ex) { completion.TrySetException(ex); }
+        }, token);
+        return await completion.Task.WaitAsync(token);
     }
 
     // ── Command implementations ──
@@ -236,85 +251,35 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
 
     private async Task DoResumeAsync(CancellationToken ct)
     {
-        if (LatestSnapshot.HasTrack)
+        if (LatestSnapshot.HasTrack && LatestSnapshot.Status != PlaybackStatus.Stopped)
         {
             _player.Resume();
+            Publish(ps => ps with { Status = PlaybackStatus.Playing });
         }
-        else if (_playlist.CurrentTrack is { } track)
+        else if ((LatestSnapshot.CurrentTrack ?? _playlist.CurrentTrack) is { } track)
         {
-            _playlist.SetCurrentTrack(track);
-            await _player.PlayAsync(track.FilePath, cancellationToken: ct);
-        }
-        Publish(ps => ps with { Status = PlaybackStatus.Playing });
-    }
-
-    private async Task DoNextAsync(CancellationToken ct)
-    {
-        var previousSnapshot = LatestSnapshot;
-        var next = _playlist.GetNextTrack();
-        if (next is null) return;
-        _playlist.SetCurrentTrack(next);
-        try
-        {
-            await _player.PlayAsync(next.FilePath, cancellationToken: ct);
-            Publish(ps => ps with
-            {
-                CurrentTrack = next,
-                Status = PlaybackStatus.Playing,
-                Duration = Math.Max(next.DurationSeconds, 1),
-                Position = 0,
-                PlaybackMode = _playlist.PlaybackMode
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[PlaybackSession] Next track failed: {Track}", next.DisplayTitle);
-            // Restore previous track on failure
-            if (previousSnapshot.CurrentTrack is not null)
-                _playlist.SetCurrentTrack(previousSnapshot.CurrentTrack);
-            Publish(ps => ps with
-            {
-                CurrentTrack = previousSnapshot.CurrentTrack,
-                Status = PlaybackStatus.Stopped
-            });
+            await DoPlayTrackAsync(track, ct);
         }
     }
 
-    private async Task DoPreviousAsync(CancellationToken ct)
+    private Task DoNextAsync(CancellationToken ct) => AdvanceAsync(_playlist.GetNextTrack(), false, ct);
+
+    private Task DoPreviousAsync(CancellationToken ct) => AdvanceAsync(_playlist.GetPreviousTrack(), false, ct);
+
+    private async Task AdvanceAsync(Track? track, bool stopAtEnd, CancellationToken ct)
     {
-        var previousSnapshot = LatestSnapshot;
-        var prev = _playlist.GetPreviousTrack();
-        if (prev is null) return;
-        _playlist.SetCurrentTrack(prev);
-        try
-        {
-            await _player.PlayAsync(prev.FilePath, cancellationToken: ct);
-            Publish(ps => ps with
-            {
-                CurrentTrack = prev,
-                Status = PlaybackStatus.Playing,
-                Duration = Math.Max(prev.DurationSeconds, 1),
-                Position = 0,
-                PlaybackMode = _playlist.PlaybackMode
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[PlaybackSession] Previous track failed: {Track}", prev.DisplayTitle);
-            if (previousSnapshot.CurrentTrack is not null)
-                _playlist.SetCurrentTrack(previousSnapshot.CurrentTrack);
-            Publish(ps => ps with
-            {
-                CurrentTrack = previousSnapshot.CurrentTrack,
-                Status = PlaybackStatus.Stopped
-            });
-        }
+        if (track is not null)
+            await DoPlayTrackAsync(track, ct);
+        else if (stopAtEnd)
+            Publish(ps => ps with { Status = PlaybackStatus.Stopped });
     }
 
     private Task DoSeekAsync(double seconds, CancellationToken ct)
     {
-        _player.Seek(seconds);
-        Publish(ps => ps with { Position = seconds });
+        if (!double.IsFinite(seconds)) return Task.CompletedTask;
+        var position = Math.Max(0, seconds);
+        _player.Seek(position);
+        Publish(ps => ps with { Position = position });
         return Task.CompletedTask;
     }
 
@@ -393,29 +358,39 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
 
     private async Task<PlaybackStartResult> DoPlayTrackAsync(Track track, CancellationToken ct)
     {
+        var previous = LatestSnapshot;
+        _isStartingTrack = true;
         try
         {
             await _player.PlayAsync(track.FilePath, cancellationToken: ct);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("不可用"))
-        {
-            return new PlaybackStartResult.Failed(PlaybackStartFailureKind.EngineUnavailable, ex.Message);
-        }
-        catch (FileNotFoundException)
-        {
-            return new PlaybackStartResult.Failed(PlaybackStartFailureKind.FileNotFound, track.FilePath);
-        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
-            return new PlaybackStartResult.Failed(PlaybackStartFailureKind.LoadFailed, ex.Message);
+            _logger.LogWarning(ex, "[PlaybackSession] Cannot start {Path}", track.FilePath);
+            if (previous.HasTrack)
+                Publish(ps => ps with
+                {
+                    CurrentTrack = previous.CurrentTrack,
+                    Status = PlaybackStatus.Stopped,
+                    Position = previous.Position
+                });
+            var kind = ex switch
+            {
+                FileNotFoundException => PlaybackStartFailureKind.FileNotFound,
+                _ when !_player.IsReady => PlaybackStartFailureKind.EngineUnavailable,
+                _ => PlaybackStartFailureKind.LoadFailed
+            };
+            return new PlaybackStartResult.Failed(kind, ex.Message);
         }
+        finally { _isStartingTrack = false; }
 
         _playlist.SetCurrentTrack(track);
         Publish(ps => ps with
         {
             CurrentTrack = track,
             Status = PlaybackStatus.Playing,
-            Duration = Math.Max(track.DurationSeconds, 1),
+            Duration = Math.Max(_player.Duration > 1 ? _player.Duration : track.DurationSeconds, 1),
             Position = 0,
             PlaybackMode = _playlist.PlaybackMode
         });
@@ -426,12 +401,14 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
 
     private void OnPlayerPlaybackStateChanged(object? sender, bool isPlaying)
     {
+        if (_isStartingTrack) return;
         var status = isPlaying ? PlaybackStatus.Playing : PlaybackStatus.Paused;
         Publish(ps => ps with { Status = status, Position = _player.Position });
     }
 
     private void OnPlayerTrackLoaded(object? sender, EventArgs e)
     {
+        if (_isStartingTrack) return;
         Publish(ps => ps with
         {
             Duration = Math.Max(_player.Duration, 1),
@@ -441,64 +418,24 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
 
     private void OnPlayerPositionChanged(object? sender, double position)
     {
+        if (_isStartingTrack) return;
         Publish(ps => ps with { Position = position });
     }
 
     private void OnPlayerTrackEnded(object? sender, EventArgs e)
     {
+        if (_isStartingTrack) return;
         // Enqueue auto-advance through the serialized command loop.
         // The command loop single-reader ensures this runs after any in-flight
         // user commands, avoiding races between manual Next/Previous and
         // automatic track-end transitions.
-        _commands.Writer.TryWrite(async ct => await DoAutoAdvanceAsync(ct));
+        var endedTrack = LatestSnapshot.CurrentTrack;
+        _commands.Writer.TryWrite(ct => ReferenceEquals(endedTrack, LatestSnapshot.CurrentTrack)
+            ? DoAutoAdvanceAsync(ct)
+            : Task.CompletedTask);
     }
 
-    /// <summary>
-    /// Automatic next-track advance on natural track end.
-    /// If no candidate exists (empty queue or end-of-queue in Sequential mode)
-    /// the session publishes a Stopped snapshot preserving the current track.
-    /// If the audio engine fails to load the next track, the previous snapshot
-    /// (current track, last valid position) is restored.
-    /// </summary>
-    private async Task DoAutoAdvanceAsync(CancellationToken ct)
-    {
-        var previousSnapshot = LatestSnapshot;
-        var next = _playlist.GetNextTrack();
-
-        if (next is null)
-        {
-            _logger.LogInformation("[PlaybackSession] End of queue, no next track.");
-            Publish(ps => ps with { Status = PlaybackStatus.Stopped });
-            return;
-        }
-
-        _playlist.SetCurrentTrack(next);
-
-        try
-        {
-            await _player.PlayAsync(next.FilePath, cancellationToken: ct);
-            Publish(ps => ps with
-            {
-                CurrentTrack = next,
-                Status = PlaybackStatus.Playing,
-                Duration = Math.Max(next.DurationSeconds, 1),
-                Position = 0,
-                PlaybackMode = _playlist.PlaybackMode
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[PlaybackSession] Auto-advance failed for {Track}", next.DisplayTitle);
-            // Failed auto-advance: restore the previous snapshot and current track
-            if (previousSnapshot.CurrentTrack is not null)
-                _playlist.SetCurrentTrack(previousSnapshot.CurrentTrack);
-            Publish(ps => ps with
-            {
-                CurrentTrack = previousSnapshot.CurrentTrack,
-                Status = PlaybackStatus.Stopped
-            });
-        }
-    }
+    private Task DoAutoAdvanceAsync(CancellationToken ct) => AdvanceAsync(_playlist.GetNextTrack(), true, ct);
 
     // ── Checkpoint ──
 
@@ -543,12 +480,15 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
 
     private void Publish(Func<PlaybackSnapshot, PlaybackSnapshot> transform)
     {
-        var snap = transform(LatestSnapshot) with { Revision = Interlocked.Increment(ref _revision) };
         lock (_subscriberGate)
         {
+            var snap = transform(LatestSnapshot) with { Revision = ++_revision };
             LatestSnapshot = snap;
-            foreach (var s in _subscribers)
-                s(snap);
+            foreach (var subscriber in _subscribers.ToArray())
+            {
+                try { subscriber(snap); }
+                catch (Exception ex) { _logger.LogWarning(ex, "[PlaybackSession] Subscriber failed"); }
+            }
         }
     }
 
@@ -559,6 +499,7 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
         if (_disposed) return;
         _disposed = true;
 
+        _commands.Writer.TryComplete();
         _checkpointCts.Cancel();
         _loopCts.Cancel();
         _player.PlaybackStateChanged -= OnPlayerPlaybackStateChanged;

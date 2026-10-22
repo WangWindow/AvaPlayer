@@ -1,6 +1,6 @@
 using AvaPlayer.Services.Settings;
 
-namespace AvaPlayer.Application.Tests.Fakes;
+namespace AvaPlayer.Tests.Fakes;
 
 /// <summary>
 /// Hand-written fake of <see cref="IPlaybackPositionMemoryService"/> for unit testing.

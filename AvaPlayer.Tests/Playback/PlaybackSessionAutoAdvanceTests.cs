@@ -1,9 +1,9 @@
 using AvaPlayer.Models;
 using AvaPlayer.Services.PlaybackSession;
-using AvaPlayer.Application.Tests.Fakes;
+using AvaPlayer.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 /// <summary>
 /// Tests for auto-advance, Next/Previous commands, and failure-preservation
@@ -13,20 +13,32 @@ public sealed class PlaybackSessionAutoAdvanceTests : IDisposable
 {
     private static readonly Track Track1 = new()
     {
-        Id = "t1", FilePath = "/music/1.mp3", Title = "Song One",
-        Artist = "Artist", Album = "Album", DurationSeconds = 200
+        Id = "t1",
+        FilePath = "/music/1.mp3",
+        Title = "Song One",
+        Artist = "Artist",
+        Album = "Album",
+        DurationSeconds = 200
     };
 
     private static readonly Track Track2 = new()
     {
-        Id = "t2", FilePath = "/music/2.mp3", Title = "Song Two",
-        Artist = "Artist", Album = "Album", DurationSeconds = 180
+        Id = "t2",
+        FilePath = "/music/2.mp3",
+        Title = "Song Two",
+        Artist = "Artist",
+        Album = "Album",
+        DurationSeconds = 180
     };
 
     private static readonly Track Track3 = new()
     {
-        Id = "t3", FilePath = "/music/3.mp3", Title = "Song Three",
-        Artist = "Artist", Album = "Album", DurationSeconds = 220
+        Id = "t3",
+        FilePath = "/music/3.mp3",
+        Title = "Song Three",
+        Artist = "Artist",
+        Album = "Album",
+        DurationSeconds = 220
     };
 
     private readonly FakePlayerService _player = new();
@@ -156,7 +168,7 @@ public sealed class PlaybackSessionAutoAdvanceTests : IDisposable
 
         _player.FireTrackEnded();
 
-        var snap = await AwaitSnapshotAsync(s => s.Revision > 5); // wait for auto-advance publish
+        var snap = await AwaitSnapshotAsync(s => s.CurrentTrack?.Id == Track1.Id && s.IsPlaying);
         Assert.Equal(Track1.Id, snap.CurrentTrack!.Id);
         Assert.Equal(PlaybackStatus.Playing, snap.Status);
         Assert.Equal(Track1.Id, _playlist.CurrentTrack!.Id);

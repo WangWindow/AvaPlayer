@@ -1,4 +1,5 @@
 using AvaPlayer.Models;
+using AvaPlayer.Helpers;
 using Microsoft.Data.Sqlite;
 
 namespace AvaPlayer.Services.Database;
@@ -100,6 +101,28 @@ public sealed class SqliteDatabaseService : IDatabaseService
                 );
                 """, cancellationToken);
             await MigrateAsync(connection, cancellationToken);
+
+            if (await ExecuteScalarAsync(connection, "PRAGMA user_version;", cancellationToken) < 1)
+            {
+                await using var migration = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+                var command = connection.CreateCommand();
+                command.Transaction = migration;
+                command.CommandText = """
+                    ALTER TABLE playlists ADD COLUMN include_subfolders INTEGER NOT NULL DEFAULT 1;
+                    CREATE TABLE tracks_new (
+                        id TEXT NOT NULL, file_path TEXT NOT NULL, title TEXT NOT NULL,
+                        artist TEXT NOT NULL, album TEXT NOT NULL, duration_seconds REAL NOT NULL,
+                        playlist_id TEXT NOT NULL DEFAULT '',
+                        PRIMARY KEY (id, playlist_id), UNIQUE (file_path, playlist_id)
+                    );
+                    INSERT INTO tracks_new SELECT id, file_path, title, artist, album, duration_seconds, playlist_id FROM tracks;
+                    DROP TABLE tracks;
+                    ALTER TABLE tracks_new RENAME TO tracks;
+                    PRAGMA user_version=1;
+                    """;
+                await command.ExecuteNonQueryAsync(cancellationToken);
+                await migration.CommitAsync(cancellationToken);
+            }
 
             // 索引在迁移之后创建:playlist_id 列由迁移补齐,IF NOT EXISTS 保证老库升级同样补上。
             await ExecuteAsync(connection, "CREATE INDEX IF NOT EXISTS idx_tracks_playlist_id ON tracks(playlist_id);",
@@ -356,7 +379,7 @@ public sealed class SqliteDatabaseService : IDatabaseService
 
             var command = connection.CreateCommand();
             command.CommandText = """
-                SELECT p.id, p.name, p.folder_path, COUNT(t.id) AS track_count
+                SELECT p.id, p.name, p.folder_path, COUNT(t.id) AS track_count, p.include_subfolders
                 FROM playlists p
                 LEFT JOIN tracks t ON t.playlist_id = p.id
                 GROUP BY p.id, p.name, p.folder_path
@@ -372,7 +395,8 @@ public sealed class SqliteDatabaseService : IDatabaseService
                     Id = reader.GetString(0),
                     Name = reader.GetString(1),
                     FolderPath = reader.GetString(2),
-                    TrackCount = reader.GetInt64(3) is long count ? checked((int)count) : 0
+                    TrackCount = checked((int)reader.GetInt64(3)),
+                    IncludeSubfolders = reader.GetBoolean(4)
                 });
             }
 
@@ -397,15 +421,17 @@ public sealed class SqliteDatabaseService : IDatabaseService
 
             var command = connection.CreateCommand();
             command.CommandText = """
-                INSERT INTO playlists (id, name, folder_path)
-                VALUES ($id, $name, $folder_path)
+                INSERT INTO playlists (id, name, folder_path, include_subfolders)
+                VALUES ($id, $name, $folder_path, $include_subfolders)
                 ON CONFLICT(id) DO UPDATE SET
                     name = excluded.name,
-                    folder_path = excluded.folder_path;
+                    folder_path = excluded.folder_path,
+                    include_subfolders = excluded.include_subfolders;
                 """;
             command.Parameters.AddWithValue("$id", playlist.Id);
             command.Parameters.AddWithValue("$name", playlist.Name);
             command.Parameters.AddWithValue("$folder_path", playlist.FolderPath);
+            command.Parameters.AddWithValue("$include_subfolders", playlist.IncludeSubfolders);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
         finally
@@ -480,40 +506,7 @@ public sealed class SqliteDatabaseService : IDatabaseService
             await using var connection = await OpenConnectionAsync(cancellationToken);
             await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
 
-            // 循环外建一条命令并持有参数引用,循环内只改参数值;
-            // Microsoft.Data.Sqlite 会自动复用语句编译结果,无需显式 Prepare()。
-            var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = """
-                INSERT INTO tracks (id, file_path, title, artist, album, duration_seconds, playlist_id)
-                VALUES ($id, $file_path, $title, $artist, $album, $duration, $playlist_id)
-                ON CONFLICT(file_path) DO UPDATE SET
-                    id = excluded.id,
-                    title = excluded.title,
-                    artist = excluded.artist,
-                    album = excluded.album,
-                    duration_seconds = excluded.duration_seconds,
-                    playlist_id = excluded.playlist_id;
-                """;
-            var idParam = command.Parameters.Add("$id", SqliteType.Text);
-            var filePathParam = command.Parameters.Add("$file_path", SqliteType.Text);
-            var titleParam = command.Parameters.Add("$title", SqliteType.Text);
-            var artistParam = command.Parameters.Add("$artist", SqliteType.Text);
-            var albumParam = command.Parameters.Add("$album", SqliteType.Text);
-            var durationParam = command.Parameters.Add("$duration", SqliteType.Real);
-            var playlistIdParam = command.Parameters.Add("$playlist_id", SqliteType.Text);
-
-            foreach (var track in trackList)
-            {
-                idParam.Value = track.Id;
-                filePathParam.Value = track.FilePath;
-                titleParam.Value = track.Title;
-                artistParam.Value = track.Artist;
-                albumParam.Value = track.Album;
-                durationParam.Value = track.DurationSeconds;
-                playlistIdParam.Value = track.PlaylistId;
-                await command.ExecuteNonQueryAsync(cancellationToken);
-            }
+            await WriteTracksAsync(connection, transaction, trackList, cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
         }
@@ -523,11 +516,72 @@ public sealed class SqliteDatabaseService : IDatabaseService
         }
     }
 
-    public async Task DeleteTracksAsync(IEnumerable<string> filePaths, CancellationToken cancellationToken = default)
+    public async Task ReplacePlaylistTracksAsync(string playlistId, IEnumerable<Track> tracks, bool includeSubfolders,
+        CancellationToken cancellationToken = default)
+    {
+        var trackList = tracks.ToArray();
+        await _lock.WaitWriteAsync(cancellationToken);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(cancellationToken);
+            await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+            var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "DELETE FROM tracks WHERE playlist_id = $id; UPDATE playlists SET include_subfolders = $recursive WHERE id = $id;";
+            command.Parameters.AddWithValue("$id", playlistId);
+            command.Parameters.AddWithValue("$recursive", includeSubfolders);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            await WriteTracksAsync(connection, transaction, trackList, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        finally { _lock.ReleaseWrite(); }
+    }
+
+    private static async Task WriteTracksAsync(SqliteConnection connection, SqliteTransaction transaction,
+        IEnumerable<Track> trackList, CancellationToken cancellationToken)
+    {
+        // 循环外建一条命令并持有参数引用,循环内只改参数值;
+        // Microsoft.Data.Sqlite 会自动复用语句编译结果,无需显式 Prepare()。
+        var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+                INSERT INTO tracks (id, file_path, title, artist, album, duration_seconds, playlist_id)
+                VALUES ($id, $file_path, $title, $artist, $album, $duration, $playlist_id)
+                ON CONFLICT(file_path, playlist_id) DO UPDATE SET
+                    id = excluded.id,
+                    title = excluded.title,
+                    artist = excluded.artist,
+                    album = excluded.album,
+                    duration_seconds = excluded.duration_seconds,
+                    playlist_id = excluded.playlist_id;
+                """;
+        var idParam = command.Parameters.Add("$id", SqliteType.Text);
+        var filePathParam = command.Parameters.Add("$file_path", SqliteType.Text);
+        var titleParam = command.Parameters.Add("$title", SqliteType.Text);
+        var artistParam = command.Parameters.Add("$artist", SqliteType.Text);
+        var albumParam = command.Parameters.Add("$album", SqliteType.Text);
+        var durationParam = command.Parameters.Add("$duration", SqliteType.Real);
+        var playlistIdParam = command.Parameters.Add("$playlist_id", SqliteType.Text);
+
+        foreach (var track in trackList)
+        {
+            idParam.Value = track.Id;
+            filePathParam.Value = track.FilePath;
+            titleParam.Value = track.Title;
+            artistParam.Value = track.Artist;
+            albumParam.Value = track.Album;
+            durationParam.Value = track.DurationSeconds;
+            playlistIdParam.Value = track.PlaylistId;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+    }
+
+    public async Task DeleteTracksAsync(IEnumerable<string> filePaths, CancellationToken cancellationToken = default, string? playlistId = null)
     {
         var paths = filePaths
             .Where(static path => !string.IsNullOrWhiteSpace(path))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Distinct(FilePaths.Comparer)
             .ToList();
 
         if (paths.Count == 0)
@@ -544,7 +598,10 @@ public sealed class SqliteDatabaseService : IDatabaseService
             // 循环外建一条命令,循环内只改参数值。
             var command = connection.CreateCommand();
             command.Transaction = transaction;
-            command.CommandText = "DELETE FROM tracks WHERE file_path = $filePath;";
+            command.CommandText = playlistId is null
+                ? "DELETE FROM tracks WHERE file_path = $filePath;"
+                : "DELETE FROM tracks WHERE file_path = $filePath AND playlist_id = $playlist;";
+            if (playlistId is not null) command.Parameters.AddWithValue("$playlist", playlistId);
             var filePathParam = command.Parameters.Add("$filePath", SqliteType.Text);
             foreach (var path in paths)
             {

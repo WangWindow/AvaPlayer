@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using AvaPlayer.Models;
 using AvaPlayer.Services.Playlist;
 
-namespace AvaPlayer.Application.Tests.Fakes;
+namespace AvaPlayer.Tests.Fakes;
 
 /// <summary>
 /// Hand-written fake of <see cref="IPlaylistService"/> for unit testing.
@@ -74,19 +74,25 @@ public sealed class FakePlaylistService : IPlaylistService
         return Task.CompletedTask;
     }
 
-    public Task AddPlaylistAsync(string name, string folderPath, CancellationToken cancellationToken = default)
+    public Task AddPlaylistAsync(string name, string folderPath, bool includeSubfolders = true, CancellationToken cancellationToken = default)
     {
         var playlist = new PlaylistInfo
         {
             Id = Guid.NewGuid().ToString(),
             Name = string.IsNullOrWhiteSpace(name) ? Path.GetFileName(folderPath) : name,
-            FolderPath = folderPath
+            FolderPath = folderPath,
+            IncludeSubfolders = includeSubfolders
         };
         Playlists.Add(playlist);
         SelectedPlaylist = playlist;
         SelectedPlaylistChanged?.Invoke(this, EventArgs.Empty);
         return Task.CompletedTask;
     }
+
+    public Func<CancellationToken, Task>? RescanHandler { get; set; }
+
+    public Task RescanPlaylistAsync(string playlistId, bool includeSubfolders, CancellationToken cancellationToken = default) =>
+        RescanHandler?.Invoke(cancellationToken) ?? Task.CompletedTask;
 
     public Task RenamePlaylistAsync(string playlistId, string newName, CancellationToken cancellationToken = default)
     {

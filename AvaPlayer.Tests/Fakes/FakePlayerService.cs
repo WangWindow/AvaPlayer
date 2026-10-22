@@ -1,6 +1,6 @@
 using AvaPlayer.Services.Audio;
 
-namespace AvaPlayer.Application.Tests.Fakes;
+namespace AvaPlayer.Tests.Fakes;
 
 /// <summary>
 /// Hand-written fake of <see cref="IPlayerService"/> for unit testing.
@@ -52,6 +52,8 @@ public sealed class FakePlayerService : IPlayerService
     {
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled(cancellationToken);
+
+        if (PlayAsyncOverride is not null) return PlayAsyncOverride(filePath, cancellationToken);
 
         if (PlayAsyncError is not null)
         {
@@ -135,6 +137,8 @@ public sealed class FakePlayerService : IPlayerService
     /// <summary>
     /// Simulates a failure on the next PlayAsync call.
     /// </summary>
+    public Func<string, CancellationToken, Task>? PlayAsyncOverride { get; set; }
+
     public Func<string, CancellationToken, Exception?>? PlayAsyncError { get; set; }
 
     public void Dispose()

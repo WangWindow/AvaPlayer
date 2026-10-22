@@ -1,6 +1,6 @@
 using AvaPlayer.Services.Cache;
 
-namespace AvaPlayer.Application.Tests;
+namespace AvaPlayer.Tests;
 
 public sealed class CacheServiceTests : IDisposable
 {
