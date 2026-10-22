@@ -110,6 +110,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         if (_settingsEventsWired) return;
         PlayerBar.PropertyChanged += OnPlayerBarPropertyChanged;
+        Settings.CacheRefreshing += OnCacheRefreshing;
+        Settings.CacheRefreshed += OnCacheRefreshed;
         _settingsEventsWired = true;
     }
 
@@ -117,18 +119,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         if (!_settingsEventsWired) return;
         PlayerBar.PropertyChanged -= OnPlayerBarPropertyChanged;
+        Settings.CacheRefreshing -= OnCacheRefreshing;
+        Settings.CacheRefreshed -= OnCacheRefreshed;
         _settingsEventsWired = false;
     }
+
+    private void OnCacheRefreshing(object? sender, EventArgs e) => PlayerBar.SuspendVisualHydration();
+
+    private void OnCacheRefreshed(object? sender, EventArgs e) => _ = PlayerBar.EnsureVisualHydrationAsync();
 
     private void OnPlayerBarPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(PlayerBarViewModel.IsSettingsVisible))
         {
             Settings.IsSettingsVisible = PlayerBar.IsSettingsVisible;
-        }
-        else if (e.PropertyName == nameof(PlayerBarViewModel.BackgroundBrush))
-        {
-            Settings.BackgroundBrush = PlayerBar.BackgroundBrush;
+            if (PlayerBar.IsSettingsVisible) IsPlaylistVisible = false;
         }
     }
 

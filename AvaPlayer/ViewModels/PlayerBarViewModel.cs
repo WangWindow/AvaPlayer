@@ -58,16 +58,13 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
     }
 
     [ObservableProperty]
-    public partial IBrush BackgroundBrush { get; set; } = ColorExtractor.DefaultBackground();
-
-    [ObservableProperty]
     public partial Track? CurrentTrack { get; set; }
 
     [ObservableProperty]
     public partial string TitleDisplay { get; set; } = "AvaPlayer";
 
     [ObservableProperty]
-    public partial string ArtistDisplay { get; set; } = "从左上角添加音乐文件夹";
+    public partial string ArtistDisplay { get; set; } = "打开左上角歌单，添加音乐文件夹";
 
     [ObservableProperty]
     public partial Bitmap? AlbumArtBitmap { get; set; }
@@ -117,6 +114,22 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     public partial bool IsSettingsVisible { get; set; }
 
+    [ObservableProperty]
+    public partial IBrush BackgroundBrush { get; set; } = ColorExtractor.DefaultBackground();
+
+    public Icon SettingsToggleIcon => IsSettingsVisible ? Icon.ChevronLeft : Icon.Settings;
+
+    public string SettingsToggleToolTip => IsSettingsVisible ? "返回播放界面" : "打开设置";
+
+    partial void OnIsSettingsVisibleChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SettingsToggleIcon));
+        OnPropertyChanged(nameof(SettingsToggleToolTip));
+    }
+
+    [RelayCommand]
+    private void ToggleSettings() => IsSettingsVisible = !IsSettingsVisible;
+
     public event EventHandler<Track?>? TrackChanged;
 
     public string VolumeText => $"{Math.Round(Volume):0}%";
@@ -129,9 +142,6 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
         _ => Icon.Speaker2
     };
 
-    public Icon SettingsToggleIcon => IsSettingsVisible ? Icon.ChevronLeft : Icon.Settings;
-
-    public string SettingsToggleToolTip => IsSettingsVisible ? "返回播放界面" : "打开设置";
 
     public async Task InitializeAsync(bool hydrateVisuals = true, CancellationToken cancellationToken = default)
     {
@@ -172,7 +182,7 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
 
         RefreshDisplayState();
 
-        if (string.Equals(_hydratedTrackPath, CurrentTrack.FilePath, StringComparison.OrdinalIgnoreCase))
+        if (FilePaths.Comparer.Equals(_hydratedTrackPath, CurrentTrack.FilePath))
         {
             return Task.CompletedTask;
         }
@@ -191,14 +201,12 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
         ReplaceAlbumArt(null);
         HasAlbumArt = false;
         ShowAlbumArtPlaceholder = true;
-        BackgroundBrush = ColorExtractor.DefaultBackground();
         _lyricPresentation.ClearLyrics();
         TitleDisplay = "AvaPlayer";
-        ArtistDisplay = "从左上角添加音乐文件夹";
+        ArtistDisplay = "打开左上角歌单，添加音乐文件夹";
         PositionText = "0:00";
         _formattedPositionSeconds = -1;
         DurationText = "0:00";
-        CoverSize = 260;
     }
 
     [RelayCommand]
@@ -225,9 +233,6 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private Task SeekAsync(double seconds) => _sessionClient.SeekAsync(seconds);
 
-    [RelayCommand]
-    private void ToggleSettings() => IsSettingsVisible = !IsSettingsVisible;
-
     partial void OnVolumeChanged(double value)
     {
         _ = _sessionClient.SetVolumeAsync(value);
@@ -252,12 +257,6 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
     partial void OnDurationChanged(double value)
     {
         DurationText = FormatTime(value);
-    }
-
-    partial void OnIsSettingsVisibleChanged(bool value)
-    {
-        OnPropertyChanged(nameof(SettingsToggleIcon));
-        OnPropertyChanged(nameof(SettingsToggleToolTip));
     }
 
     partial void OnPlaybackModeChanged(PlaybackMode value) => UpdatePlaybackModeDisplay();
@@ -314,7 +313,6 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
             ReplaceAlbumArt(null);
             HasAlbumArt = false;
             ShowAlbumArtPlaceholder = true;
-            BackgroundBrush = ColorExtractor.DefaultBackground();
         }
     }
 
@@ -351,9 +349,6 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
             ReplaceAlbumArt(bitmap);
             HasAlbumArt = bitmap is not null;
             ShowAlbumArtPlaceholder = bitmap is null;
-            BackgroundBrush = bitmap is null
-                ? ColorExtractor.DefaultBackground()
-                : ColorExtractor.ExtractBackground(bitmap);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -371,7 +366,6 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
             ReplaceAlbumArt(null);
             HasAlbumArt = false;
             ShowAlbumArtPlaceholder = true;
-            BackgroundBrush = ColorExtractor.DefaultBackground();
         }
     }
 
@@ -431,13 +425,14 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
     private bool CanApplyVisualResult(Track track, int hydrationVersion) =>
         _isVisualHydrationEnabled &&
         CurrentTrack is not null &&
-        string.Equals(CurrentTrack.FilePath, track.FilePath, StringComparison.OrdinalIgnoreCase) &&
+        FilePaths.Comparer.Equals(CurrentTrack.FilePath, track.FilePath) &&
         hydrationVersion == _visualHydrationVersion;
 
     private void ReplaceAlbumArt(Bitmap? bitmap)
     {
         var previous = AlbumArtBitmap;
         AlbumArtBitmap = bitmap;
+        BackgroundBrush = bitmap is null ? ColorExtractor.DefaultBackground() : ColorExtractor.ExtractBackground(bitmap);
         if (previous is not null && !ReferenceEquals(previous, bitmap))
         {
             previous.Dispose();
@@ -469,7 +464,6 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
         ArtistDisplay = track.DisplayArtistAlbum;
         Duration = Math.Max(Math.Max(track.DurationSeconds, Position), 1);
         Position = Math.Clamp(Position, 0, Duration);
-        CoverSize = 260;
     }
 
     private void ApplySnapshot(PlaybackSnapshot snapshot)
@@ -479,7 +473,7 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
             UpdateTrackInfo(track);
         }
         else if (snapshot.CurrentTrack is { } t &&
-                 !string.Equals(t.FilePath, CurrentTrack?.FilePath, StringComparison.OrdinalIgnoreCase))
+                 !FilePaths.Comparer.Equals(t.FilePath, CurrentTrack?.FilePath))
         {
             UpdateTrackInfo(t);
         }

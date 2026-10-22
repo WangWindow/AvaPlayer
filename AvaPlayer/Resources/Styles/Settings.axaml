@@ -1,0 +1,56 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Border.settings-panel">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Border.settings-group">
+    <Setter Property="Background" Value="{DynamicResource SettingsGroupBackgroundBrush}" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="14,2" />
+  </Style>
+  <Style Selector="Grid.settings-row">
+    <Setter Property="MinHeight" Value="56" />
+    <Setter Property="Margin" Value="0,4" />
+  </Style>
+  <Style Selector="Border.settings-divider">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceBorderBrush}" />
+  </Style>
+  <Style Selector="TextBlock.settings-group-label">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerMutedForegroundBrush}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Margin" Value="12,8,0,0" />
+  </Style>
+  <Style Selector="TextBlock.settings-label">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="FontSize" Value="14" />
+  </Style>
+  <Style Selector="TextBlock.settings-title">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+  </Style>
+  <Style Selector="TextBlock.settings-description">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerMutedForegroundBrush}" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+  <Style Selector="ToggleSwitch.settings-switch">
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+  </Style>
+  <Style Selector="Button.settings-chip">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="MinWidth" Value="32" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.settings-chip:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ItemHoverBrush}" />
+  </Style>
+  <Style Selector="Button.settings-chip.selected">
+    <Setter Property="Background" Value="{DynamicResource ItemSelectedBrush}" />
+  </Style>
+</Styles>

@@ -13,8 +13,12 @@ public sealed class PlayerBarViewModelTests
 {
     private static readonly Track SampleTrack = new()
     {
-        Id = "t1", FilePath = "/music/test.mp3", Title = "Test Song",
-        Artist = "Artist", Album = "Album", DurationSeconds = 240
+        Id = "t1",
+        FilePath = "/music/test.mp3",
+        Title = "Test Song",
+        Artist = "Artist",
+        Album = "Album",
+        DurationSeconds = 240
     };
 
     private readonly FakePlaybackSessionClient _sessionClient = new();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Avalonia;
 using Avalonia.OpenGL;
 using AvaPlayer.Helpers;
@@ -45,8 +45,7 @@ sealed class Program
         // UseHarfBuzz() to "avoid X11": that would silently drop text-shaping
         // and other core services.
         var builder = AppBuilder.Configure<App>()
-            .UsePlatformDetect()
-            .WithInterFont();
+            .UsePlatformDetect();
 
 #if LINUX_WAYLAND
         // Linux: prefer the native Wayland backend, but keep X11/XWayland working.
@@ -94,8 +93,7 @@ sealed class Program
                     // variable is honoured. ForceDrawnDecorations is an
                     // [Experimental] testing knob (forces CSD, requires
                     // suppressing the AVALONIA_WAYLAND_FORCE_CSD compiler
-                    // diagnostic) - not set; the main window already draws its
-                    // own title bar via ExtendClientAreaToDecorationsHint.
+                    // diagnostic) - not set; use normal platform decorations.
                 });
         }
         // Tray caveat: on Wayland the tray is exported over DBus as a

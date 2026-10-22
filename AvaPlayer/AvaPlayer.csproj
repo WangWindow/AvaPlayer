@@ -41,11 +41,11 @@
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="FluentIcons.Avalonia" />
     <PackageReference Include="JAJ.Packages.MiniAudioEx" />
-    <PackageReference Include="Microsoft.Extensions.Logging" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
     <PackageReference Include="TagLibSharp" />
   </ItemGroup>
@@ -55,8 +55,6 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-    <PackageReference Include="Avalonia.Markup.Xaml.Loader" PrivateAssets="All" />
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" PrivateAssets="All" />
-    <PackageReference Include="HotAvalonia" PrivateAssets="All" />
   </ItemGroup>
 </Project>

@@ -1,10 +1,11 @@
 using System.ComponentModel;
-using Avalonia.Media;
+using System.Globalization;
+using Avalonia;
+using AvaPlayer.Services.Cache;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using AvaPlayer.Services.Settings;
 using AvaPlayer.Services.Network;
-using FluentIcons.Common;
 
 namespace AvaPlayer.ViewModels;
 
@@ -13,6 +14,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     private const string TrayIconStyleSettingKey = "tray-icon-style";
 
     private readonly ISettingsService _settings;
+    private readonly ICacheService _cache;
     private readonly INetworkAccessService _networkAccessService;
     private readonly ILyricPreferencesService _lyricPreferences;
     private readonly IPlaybackPositionMemoryService _positionMemory;
@@ -23,16 +25,16 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         ISettingsService settings,
         INetworkAccessService networkAccessService,
         ILyricPreferencesService lyricPreferences,
-        IPlaybackPositionMemoryService positionMemory)
+        IPlaybackPositionMemoryService positionMemory,
+        ICacheService cache)
     {
         _settings = settings;
+        _cache = cache;
         _networkAccessService = networkAccessService;
         _lyricPreferences = lyricPreferences;
         _positionMemory = positionMemory;
         _lyricPreferences.PropertyChanged += OnLyricPreferenceChanged;
     }
-
-    public Icon SettingsToggleIcon => IsSettingsVisible ? Icon.ChevronLeft : Icon.Settings;
 
     /// <summary>
     /// Exposes the shared lyric preference state for XAML bindings.
@@ -54,7 +56,36 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     public partial bool IsSettingsVisible { get; set; }
 
     [ObservableProperty]
-    public partial IBrush? BackgroundBrush { get; set; }
+    public partial bool UseRoundedWindowCorners { get; set; } = true;
+
+    partial void OnUseRoundedWindowCornersChanged(bool value)
+    {
+        if (!_isLoadingSettings) _ = _settings.SetAsync("rounded-window-corners", value.ToString());
+    }
+
+    [ObservableProperty]
+    public partial string CacheStatus { get; set; } = string.Empty;
+
+    public event EventHandler? CacheRefreshing;
+    public event EventHandler? CacheRefreshed;
+
+    [RelayCommand]
+    private async Task RefreshCacheAsync(CancellationToken cancellationToken)
+    {
+        CacheStatus = "正在刷新…";
+        CacheRefreshing?.Invoke(this, EventArgs.Empty);
+        try
+        {
+            await _cache.ClearCategoryAsync("lyrics", cancellationToken);
+            await _cache.ClearCategoryAsync("album-art", cancellationToken);
+            CacheStatus = "缓存已清除，已重新读取当前歌曲";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CacheStatus = $"刷新失败：{ex.Message}";
+        }
+        finally { CacheRefreshed?.Invoke(this, EventArgs.Empty); }
+    }
 
     // ── Network ──
 
@@ -87,7 +118,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(IsTrayIconLight));
         OnPropertyChanged(nameof(IsTrayIconDark));
-        _ = _settings.SetAsync(TrayIconStyleSettingKey, value);
+        if (!_isLoadingSettings) _ = _settings.SetAsync(TrayIconStyleSettingKey, value);
     }
 
     // ── Playback Position Memory ──
@@ -143,6 +174,8 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         try
         {
             IsNetworkEnabled = _networkAccessService.IsEnabled;
+            var rounded = await _settings.GetAsync("rounded-window-corners", cancellationToken);
+            UseRoundedWindowCorners = !bool.TryParse(rounded, out var enabled) || enabled;
 
             var savedStyle = await _settings.GetAsync(TrayIconStyleSettingKey, cancellationToken);
             if (savedStyle is "light" or "dark")
@@ -159,9 +192,31 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
-    partial void OnIsSettingsVisibleChanged(bool value)
+    public async Task<Size> LoadWindowSizeAsync()
     {
-        OnPropertyChanged(nameof(SettingsToggleIcon));
+        try
+        {
+            var width = await _settings.GetAsync("window-width");
+            var height = await _settings.GetAsync("window-height");
+            if (double.TryParse(width, CultureInfo.InvariantCulture, out var w) && double.IsFinite(w) && w > 0
+                && double.TryParse(height, CultureInfo.InvariantCulture, out var h) && double.IsFinite(h) && h > 0)
+                return new Size(w, h);
+        }
+        catch (Exception) { CacheStatus = "无法读取窗口大小"; }
+        return new Size(1040, 760);
+    }
+
+    public async Task SaveWindowSizeAsync(Size size)
+    {
+        try
+        {
+            await _settings.SaveSettingsBatchAsync(new Dictionary<string, string>
+            {
+                ["window-width"] = size.Width.ToString(CultureInfo.InvariantCulture),
+                ["window-height"] = size.Height.ToString(CultureInfo.InvariantCulture)
+            });
+        }
+        catch (Exception) { CacheStatus = "无法保存窗口大小"; }
     }
 
     public void Dispose()

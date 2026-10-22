@@ -3,46 +3,13 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using Avalonia.Threading;
 using AvaPlayer.Models;
+using AvaPlayer.Helpers;
 using AvaPlayer.Services.Playlist;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.ViewModels;
-
-public partial class TrackItemViewModel : ObservableObject
-{
-    public TrackItemViewModel(Track track)
-    {
-        Track = track;
-    }
-
-    public Track Track { get; }
-
-    [ObservableProperty]
-    public partial bool IsCurrent { get; set; }
-
-    [ObservableProperty]
-    public partial bool IsSelectedForRemoval { get; set; }
-
-    public string Title => Track.DisplayTitle;
-
-    public string Artist => Track.DisplayArtist;
-
-    public string Album => Track.DisplayAlbum;
-
-    public string DurationText => Track.DisplayDuration;
-
-    public bool ShowCurrentGlyph => IsCurrent;
-
-    public bool ShowIdleGlyph => !IsCurrent;
-
-    partial void OnIsCurrentChanged(bool value)
-    {
-        OnPropertyChanged(nameof(ShowCurrentGlyph));
-        OnPropertyChanged(nameof(ShowIdleGlyph));
-    }
-}
 
 public partial class PlaylistViewModel : ObservableObject, IDisposable
 {
@@ -61,6 +28,7 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
         _playlistService.Queue.CollectionChanged += OnQueueCollectionChanged;
         _playlistService.Playlists.CollectionChanged += OnPlaylistsCollectionChanged;
         _playlistService.SelectedPlaylistChanged += OnServiceSelectedPlaylistChanged;
+        SyncSelectedPlaylist();
     }
 
     public ObservableCollection<PlaylistInfo> Playlists => _playlistService.Playlists;
@@ -82,6 +50,8 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
     public bool ShowPlaylistSelector => HasPlaylists && !IsRenamingPlaylist;
 
     public bool HasSelectedPlaylist => SelectedPlaylist is not null;
+
+    public bool CanManagePlaylist => HasSelectedPlaylist && !IsScanning;
 
     public ObservableCollection<TrackItemViewModel> Tracks { get; } = [];
     public ObservableCollection<TrackItemViewModel> VisibleTracks { get; } = [];
@@ -131,34 +101,65 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
         ? "未找到匹配歌曲"
         : $"没有匹配“{SearchText.Trim()}”的歌曲";
 
-    [RelayCommand]
-    private async Task AddPlaylistAsync()
+    [ObservableProperty]
+    public partial bool IncludeSubfolders { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool IsScanning { get; set; }
+
+    partial void OnIsScanningChanged(bool value) => OnPropertyChanged(nameof(CanManagePlaylist));
+
+    [ObservableProperty]
+    public partial string ScanStatus { get; set; } = string.Empty;
+
+    public bool HasScanStatus => !string.IsNullOrEmpty(ScanStatus);
+
+    partial void OnScanStatusChanged(string value) => OnPropertyChanged(nameof(HasScanStatus));
+
+    [RelayCommand(IncludeCancelCommand = true)]
+    private async Task AddPlaylistAsync(CancellationToken cancellationToken)
     {
-        if (FolderPickRequested is null)
-        {
-            return;
-        }
-
+        if (FolderPickRequested is null || IsScanning) return;
         var folderPath = await FolderPickRequested.Invoke();
-        if (string.IsNullOrWhiteSpace(folderPath))
-        {
-            _logger.LogWarning("[Playlist] 所选文件夹无法用于本地扫描。");
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(folderPath)) return;
+        await ScanAsync(() => _playlistService.AddPlaylistAsync(string.Empty, folderPath, IncludeSubfolders, cancellationToken), cancellationToken);
+    }
 
+    [RelayCommand(IncludeCancelCommand = true)]
+    private async Task RescanPlaylistAsync(CancellationToken cancellationToken)
+    {
+        if (SelectedPlaylist is null || IsScanning) return;
+        var playlistId = SelectedPlaylist.Id;
+        await ScanAsync(() => _playlistService.RescanPlaylistAsync(playlistId, IncludeSubfolders, cancellationToken), cancellationToken);
+    }
+
+    [RelayCommand]
+    private void CancelScan()
+    {
+        AddPlaylistCommand.Cancel();
+        RescanPlaylistCommand.Cancel();
+    }
+
+    private async Task ScanAsync(Func<Task> scan, CancellationToken cancellationToken)
+    {
+        IsScanning = true;
+        ScanStatus = "正在扫描音乐文件…";
         try
         {
-            await _playlistService.AddPlaylistAsync(name: string.Empty, folderPath);
+            await scan();
             RefreshTracks();
+            ScanStatus = $"扫描完成 · {_playlistService.SelectedPlaylist?.TrackCount ?? 0} 首";
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            throw;
+            ScanStatus = "扫描已取消";
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[Playlist] 添加歌单失败: {Message}", ex.Message);
+            _logger.LogError(ex, "[Playlist] Scan failed");
+            ScanStatus = $"扫描失败：{ex.Message}";
         }
+        finally { IsScanning = false; }
     }
 
     [RelayCommand]
@@ -232,6 +233,21 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private async Task RemoveTrackAsync(TrackItemViewModel item)
+    {
+        try
+        {
+            await _playlistService.RemoveTracksAsync([item.Track]);
+            RefreshTracks();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Playlist] Failed to remove track");
+            ScanStatus = $"移除失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     private void BeginEdit() => IsEditMode = true;
 
     [RelayCommand]
@@ -275,7 +291,7 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
 
         foreach (var item in Tracks)
         {
-            item.IsCurrent = track is not null && item.Track.Id == track.Id;
+            item.IsCurrent = track is not null && FilePaths.Comparer.Equals(item.Track.FilePath, track.FilePath);
         }
 
         CurrentTrack = Tracks.FirstOrDefault(static item => item.IsCurrent);
@@ -351,8 +367,9 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
         foreach (var track in _playlistService.Queue)
         {
             desiredIds.Add(track.Id);
-            if (!_trackCache.TryGetValue(track.Id, out var item))
+            if (!_trackCache.TryGetValue(track.Id, out var item) || !ReferenceEquals(item.Track, track))
             {
+                if (item is not null) item.PropertyChanged -= OnTrackItemPropertyChanged;
                 item = new TrackItemViewModel(track);
                 item.PropertyChanged += OnTrackItemPropertyChanged;
                 _trackCache[track.Id] = item;
@@ -416,6 +433,7 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
         try
         {
             SelectedPlaylist = _playlistService.SelectedPlaylist;
+            IncludeSubfolders = SelectedPlaylist?.IncludeSubfolders ?? true;
         }
         finally
         {
@@ -426,6 +444,7 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
     partial void OnSelectedPlaylistChanged(PlaylistInfo? value)
     {
         OnPropertyChanged(nameof(HasSelectedPlaylist));
+        OnPropertyChanged(nameof(CanManagePlaylist));
         if (!_syncingPlaylistSelection && value is not null && value.Id != _playlistService.SelectedPlaylist?.Id)
         {
             _ = SelectPlaylistSafeAsync(value.Id);

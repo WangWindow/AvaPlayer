@@ -4,21 +4,17 @@
              x:Name="Root"
              x:Class="AvaPlayer.Views.LyricsView"
              x:DataType="vm:LyricsViewModel">
-  <Grid Margin="36,40,36,40">
-    <TextBlock Text="加载歌词中..."
-               Classes="lyrics-status"
+  <Grid Margin="24,32">
+    <TextBlock Classes="lyrics-status" Text="加载歌词中..."
                FontSize="14"
                HorizontalAlignment="Center"
                VerticalAlignment="Center"
                IsVisible="{Binding IsLoading}" />
-
-    <TextBlock Text="暂无歌词"
-               Classes="lyrics-empty"
+    <TextBlock Classes="lyrics-empty" Text="暂无歌词"
                FontSize="14"
                HorizontalAlignment="Center"
                VerticalAlignment="Center"
                IsVisible="{Binding ShowEmptyState}" />
-
     <ScrollViewer x:Name="LyricsScroller"
                   IsVisible="{Binding HasLyrics}"
                   HorizontalScrollBarVisibility="Disabled"
@@ -28,7 +24,7 @@
         <ItemsControl x:Name="LyricsItems"
                       ItemsSource="{Binding Lines}"
                       MaxWidth="560"
-                      HorizontalAlignment="Center">
+                      HorizontalAlignment="Stretch">
           <ItemsControl.Styles>
             <Style Selector="ContentPresenter">
               <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -37,25 +33,20 @@
           </ItemsControl.Styles>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:LyricLineViewModel">
-               <Button Classes="lyric-line-button"
-                       Classes.active="{Binding IsCurrent}"
-                        Classes.near="{Binding IsNearCurrent}"
-                         Command="{Binding #Root((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
-                        CommandParameter="{Binding}"
-                        HorizontalAlignment="Stretch"
-                        ClipToBounds="False">
-                 <TextBlock Text="{Binding Text}"
-                            FontSize="23"
-                            Opacity="{Binding DisplayOpacity}"
-                            RenderTransformOrigin="50%,50%"
-                            Classes="lyric-line"
-                            Classes.near="{Binding IsNearCurrent}"
-                            Classes.active="{Binding IsCurrent}">
-                   <TextBlock.RenderTransform>
-                     <ScaleTransform ScaleX="{Binding DisplayScale}" ScaleY="{Binding DisplayScale}" />
-                   </TextBlock.RenderTransform>
-                 </TextBlock>
-               </Button>
+              <Button Classes="lyric-line-button"
+                      Classes.active="{Binding IsCurrent}"
+                      Classes.near="{Binding IsNearCurrent}"
+                      Command="{Binding #Root((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
+                      CommandParameter="{Binding}"
+                      HorizontalAlignment="Stretch"
+                      ClipToBounds="False">
+                <TextBlock Text="{Binding Text}"
+                           FontSize="{Binding DisplayFontSize}"
+                           Opacity="{Binding DisplayOpacity}"
+                           Classes="lyric-line"
+                           Classes.active="{Binding IsCurrent}"
+                           Classes.near="{Binding IsNearCurrent}" />
+              </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

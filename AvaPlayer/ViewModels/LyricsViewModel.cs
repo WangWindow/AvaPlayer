@@ -8,25 +8,6 @@ using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.ViewModels;
 
-public partial class LyricLineViewModel : ObservableObject
-{
-    [ObservableProperty]
-    public partial bool IsCurrent { get; set; }
-
-    [ObservableProperty]
-    public partial bool IsNearCurrent { get; set; }
-
-    [ObservableProperty]
-    public partial double DisplayScale { get; set; } = 1.0;
-
-    [ObservableProperty]
-    public partial double DisplayOpacity { get; set; } = 0.34;
-
-    public string Text { get; init; } = string.Empty;
-
-    public TimeSpan Time { get; init; }
-}
-
 public partial class LyricsViewModel : ObservableObject, ILyricPresentationService, IDisposable
 {
     private readonly ILyricPreferencesService _preferences;
@@ -148,7 +129,8 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
             Lines.Add(new LyricLineViewModel
             {
                 Text = line.Text,
-                Time = line.Time
+                Time = line.Time,
+                IsTimed = line.IsTimed
             });
         }
 
@@ -172,7 +154,7 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
 
     public void UpdatePosition(double positionSeconds)
     {
-        if (Lines.Count == 0)
+        if (Lines.Count == 0 || !Lines[0].IsTimed)
         {
             return;
         }
@@ -314,7 +296,7 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
                 line.IsCurrent = false;
                 line.IsNearCurrent = false;
                 line.DisplayScale = InactiveLineScale;
-                line.DisplayOpacity = 0.34;
+                line.DisplayOpacity = 0.75;
             }
 
             return;
@@ -349,7 +331,7 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
     [RelayCommand]
     private void SeekToLine(LyricLineViewModel? line)
     {
-        if (line is null || !IsLyricClickSeekEnabled)
+        if (line is null || !line.IsTimed || !IsLyricClickSeekEnabled)
         {
             return;
         }

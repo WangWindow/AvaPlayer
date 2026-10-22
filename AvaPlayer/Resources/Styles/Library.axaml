@@ -1,0 +1,134 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fi="using:FluentIcons.Avalonia">
+  <Style Selector="Border.playlist-drawer-scrim">
+    <Setter Property="Background" Value="{DynamicResource PlaylistDrawerScrimBackgroundBrush}" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.22" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ContentControl.playlist-reveal.open Border.playlist-drawer-scrim">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="Border.playlist-drawer-panel">
+    <Setter Property="Background" Value="{DynamicResource PlaylistDrawerPanelBackgroundBrush}" />
+    <Setter Property="BoxShadow" Value="0 14 40 0 #70000000" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="RenderTransformOrigin" Value="0,0.5" />
+    <Setter Property="RenderTransform" Value="translate(-36px, 0px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.24" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.26" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ContentControl.playlist-reveal.open Border.playlist-drawer-panel">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+  </Style>
+  <Style Selector="Button.playlist-item">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="10,8" />
+    <Setter Property="MinHeight" Value="52" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.playlist-item:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ItemHoverBrush}" />
+  </Style>
+  <Style Selector="Button.playlist-item.current">
+    <Setter Property="Background" Value="{DynamicResource ItemSelectedBrush}" />
+  </Style>
+  <Style Selector="Button.playlist-item.current:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ItemSelectedHoverBrush}" />
+  </Style>
+  <Style Selector="Button.playlist-item TextBlock.playlist-title">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.playlist-item TextBlock.playlist-subtitle">
+    <Setter Property="Foreground" Value="{DynamicResource TrackSubtitleBrush}" />
+    <Setter Property="FontSize" Value="11" />
+  </Style>
+  <Style Selector="Button.playlist-item TextBlock.playlist-duration">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerMutedForegroundBrush}" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+  <Style Selector="Button.playlist-item.current TextBlock.playlist-subtitle">
+    <Setter Property="Foreground" Value="{DynamicResource CurrentTrackSubtitleBrush}" />
+  </Style>
+  <Style Selector="Button.playlist-item.current TextBlock.playlist-duration">
+    <Setter Property="Foreground" Value="{DynamicResource CurrentTrackDurationBrush}" />
+  </Style>
+  <Style Selector="ListBox.playlist-list">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="ListBox.playlist-list ListBoxItem">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0,0,0,2" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="ListBox.playlist-list ListBoxItem:pointerover">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.playlist-list ListBoxItem:selected">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="TextBlock.playlist-toolbar-label">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+  </Style>
+  <Style Selector="Border.playlist-search-bar">
+    <Setter Property="Background" Value="{DynamicResource SearchBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+  </Style>
+  <Style Selector="fi|FluentIcon.playlist-search-icon">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerMutedForegroundBrush}" />
+  </Style>
+  <Style Selector="TextBox.playlist-search-text">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+  </Style>
+  <Style Selector="CheckBox.playlist-select">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+  </Style>
+  <Style Selector="ComboBox.playlist-selector">
+    <Setter Property="Background" Value="{DynamicResource SearchBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="CornerRadius" Value="10" />
+  </Style>
+  <Style Selector="ToggleButton.library-toggle">
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource PlayerMutedForegroundBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.library-toggle:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ItemHoverBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.library-toggle:checked">
+    <Setter Property="Background" Value="{DynamicResource ItemSelectedBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.library-toggle:checked:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ItemSelectedHoverBrush}" />
+  </Style>
+</Styles>

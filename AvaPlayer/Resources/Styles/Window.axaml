@@ -1,0 +1,69 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fi="using:FluentIcons.Avalonia">
+  <Style Selector="Border.titlebar">
+    <Setter Property="Background" Value="{DynamicResource TitlebarBackgroundBrush}" />
+  </Style>
+  <Style Selector="Button.titlebar-icon-button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Width" Value="40" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontSize" Value="16" />
+  </Style>
+  <Style Selector="Button.titlebar-icon-button:pointerover">
+    <Setter Property="Background" Value="{DynamicResource TitlebarButtonHoverBrush}" />
+  </Style>
+  <Style Selector="Button.titlebar-icon-button:pressed">
+    <Setter Property="Background" Value="{DynamicResource TitlebarButtonPressedBrush}" />
+  </Style>
+  <Style Selector="Button.titlebar-button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Width" Value="46" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+  <Style Selector="Button.titlebar-button:pointerover">
+    <Setter Property="Background" Value="{DynamicResource TitlebarButtonHoverBrush}" />
+  </Style>
+  <Style Selector="Button.titlebar-button:pressed">
+    <Setter Property="Background" Value="{DynamicResource TitlebarButtonPressedBrush}" />
+  </Style>
+  <Style Selector="Button.titlebar-close:pointerover">
+    <Setter Property="Background" Value="#E81123" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.titlebar-close:pressed">
+    <Setter Property="Background" Value="#BF0F1D" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Border.player-backdrop">
+    <Setter Property="Opacity" Value="{DynamicResource PlayerBackdropOpacity}" />
+  </Style>
+  <Style Selector="ContentControl.settings-stage">
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="RenderTransformOrigin" Value="0.5,0" />
+    <Setter Property="RenderTransform" Value="translate(0px, -18px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.22" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.24" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ContentControl.settings-stage.open">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+  </Style>
+</Styles>

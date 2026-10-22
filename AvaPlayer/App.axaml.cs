@@ -1,23 +1,18 @@
 using System.ComponentModel;
-using System.Net;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Fonts.Inter;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using Avalonia.Platform;
-using Avalonia.Styling;
 using Avalonia.Threading;
 using AvaPlayer.Helpers;
-using AvaPlayer.Services.AlbumArt;
-using AvaPlayer.Services.Audio;
-using AvaPlayer.Services.Cache;
 using AvaPlayer.Services.Database;
-using AvaPlayer.Services.Lyrics;
 using AvaPlayer.Services.MediaTransport;
 using AvaPlayer.Services.PlaybackSession;
 using AvaPlayer.Services.Settings;
 using AvaPlayer.Services.Network;
-using AvaPlayer.Services.Playlist;
 using AvaPlayer.ViewModels;
 using AvaPlayer.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,6 +53,8 @@ public partial class App : Application
 
     public override void Initialize()
     {
+        // Register the family used by the default composite font before loading controls.
+        FontManager.Current.AddFontCollection(new InterFontCollection());
         AvaloniaXamlLoader.Load(this);
     }
 
@@ -67,7 +64,7 @@ public partial class App : Application
         {
             _desktop = desktop;
             _desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            _services = ConfigureServices();
+            _services = Services.ApplicationServices.Create();
             _logger = _services.GetRequiredService<ILogger<App>>();
             _databaseService = _services.GetRequiredService<IDatabaseService>();
             _settings = _services.GetRequiredService<ISettingsService>();
@@ -119,81 +116,6 @@ public partial class App : Application
         {
             _logger?.LogError(ex, "[App] 启动初始化失败: {Message}", ex.Message);
         }
-    }
-
-    private static ServiceProvider ConfigureServices()
-    {
-        var services = new ServiceCollection();
-        services.AddLogging(builder => builder.AddConsole());
-
-        // 统一的出站 HTTP 配置:通过 Defaults 生效于所有 IHttpClientFactory.CreateClient()
-        // 调用(含各歌词/封面 provider),无需命名客户端。只保留高收益项:
-        // 压缩、连接池生命周期、HTTP/2 协商。刻意不做 Expect100Continue(GET 不发 Expect 头)、
-        // EnableMultipleHttp2Connections(违反 RFC 9113)、KeepAlivePing*(已有 5 分钟生命周期
-        // 回收)、Happy-Eyeballs(OS 已处理);也不引入 Polly 弹性包(hedging 会把公共 API
-        // 请求量翻倍、易被限流,且 PublishAot 下有裁剪风险)——延迟收益由 provider 竞速达成。
-        services.AddHttpClient();
-        services.ConfigureHttpClientDefaults(builder => builder
-            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-            {
-                // gzip/deflate/brotli/zstd:歌词与 JSON 响应以文本为主,压缩是收益最高的一项。
-                AutomaticDecompression = DecompressionMethods.All,
-                // 连接 5 分钟强制轮换(兼顾 DNS 变更),空闲 2 分钟回收,避免复用陈旧连接。
-                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-                // 快速失败:建连 5 秒即放弃,配合 provider 竞速不拖慢换曲体验。
-                ConnectTimeout = TimeSpan.FromSeconds(5),
-                // 提前取消时最多再花 5 秒排空响应体,防止连接被直接丢弃而污染池。
-                ResponseDrainTimeout = TimeSpan.FromSeconds(5),
-                // 竞速时多个 provider 并行请求同一主机,放宽每服务器连接上限。
-                MaxConnectionsPerServer = 16,
-            })
-            .ConfigureHttpClient(client =>
-            {
-                // 整体请求 15 秒上限(覆盖慢响应体);超时后由竞速的其他 provider 兜底。
-                client.Timeout = TimeSpan.FromSeconds(15);
-                // HTTP/2 优先、1.1 回退:对支持 h2 的端点省一次握手/TTFB,不支持则自动降级。
-                client.DefaultRequestVersion = HttpVersion.Version20;
-                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-            }));
-
-        services.AddSingleton<ICacheService, CacheService>();
-        services.AddSingleton<IDatabaseService, SqliteDatabaseService>();
-        services.AddSingleton<ISettingsService, AppSettingsService>();
-        services.AddSingleton<INetworkAccessService, NetworkAccessService>();
-        services.AddSingleton<ITrackScannerService, TrackScannerService>();
-        services.AddSingleton<IPlayerService, MiniAudioPlayerService>();
-        services.AddSingleton<IPlaylistService, PlaylistService>();
-        services.AddScoped<IAlbumArtProviderManager, AlbumArtProviderManager>();
-        services.AddScoped<IAlbumArtService, AlbumArtService>();
-
-        services.AddScoped<ILyricsProviderManager, LyricsProviderManager>();
-        services.AddScoped<ILyricsService, LyricsService>();
-
-        if (OperatingSystem.IsLinux())
-        {
-            services.AddSingleton<IMediaTransportService, MprisMediaTransportService>();
-        }
-        else if (OperatingSystem.IsWindows())
-        {
-            services.AddSingleton<IMediaTransportService, SmtcMediaTransportService>();
-        }
-        else
-        {
-            services.AddSingleton<IMediaTransportService, NoopMediaTransportService>();
-        }
-
-        services.AddSingleton<IPlaybackPositionMemoryService, PlaybackPositionMemoryService>();
-        services.AddSingleton<IPlaybackSessionClient, PlaybackSession>();
-        services.AddScoped<ILyricPreferencesService, LyricsPreferenceService>();
-        services.AddScoped<LyricsViewModel>();
-        services.AddScoped<ILyricPresentationService>(sp => sp.GetRequiredService<LyricsViewModel>());
-        services.AddScoped<SettingsViewModel>();
-        services.AddScoped<PlayerBarViewModel>();
-        services.AddScoped<PlaylistViewModel>();
-        services.AddScoped<MainWindowViewModel>();
-
-        return services.BuildServiceProvider();
     }
 
     private async Task InitializeApplicationAsync()
@@ -550,7 +472,8 @@ public partial class App : Application
             mainWindow.Show();
         }
 
-        mainWindow.WindowState = WindowState.Normal;
+        if (mainWindow.WindowState == WindowState.Minimized)
+            mainWindow.WindowState = WindowState.Normal;
         mainWindow.Activate();
     }
 

@@ -1,0 +1,108 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fi="using:FluentIcons.Avalonia">
+  <Style Selector="Button.ghost">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.ghost:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+  </Style>
+  <Style Selector="Button.ghost:pressed">
+    <Setter Property="Background" Value="{DynamicResource ControlPressedBrush}" />
+  </Style>
+  <Style Selector="Button.ghost-large">
+    <Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="26" />
+    <Setter Property="Width" Value="52" />
+    <Setter Property="Height" Value="52" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.ghost-large:pointerover">
+    <Setter Property="Background" Value="{DynamicResource PrimaryButtonHoverBrush}" />
+  </Style>
+  <Style Selector="Button.ghost-large:pressed">
+    <Setter Property="Background" Value="{DynamicResource PrimaryButtonPressedBrush}" />
+  </Style>
+  <Style Selector="ContextMenu.immersive-menu">
+    <Setter Property="Background" Value="{DynamicResource ImmersiveMenuBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="MinWidth" Value="180" />
+  </Style>
+  <Style Selector="ContextMenu.immersive-menu MenuItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
+    <Setter Property="Padding" Value="14,10" />
+    <Setter Property="MinHeight" Value="40" />
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+  <Style Selector="ContextMenu.immersive-menu MenuItem:selected">
+    <Setter Property="Background" Value="{DynamicResource ItemHoverBrush}" />
+  </Style>
+  <Style Selector="ContextMenu.immersive-menu MenuItem:open">
+    <Setter Property="Background" Value="{DynamicResource MenuOpenBrush}" />
+  </Style>
+  <Style Selector="ContextMenu.immersive-menu MenuItem:checked">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+  </Style>
+  <Style Selector="Slider.white">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+  </Style>
+  <Style Selector="Slider.white /template/ Track#PART_Track Border#TrackBackground">
+    <Setter Property="Background" Value="{DynamicResource SliderTrackBrush}" />
+    <Setter Property="CornerRadius" Value="2" />
+  </Style>
+  <Style Selector="Slider.white /template/ Track#PART_Track Border#PART_SelectionRange">
+    <Setter Property="Background" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="CornerRadius" Value="2" />
+  </Style>
+  <Style Selector="Slider.white /template/ Track#PART_Track Thumb">
+    <Setter Property="Width" Value="12" />
+    <Setter Property="Height" Value="12" />
+    <Setter Property="Background" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="TextBlock.player-title">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+  </Style>
+  <Style Selector="TextBlock.player-subtitle">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerSecondaryForegroundBrush}" />
+  </Style>
+  <Style Selector="TextBlock.player-time">
+    <Setter Property="Foreground" Value="{DynamicResource PlayerTimeForegroundBrush}" />
+  </Style>
+  <Style Selector="TextBlock.volume-text">
+    <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
+  </Style>
+
+  <Style Selector="ContentControl.volume-inline-host">
+    <Setter Property="Height" Value="0" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="RenderTransformOrigin" Value="0.5,0" />
+    <Setter Property="RenderTransform" Value="translate(0px, -8px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Height" Duration="0:0:0.22" />
+        <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ContentControl.volume-inline-host.open">
+    <Setter Property="Height" Value="66" />
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+  </Style>
+</Styles>

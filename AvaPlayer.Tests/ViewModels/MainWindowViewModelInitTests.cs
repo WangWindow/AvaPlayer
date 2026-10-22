@@ -17,7 +17,7 @@ namespace AvaPlayer.Tests;
 /// Tests for <see cref="MainWindowViewModel.InitializeAsync"/> contract,
 /// especially the lightweight-mode (hydrateVisuals: false) path.
 /// </summary>
-public sealed class MainWindowViewModelInitTests
+public sealed class MainWindowViewModelInitTests : IDisposable
 {
     [Fact]
     public async Task InitializeAsync_hydrateVisuals_false_loads_playlist_and_restores_track()
@@ -77,7 +77,15 @@ public sealed class MainWindowViewModelInitTests
         Assert.Equal(1, playlist.LoadCallCount);
     }
 
-    private static MainWindowViewModel CreateViewModel(IPlaylistService playlist, IPlaybackSessionClient session)
+    private readonly AvaPlayer.Services.Cache.CacheService _cache = new(Path.Combine(Path.GetTempPath(), $"avaplayer-init-{Guid.NewGuid():N}"));
+
+    public void Dispose()
+    {
+        _cache.Dispose();
+        Directory.Delete(_cache.RootPath, recursive: true);
+    }
+
+    private MainWindowViewModel CreateViewModel(IPlaylistService playlist, IPlaybackSessionClient session)
     {
         var settings = new FakeSettingsService();
         var positionMemory = new FakePlaybackPositionMemoryService();
@@ -91,7 +99,7 @@ public sealed class MainWindowViewModelInitTests
             albumArt, lyricsService, settings, lyricPresentation, session,
             NullLogger<PlayerBarViewModel>.Instance);
         var playlistVm = new PlaylistViewModel(playlist, NullLogger<PlaylistViewModel>.Instance);
-        var settingsVm = new SettingsViewModel(settings, networkAccess, lyricPreferences, positionMemory);
+        var settingsVm = new SettingsViewModel(settings, networkAccess, lyricPreferences, positionMemory, _cache);
         var lyricsVm = new LyricsViewModel(lyricPreferences, NullLogger<LyricsViewModel>.Instance);
 
         return new MainWindowViewModel(playerBar, playlistVm, settingsVm, lyricsVm, playlist, session);
