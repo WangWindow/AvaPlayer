@@ -1,16 +1,11 @@
+using System.Net;
 using AvaPlayer.Models;
 
 namespace AvaPlayer.Services.AlbumArt;
 
-public sealed class LrcApiAlbumArtProvider : IAlbumArtProvider
+public sealed class LrcApiAlbumArtProvider(IHttpClientFactory httpClientFactory) : IAlbumArtProvider
 {
     private const string Endpoint = "https://api.lrc.cx/cover";
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public LrcApiAlbumArtProvider(IHttpClientFactory httpClientFactory)
-    {
-        _httpClientFactory = httpClientFactory;
-    }
 
     public string Name => "LrcAPI";
     public bool RequiresNetwork => true;
@@ -28,19 +23,24 @@ public sealed class LrcApiAlbumArtProvider : IAlbumArtProvider
             query.Add($"album={Uri.EscapeDataString(track.DisplayAlbum)}");
         }
 
-        var client = _httpClientFactory.CreateClient();
+        var client = httpClientFactory.CreateClient();
         using var response = await client.GetAsync(
             $"{Endpoint}?{string.Join("&", query)}",
             cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.NoContent)
         {
             return null;
         }
 
+        response.EnsureSuccessStatusCode();
+
         var contentType = response.Content.Headers.ContentType?.MediaType;
         if (contentType is not null && !contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
         {
-            return null;
+            // 2xx 却不是图片通常意味着上游错误页/限流页,不是「确定没有封面」;
+            // 抛出让 service 避免写长期墓碑。
+            throw new HttpRequestException(
+                $"Album art provider returned unexpected content type '{contentType}'.");
         }
 
         return await response.Content.ReadAsByteArrayAsync(cancellationToken);

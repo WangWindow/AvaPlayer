@@ -4,35 +4,32 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using AvaPlayer.Services.Lyrics;
 using AvaPlayer.Services.Settings;
-using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.ViewModels;
 
 public partial class LyricsViewModel : ObservableObject, ILyricPresentationService, IDisposable
 {
     private readonly ILyricPreferencesService _preferences;
-    private readonly ILogger<LyricsViewModel> _logger;
     private int _currentLineIndex = -1;
     private bool _linesSortedAscending = true;
     private bool _disposed;
 
-    public LyricsViewModel(ILyricPreferencesService preferences, ILogger<LyricsViewModel> logger)
+    public LyricsViewModel(ILyricPreferencesService preferences)
     {
         _preferences = preferences;
-        _logger = logger;
         _preferences.PropertyChanged += OnPreferenceChanged;
     }
 
-    public ObservableCollection<LyricLineViewModel> Lines { get; } = new();
+    public ObservableCollection<LyricLineViewModel> Lines { get; } = [];
 
     [ObservableProperty]
-    private bool _hasLyrics;
+    public partial bool HasLyrics { get; set; }
 
     [ObservableProperty]
-    private bool _isLoading;
+    public partial bool IsLoading { get; set; }
 
     [ObservableProperty]
-    private bool _showEmptyState = true;
+    public partial bool ShowEmptyState { get; set; } = true;
 
     public event EventHandler<int>? ScrollToLineRequested;
     public event EventHandler<TimeSpan>? SeekRequested;
@@ -73,7 +70,7 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
     };
 
     // Scale is relative to the base rendered font size (23 = Medium active line).
-    private double BaseFontSize => 23;
+    private static double BaseFontSize => 23;
 
     public double ActiveLineScale => ActiveLineFontSize / BaseFontSize;
 
@@ -102,7 +99,7 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
 
     void ILyricPresentationService.BeginLoading() => BeginLoading();
 
-    void ILyricPresentationService.LoadLyrics(IReadOnlyList<AvaPlayer.Models.LyricLine> lines) => LoadLyrics(lines);
+    void ILyricPresentationService.LoadLyrics(IReadOnlyList<Models.LyricLine> lines) => LoadLyrics(lines);
 
     void ILyricPresentationService.ClearLyrics() => ClearLyrics();
 
@@ -119,7 +116,7 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
         ShowEmptyState = false;
     }
 
-    public void LoadLyrics(IReadOnlyList<AvaPlayer.Models.LyricLine> lines)
+    public void LoadLyrics(IReadOnlyList<Models.LyricLine> lines)
     {
         Lines.Clear();
         _currentLineIndex = -1;
@@ -356,7 +353,11 @@ public partial class LyricsViewModel : ObservableObject, ILyricPresentationServi
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
+
         _disposed = true;
         _preferences.PropertyChanged -= OnPreferenceChanged;
     }

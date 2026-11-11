@@ -6,17 +6,12 @@ namespace AvaPlayer.Services.AlbumArt;
 /// Composition point for the built-in album-art providers. Adding a provider
 /// only requires updating this manager; application DI stays unchanged.
 /// </summary>
-public sealed class AlbumArtProviderManager : IAlbumArtProviderManager
+public sealed class AlbumArtProviderManager(IHttpClientFactory httpClientFactory, ILoggerFactory loggerFactory) : IAlbumArtProviderManager
 {
-    public AlbumArtProviderManager(IHttpClientFactory httpClientFactory, ILoggerFactory loggerFactory)
-    {
-        Providers =
+    public IReadOnlyList<IAlbumArtProvider> Providers { get; } =
         [
             new EmbeddedAlbumArtProvider(loggerFactory.CreateLogger<EmbeddedAlbumArtProvider>()),
             new LrcApiAlbumArtProvider(httpClientFactory),
             new ItunesAlbumArtProvider(httpClientFactory)
         ];
-    }
-
-    public IReadOnlyList<IAlbumArtProvider> Providers { get; }
 }

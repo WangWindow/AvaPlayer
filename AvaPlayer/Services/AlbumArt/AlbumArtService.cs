@@ -8,9 +8,14 @@ using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.Services.AlbumArt;
 
-public sealed class AlbumArtService : IAlbumArtService
+public sealed class AlbumArtService(
+    ICacheService cacheService,
+    IAlbumArtProviderManager providerManager,
+    INetworkAccessService networkAccessService,
+    ILogger<AlbumArtService> logger) : IAlbumArtService
 {
     private const int AlbumArtDecodeWidth = 360;
+    private const string CacheKeyVersion = "album-art-v2";
     private const string CacheCategory = "album-art";
 
     /// <summary>封面与专辑绑定、极少变化:命中后 90 天内不再联网刷新。</summary>
@@ -19,22 +24,7 @@ public sealed class AlbumArtService : IAlbumArtService
     /// <summary>「查过、确实没有封面」的结论缓存 14 天,避免每次换曲都重打网络 provider。</summary>
     private static readonly TimeSpan MissingAlbumArtTtl = TimeSpan.FromDays(14);
 
-    private readonly ICacheService _cacheService;
-    private readonly INetworkAccessService _networkAccessService;
-    private readonly ILogger<AlbumArtService> _logger;
-    private readonly IReadOnlyList<IAlbumArtProvider> _providers;
-
-    public AlbumArtService(
-        ICacheService cacheService,
-        IAlbumArtProviderManager providerManager,
-        INetworkAccessService networkAccessService,
-        ILogger<AlbumArtService> logger)
-    {
-        _cacheService = cacheService;
-        _networkAccessService = networkAccessService;
-        _logger = logger;
-        _providers = providerManager.Providers;
-    }
+    private readonly IReadOnlyList<IAlbumArtProvider> _providers = providerManager.Providers;
 
     public async Task<Bitmap?> GetAlbumArtAsync(Track track, CancellationToken cancellationToken = default)
     {
@@ -51,8 +41,17 @@ public sealed class AlbumArtService : IAlbumArtService
 
             var embeddedBytes = await QueryProviderAsync(provider, track, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            if (embeddedBytes is { Length: > 0 } && CreateBitmap(embeddedBytes) is { } embeddedBitmap)
+            if (embeddedBytes.Bytes is { Length: > 0 } bytes && CreateBitmap(bytes) is { } embeddedBitmap)
+            {
                 return embeddedBitmap;
+            }
+        }
+
+        // 墓碑(negative cache)命中时跳过缓存与联网:上次查过没有,短期内重打网络源大概率也没有。
+        // 必须先查墓碑再读缓存:CacheService.GetBytesAsync 命中墓碑会删除它。
+        if (await IsKnownMissingAsync(cacheKey, cancellationToken))
+        {
+            return null;
         }
 
         // 缓存命中但解码失败视为脏数据,继续走 provider 并覆盖写入。
@@ -64,28 +63,19 @@ public sealed class AlbumArtService : IAlbumArtService
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 墓碑(negative cache)命中时跳过联网:上次查过没有,短期内重打网络源大概率也没有。
-        if (_networkAccessService.IsEnabled && !await IsKnownMissingAsync(cacheKey, cancellationToken))
+        if (networkAccessService.IsEnabled)
         {
-            var (winner, attempted) = await RaceProvidersAsync(track, cancellationToken);
+            var (winner, attempted, hadTransientFailure) = await RaceProvidersAsync(track, cancellationToken);
             if (winner is { } result)
             {
-                try
-                {
-                    await _cacheService.SetBytesAsync(
-                        CacheCategory, cacheKey, result.Bytes, AlbumArtCacheTtl, cancellationToken);
-                    return result.Bitmap;
-                }
-                catch
-                {
-                    result.Bitmap.Dispose();
-                    throw;
-                }
+                await TryCacheAlbumArtAsync(cacheKey, result.Bytes, cancellationToken);
+                return result.Bitmap;
             }
 
-            if (attempted)
+            // 只有所有网络源都明确回答「没有」时才写墓碑;任一瞬时故障都不能压制后续重试。
+            if (attempted && !hadTransientFailure)
             {
-                await _cacheService.MarkMissingAsync(CacheCategory, cacheKey, MissingAlbumArtTtl, cancellationToken);
+                await TryMarkMissingAsync(cacheKey, cancellationToken);
             }
         }
 
@@ -97,14 +87,14 @@ public sealed class AlbumArtService : IAlbumArtService
     /// 为什么是 race 而不是 WhenAll:WhenAll 要等最慢的 provider 结束,换曲延迟 = 所有源之和的量级;
     /// race 让延迟 = 最快响应的源,挂死或超时的源由链接的取消令牌撤掉,不再拖住整条链路。
     /// </summary>
-    private async Task<(AlbumArtResult? Winner, bool Attempted)> RaceProvidersAsync(
+    private async Task<(AlbumArtResult? Winner, bool Attempted, bool HadTransientFailure)> RaceProvidersAsync(
         Track track,
         CancellationToken cancellationToken)
     {
         // Cancel the remaining requests explicitly when a winner is found.
         using var raceCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        var pending = new List<Task<byte[]?>>(_providers.Count);
+        var pending = new List<Task<ProviderOutcome>>(_providers.Count);
         foreach (var provider in _providers)
         {
             if (provider.RequiresNetwork)
@@ -114,35 +104,76 @@ public sealed class AlbumArtService : IAlbumArtService
         }
 
         var attempted = pending.Count > 0;
-        while (pending.Count > 0)
+        if (!attempted)
         {
-            var completed = await Task.WhenAny(pending);
-            pending.Remove(completed);
+            return (null, false, false);
+        }
 
-            // QueryProviderAsync 内部消化了全部异常,这里 await 不会抛出。
-            if (await completed is not { Length: > 0 } bytes)
-            {
-                continue;
-            }
+        var hadTransientFailure = false;
 
-            if (CreateBitmap(bytes) is { } bitmap)
+        // 调用方取消不应依赖任何 provider 是否及时响应:单独用一个信号任务参与 WhenAny。
+        var cancellationSignal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellationRegistration = cancellationToken.Register(
+            static state => ((TaskCompletionSource)state!).TrySetResult(),
+            cancellationSignal);
+
+        try
+        {
+            while (pending.Count > 0)
             {
-                await raceCts.CancelAsync();
-                if (cancellationToken.IsCancellationRequested)
+                var completed = await Task.WhenAny(pending.Append(cancellationSignal.Task));
+                if (ReferenceEquals(completed, cancellationSignal.Task))
                 {
-                    bitmap.Dispose();
-                    cancellationToken.ThrowIfCancellationRequested();
+                    break;
                 }
-                return (new AlbumArtResult(bytes, bitmap), attempted);
+
+                var providerTask = (Task<ProviderOutcome>)completed;
+                pending.Remove(providerTask);
+
+                // QueryProviderAsync 内部消化了全部异常,这里 await 不会抛出。
+                var outcome = await providerTask;
+                if (outcome.TransientFailure)
+                {
+                    hadTransientFailure = true;
+                    continue;
+                }
+
+                if (outcome.Bytes is not { Length: > 0 } bytes)
+                {
+                    continue;
+                }
+
+                if (CreateBitmap(bytes) is { } bitmap)
+                {
+                    raceCts.Cancel();
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        bitmap.Dispose();
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+
+                    return (new AlbumArtResult(bytes, bitmap), attempted, hadTransientFailure);
+                }
+
+                // 成功响应却解码失败,说明数据源异常而不是「确定没有封面」;避免写墓碑。
+                hadTransientFailure = true;
+            }
+        }
+        finally
+        {
+            raceCts.Cancel();
+            foreach (var task in pending)
+            {
+                ObserveFault(task);
             }
         }
 
         // 竞速期间调用方可能已换曲:保持原有语义,把取消异常抛给上层。
         cancellationToken.ThrowIfCancellationRequested();
-        return (null, attempted);
+        return (null, attempted, hadTransientFailure);
     }
 
-    private async Task<byte[]?> QueryProviderAsync(
+    private async Task<ProviderOutcome> QueryProviderAsync(
         IAlbumArtProvider provider,
         Track track,
         CancellationToken cancellationToken)
@@ -150,26 +181,62 @@ public sealed class AlbumArtService : IAlbumArtService
         try
         {
             var bytes = await provider.GetAlbumArtAsync(track, cancellationToken);
-            return bytes is { Length: > 0 } ? bytes : null;
+            return new ProviderOutcome(bytes is { Length: > 0 } ? bytes : null, TransientFailure: false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             // 竞速取消或调用方换曲:记为 miss,调用方取消由竞速收口处统一抛出。
-            return null;
+            return new ProviderOutcome(null, TransientFailure: false);
         }
         catch (Exception ex)
         {
-            // 单个 provider 失败不能影响其他竞速任务。
-            _logger.LogWarning(ex, "[AlbumArt:{Provider}] 获取封面失败: {Message}", provider.Name, ex.Message);
-            return null;
+            // 单个 provider 失败不能影响其他竞速任务,但要让 service 知道这次结论不可信。
+            logger.LogWarning(ex, "[AlbumArt:{Provider}] 获取封面失败: {Message}", provider.Name, ex.Message);
+            return new ProviderOutcome(null, TransientFailure: true);
         }
+    }
+
+    private async Task TryCacheAlbumArtAsync(string cacheKey, byte[] bytes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cacheService.SetBytesAsync(
+                CacheCategory, cacheKey, bytes, AlbumArtCacheTtl, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // 缓存失败不应丢掉已经成功获取并解码的封面。
+            logger.LogWarning(ex, "[AlbumArt] 写入缓存封面失败: {Message}", ex.Message);
+        }
+    }
+
+    private async Task TryMarkMissingAsync(string cacheKey, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cacheService.MarkMissingAsync(CacheCategory, cacheKey, MissingAlbumArtTtl, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "[AlbumArt] 写入封面缺失标记失败: {Message}", ex.Message);
+        }
+    }
+
+    private static void ObserveFault(Task task)
+    {
+        // 竞速结束后不等待慢 provider,但要显式观察潜在异常,避免留下未观察的 Task 故障。
+        _ = task.ContinueWith(
+            static completed => _ = completed.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private async Task<byte[]?> ReadCachedAlbumArtAsync(string cacheKey, CancellationToken cancellationToken)
     {
         try
         {
-            return await _cacheService.GetBytesAsync(CacheCategory, cacheKey, cancellationToken);
+            return await cacheService.GetBytesAsync(CacheCategory, cacheKey, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -177,7 +244,7 @@ public sealed class AlbumArtService : IAlbumArtService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[AlbumArt] 读取缓存封面失败: {Message}", ex.Message);
+            logger.LogWarning(ex, "[AlbumArt] 读取缓存封面失败: {Message}", ex.Message);
             return null;
         }
     }
@@ -186,7 +253,7 @@ public sealed class AlbumArtService : IAlbumArtService
     {
         try
         {
-            return await _cacheService.IsKnownMissingAsync(CacheCategory, cacheKey, cancellationToken);
+            return await cacheService.IsKnownMissingAsync(CacheCategory, cacheKey, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -194,7 +261,7 @@ public sealed class AlbumArtService : IAlbumArtService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[AlbumArt] 读取封面缺失标记失败: {Message}", ex.Message);
+            logger.LogWarning(ex, "[AlbumArt] 读取封面缺失标记失败: {Message}", ex.Message);
             return false;
         }
     }
@@ -208,16 +275,26 @@ public sealed class AlbumArtService : IAlbumArtService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[AlbumArt] 解码封面失败: {Message}", ex.Message);
+            logger.LogWarning(ex, "[AlbumArt] 解码封面失败: {Message}", ex.Message);
             return null;
         }
     }
 
     private static string BuildCacheKey(Track track)
     {
-        var bytes = Encoding.UTF8.GetBytes($"{track.DisplayArtist}|{track.DisplayAlbum}|{track.DisplayTitle}");
+        // DisplayArtist/DisplayAlbum 对未打标签的曲目会退化成 "未知艺术家"/"未知专辑",
+        // 仅用这三个展示字段会让同名的未标记文件互相命中错误的封面。只有在缺少可用
+        // 元数据时才把文件路径纳入 key,标签完整的专辑仍可共享缓存。
+        var usePathFallback =
+            string.IsNullOrWhiteSpace(track.Artist) ||
+            string.IsNullOrWhiteSpace(track.Album) ||
+            string.IsNullOrWhiteSpace(track.Title);
+        var bytes = Encoding.UTF8.GetBytes(
+            $"{CacheKeyVersion}|{track.DisplayArtist}|{track.DisplayAlbum}|{track.DisplayTitle}|{(usePathFallback ? track.FilePath : string.Empty)}");
         return Convert.ToHexString(SHA1.HashData(bytes));
     }
 
     private readonly record struct AlbumArtResult(byte[] Bytes, Bitmap Bitmap);
+
+    private readonly record struct ProviderOutcome(byte[]? Bytes, bool TransientFailure);
 }

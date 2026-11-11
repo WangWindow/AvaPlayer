@@ -210,7 +210,7 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
         }
     }
 
-    private Task EnqueueAsync(CancellationToken ct, Func<CancellationToken, Task> command) =>
+    private Task<bool> EnqueueAsync(CancellationToken ct, Func<CancellationToken, Task> command) =>
         EnqueueWithResultAsync(ct, async token =>
         {
             await command(token);

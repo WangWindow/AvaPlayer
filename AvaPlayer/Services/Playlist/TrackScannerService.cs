@@ -4,15 +4,8 @@ using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.Services.Playlist;
 
-public sealed class TrackScannerService : ITrackScannerService
+public sealed class TrackScannerService(ILogger<TrackScannerService> logger) : ITrackScannerService
 {
-    private readonly ILogger<TrackScannerService> _logger;
-
-    public TrackScannerService(ILogger<TrackScannerService> logger)
-    {
-        _logger = logger;
-    }
-
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".aac",
@@ -77,7 +70,7 @@ public sealed class TrackScannerService : ITrackScannerService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "[Scanner] 无法读取标签 {FilePath}: {Message}", filePath, ex.Message);
+                    logger.LogWarning(ex, "[Scanner] 无法读取标签 {FilePath}: {Message}", filePath, ex.Message);
                     tracks.Add(new Track { Id = BuildTrackId(filePath), FilePath = filePath });
                 }
             }

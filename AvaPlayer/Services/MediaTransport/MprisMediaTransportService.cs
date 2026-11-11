@@ -6,7 +6,7 @@ using Tmds.DBus.Protocol;
 
 namespace AvaPlayer.Services.MediaTransport;
 
-public sealed class MprisMediaTransportService : IMediaTransportService
+public sealed class MprisMediaTransportService(ILogger<MprisMediaTransportService> logger) : IMediaTransportService
 {
     private const string ServiceName = "org.mpris.MediaPlayer2.avaplayer";
     private const string ObjectPathString = "/org/mpris/MediaPlayer2";
@@ -69,7 +69,6 @@ public sealed class MprisMediaTransportService : IMediaTransportService
     ];
 
     private readonly object _gate = new();
-    private readonly ILogger<MprisMediaTransportService> _logger;
     private DBusConnection? _connection;
     private Track? _currentTrack;
     private bool _isPlaying;
@@ -85,11 +84,6 @@ public sealed class MprisMediaTransportService : IMediaTransportService
     private long _lastPositionUs = -1;
     private long _lastPositionEmitMs;
     private bool _positionForceEmit;
-
-    public MprisMediaTransportService(ILogger<MprisMediaTransportService> logger)
-    {
-        _logger = logger;
-    }
 
     public event EventHandler? PlayRequested;
     public event EventHandler? PauseRequested;
@@ -107,7 +101,7 @@ public sealed class MprisMediaTransportService : IMediaTransportService
         var address = DBusAddress.Session;
         if (string.IsNullOrWhiteSpace(address))
         {
-            _logger.LogWarning("[MPRIS] 未找到 session bus 地址，跳过初始化。");
+            logger.LogWarning("[MPRIS] 未找到 session bus 地址，跳过初始化。");
             return;
         }
 
@@ -118,13 +112,13 @@ public sealed class MprisMediaTransportService : IMediaTransportService
             _connection.AddMethodHandler(new MprisObject(this));
             await _connection.RequestNameAsync(ServiceName, RequestNameOptions.Default).ConfigureAwait(false);
             _initialized = true;
-            _logger.LogInformation("[MPRIS] 服务已注册");
+            logger.LogInformation("[MPRIS] 服务已注册");
         }
         catch (Exception ex)
         {
             _connection?.Dispose();
             _connection = null;
-            _logger.LogError(ex, "[MPRIS] 初始化失败: {Message}", ex.Message);
+            logger.LogError(ex, "[MPRIS] 初始化失败: {Message}", ex.Message);
         }
     }
 
@@ -430,7 +424,7 @@ public sealed class MprisMediaTransportService : IMediaTransportService
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
         {
             _initialized = false;
-            _logger.LogWarning(ex, "[MPRIS] 发送属性变更信号失败 (连接可能已断开): {Message}", ex.Message);
+            logger.LogWarning(ex, "[MPRIS] 发送属性变更信号失败 (连接可能已断开): {Message}", ex.Message);
         }
     }
 
@@ -477,15 +471,8 @@ public sealed class MprisMediaTransportService : IMediaTransportService
         return builder.Length == 0 ? "track" : builder.ToString();
     }
 
-    private sealed class MprisObject : IPathMethodHandler
+    private sealed class MprisObject(MprisMediaTransportService owner) : IPathMethodHandler
     {
-        private readonly MprisMediaTransportService _owner;
-
-        public MprisObject(MprisMediaTransportService owner)
-        {
-            _owner = owner;
-        }
-
         public string Path => ObjectPathString;
 
         public bool HandlesChildPaths => false;
@@ -534,7 +521,7 @@ public sealed class MprisMediaTransportService : IMediaTransportService
                     {
                         var interfaceName = reader.ReadString();
                         var propertyName = reader.ReadString();
-                        var value = _owner.GetProperty(interfaceName, propertyName);
+                        var value = owner.GetProperty(interfaceName, propertyName);
                         if (value is null)
                         {
                             context.ReplyError("org.freedesktop.DBus.Error.InvalidArgs", $"Unknown property '{propertyName}'.");
@@ -549,7 +536,7 @@ public sealed class MprisMediaTransportService : IMediaTransportService
                 case "GetAll":
                     {
                         var interfaceName = reader.ReadString();
-                        var properties = _owner.GetAllProperties(interfaceName);
+                        var properties = owner.GetAllProperties(interfaceName);
                         using var writer = context.CreateReplyWriter("a{sv}");
                         writer.WriteDictionary(properties);
                         context.Reply(writer.CreateMessage());
@@ -571,48 +558,48 @@ public sealed class MprisMediaTransportService : IMediaTransportService
             switch (memberName)
             {
                 case "Play":
-                    _owner.RaisePlayRequested();
+                    owner.RaisePlayRequested();
                     ReplyEmpty(context);
                     break;
                 case "Pause":
-                    _owner.RaisePauseRequested();
+                    owner.RaisePauseRequested();
                     ReplyEmpty(context);
                     break;
                 case "PlayPause":
-                    if (_owner.GetPlaybackStatus() == "Playing")
+                    if (owner.GetPlaybackStatus() == "Playing")
                     {
-                        _owner.RaisePauseRequested();
+                        owner.RaisePauseRequested();
                     }
                     else
                     {
-                        _owner.RaisePlayRequested();
+                        owner.RaisePlayRequested();
                     }
 
                     ReplyEmpty(context);
                     break;
                 case "Next":
-                    _owner.RaiseNextRequested();
+                    owner.RaiseNextRequested();
                     ReplyEmpty(context);
                     break;
                 case "Previous":
-                    _owner.RaisePreviousRequested();
+                    owner.RaisePreviousRequested();
                     ReplyEmpty(context);
                     break;
                 case "Stop":
-                    _owner.RaisePauseRequested();
+                    owner.RaisePauseRequested();
                     ReplyEmpty(context);
                     break;
                 case "Seek":
-                    _owner.RaiseSeekRequested(_owner._position + FromMicroseconds(reader.ReadInt64()));
+                    owner.RaiseSeekRequested(owner._position + FromMicroseconds(reader.ReadInt64()));
                     ReplyEmpty(context);
                     break;
                 case "SetPosition":
                     {
                         var trackId = reader.ReadString();
                         var requestedPosition = FromMicroseconds(reader.ReadInt64());
-                        if (string.Equals(trackId, _owner.GetCurrentTrackObjectPath(), StringComparison.Ordinal))
+                        if (string.Equals(trackId, owner.GetCurrentTrackObjectPath(), StringComparison.Ordinal))
                         {
-                            _owner.RaiseSeekRequested(requestedPosition);
+                            owner.RaiseSeekRequested(requestedPosition);
                         }
 
                         ReplyEmpty(context);

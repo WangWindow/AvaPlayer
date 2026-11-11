@@ -1,5 +1,4 @@
 using System.IO.Pipes;
-using System.Threading;
 
 namespace AvaPlayer.Helpers;
 

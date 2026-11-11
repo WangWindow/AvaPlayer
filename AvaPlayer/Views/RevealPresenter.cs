@@ -44,9 +44,16 @@ public sealed class RevealPresenter : ContentControl
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property != IsOpenProperty) return;
+        if (change.Property != IsOpenProperty)
+        {
+            return;
+        }
+
         UpdateInteraction();
-        if (_attached) _ = UpdateVisibilityAsync();
+        if (_attached)
+        {
+            _ = UpdateVisibilityAsync();
+        }
     }
 
     private void UpdateInteraction()
@@ -89,7 +96,10 @@ public sealed class RevealPresenter : ContentControl
         catch (OperationCanceledException) { }
         finally
         {
-            if (ReferenceEquals(_visibilityChange, cancellation)) _visibilityChange = null;
+            if (ReferenceEquals(_visibilityChange, cancellation))
+            {
+                _visibilityChange = null;
+            }
         }
     }
 }

@@ -2,21 +2,14 @@ using AvaPlayer.Services.Database;
 
 namespace AvaPlayer.Services.Settings;
 
-public sealed class AppSettingsService : ISettingsService
+public sealed class AppSettingsService(IDatabaseService database) : ISettingsService
 {
-    private readonly IDatabaseService _database;
-
-    public AppSettingsService(IDatabaseService database)
-    {
-        _database = database;
-    }
-
     public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default) =>
-        _database.GetSettingAsync(key, cancellationToken);
+        database.GetSettingAsync(key, cancellationToken);
 
     public Task SetAsync(string key, string value, CancellationToken cancellationToken = default) =>
-        _database.SaveSettingAsync(key, value, cancellationToken);
+        database.SaveSettingAsync(key, value, cancellationToken);
 
     public Task SaveSettingsBatchAsync(IReadOnlyDictionary<string, string> settings, CancellationToken cancellationToken = default) =>
-        _database.SaveSettingsBatchAsync(settings, cancellationToken);
+        database.SaveSettingsBatchAsync(settings, cancellationToken);
 }

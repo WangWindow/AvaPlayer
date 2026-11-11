@@ -231,11 +231,7 @@ public partial class App : Application
         };
         _mainWindow.Closing += OnMainWindowClosing;
         _mainWindow.Closed += OnMainWindowClosed;
-
-        if (_desktop is not null)
-        {
-            _desktop.MainWindow = _mainWindow;
-        }
+        _desktop?.MainWindow = _mainWindow;
 
         return _mainWindow;
     }
@@ -473,7 +469,10 @@ public partial class App : Application
         }
 
         if (mainWindow.WindowState == WindowState.Minimized)
+        {
             mainWindow.WindowState = WindowState.Normal;
+        }
+
         mainWindow.Activate();
     }
 
@@ -585,7 +584,11 @@ public partial class App : Application
 
     private async Task PersistPlaybackSessionAsync()
     {
-        if (_playbackSession is null) return;
+        if (_playbackSession is null)
+        {
+            return;
+        }
+
         await _playbackSession.PersistAsync();
     }
 
@@ -644,7 +647,9 @@ public partial class App : Application
     private void DisposeRuntimeIfIdle()
     {
         if (_runtimeScope is null)
+        {
             return;
+        }
 
         _isIdleRuntimeReleaseScheduled = false;
 
@@ -672,7 +677,9 @@ public partial class App : Application
     private void UnwirePlayerBarEvents()
     {
         if (_mainWindowViewModel is null)
+        {
             return;
+        }
 
         if (_isPlayerBarWired)
         {
@@ -736,23 +743,13 @@ public partial class App : Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
-        if (_desktop is not null)
-        {
-            _desktop.Exit -= OnDesktopExit;
-        }
-
-        if (_singleInstanceManager is not null)
-        {
-            _singleInstanceManager.ActivationRequested -= OnSingleInstanceActivationRequested;
-        }
+        _desktop?.Exit -= OnDesktopExit;
+        _singleInstanceManager?.ActivationRequested -= OnSingleInstanceActivationRequested;
 
         UnwireRuntimeEvents();
         UnwireMediaTransportCommands();
 
-        if (_desktop is not null)
-        {
-            _desktop.ShutdownRequested -= OnDesktopShutdownRequested;
-        }
+        _desktop?.ShutdownRequested -= OnDesktopShutdownRequested;
 
         if (_mainWindow is not null)
         {
@@ -766,10 +763,7 @@ public partial class App : Application
 
     private void SyncLightweightModeMenuState()
     {
-        if (_lightweightModeMenuItem is not null)
-        {
-            _lightweightModeMenuItem.IsChecked = _isLightweightModeEnabled;
-        }
+        _lightweightModeMenuItem?.IsChecked = _isLightweightModeEnabled;
     }
 
     private void ApplyTrayIconStyle(string style)

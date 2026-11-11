@@ -108,7 +108,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void WireSettingsEvents()
     {
-        if (_settingsEventsWired) return;
+        if (_settingsEventsWired)
+        {
+            return;
+        }
+
         PlayerBar.PropertyChanged += OnPlayerBarPropertyChanged;
         Settings.CacheRefreshing += OnCacheRefreshing;
         Settings.CacheRefreshed += OnCacheRefreshed;
@@ -117,7 +121,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void UnwireSettingsEvents()
     {
-        if (!_settingsEventsWired) return;
+        if (!_settingsEventsWired)
+        {
+            return;
+        }
+
         PlayerBar.PropertyChanged -= OnPlayerBarPropertyChanged;
         Settings.CacheRefreshing -= OnCacheRefreshing;
         Settings.CacheRefreshed -= OnCacheRefreshed;
@@ -133,7 +141,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (e.PropertyName == nameof(PlayerBarViewModel.IsSettingsVisible))
         {
             Settings.IsSettingsVisible = PlayerBar.IsSettingsVisible;
-            if (PlayerBar.IsSettingsVisible) IsPlaylistVisible = false;
+            if (PlayerBar.IsSettingsVisible)
+            {
+                IsPlaylistVisible = false;
+            }
         }
     }
 

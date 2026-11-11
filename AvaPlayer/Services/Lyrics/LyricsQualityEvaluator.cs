@@ -19,6 +19,7 @@ internal static class LyricsQualityEvaluator
 
         var uniqueLines = new HashSet<string>(StringComparer.Ordinal);
         var nonEmptyLineCount = 0;
+        var timedLineCount = 0;
         var lastTimestamp = TimeSpan.Zero;
 
         foreach (var line in lyrics)
@@ -29,6 +30,10 @@ internal static class LyricsQualityEvaluator
             }
 
             nonEmptyLineCount++;
+            if (line.IsTimed)
+            {
+                timedLineCount++;
+            }
 
             var normalizedLine = NormalizeLineText(line.Text);
             if (!string.IsNullOrEmpty(normalizedLine))
@@ -47,13 +52,19 @@ internal static class LyricsQualityEvaluator
             return LyricsQualityEvaluation.Empty;
         }
 
+        var hasTimedLines = timedLineCount > 0;
         var distinctLineCount = uniqueLines.Count;
         var score = nonEmptyLineCount * 2 + distinctLineCount * 3;
         var coverageRatio = 1d;
         var trailingGapSeconds = 0d;
         var expectedLineCount = 0;
 
-        if (track.DurationSeconds > 1)
+        if (!hasTimedLines)
+        {
+            // 纯文本歌词的时间轴是估算的,不能用「覆盖到结尾」来加分;只按文本量给基础分。
+            score += Math.Min(nonEmptyLineCount, 24);
+        }
+        else if (track.DurationSeconds > 1)
         {
             coverageRatio = Math.Clamp(lastTimestamp.TotalSeconds / track.DurationSeconds, 0d, 1.15d);
             trailingGapSeconds = Math.Max(0d, track.DurationSeconds - lastTimestamp.TotalSeconds);
@@ -86,30 +97,34 @@ internal static class LyricsQualityEvaluator
 
         var isAccepted = nonEmptyLineCount >= 3;
 
-        // Reject candidates that stop far too early; these are usually truncated sync data or the wrong recording.
-        if (track.DurationSeconds >= 90 &&
-            trailingGapSeconds > SuspiciousTrailingGapSeconds &&
-            coverageRatio < SuspiciousCoverageRatio)
+        if (hasTimedLines)
         {
-            isAccepted = false;
-        }
+            // Reject candidates that stop far too early; these are usually truncated sync data or the wrong recording.
+            if (track.DurationSeconds >= 90 &&
+                trailingGapSeconds > SuspiciousTrailingGapSeconds &&
+                coverageRatio < SuspiciousCoverageRatio)
+            {
+                isAccepted = false;
+            }
 
-        if (track.DurationSeconds >= 120 &&
-            trailingGapSeconds > HardTrailingGapSeconds &&
-            coverageRatio < 0.70)
-        {
-            isAccepted = false;
-        }
+            if (track.DurationSeconds >= 120 &&
+                trailingGapSeconds > HardTrailingGapSeconds &&
+                coverageRatio < 0.70)
+            {
+                isAccepted = false;
+            }
 
-        if (expectedLineCount > 0 &&
-            nonEmptyLineCount < expectedLineCount * 0.45d &&
-            coverageRatio < 0.82)
-        {
-            isAccepted = false;
+            if (expectedLineCount > 0 &&
+                nonEmptyLineCount < expectedLineCount * 0.45d &&
+                coverageRatio < 0.82)
+            {
+                isAccepted = false;
+            }
         }
 
         return new LyricsQualityEvaluation(
             isAccepted,
+            hasTimedLines,
             score,
             nonEmptyLineCount,
             distinctLineCount,
@@ -135,11 +150,12 @@ internal static class LyricsQualityEvaluator
 
 internal readonly record struct LyricsQualityEvaluation(
     bool IsAccepted,
+    bool HasTimedLines,
     int Score,
     int NonEmptyLineCount,
     int DistinctLineCount,
     double CoverageRatio,
     double TrailingGapSeconds)
 {
-    public static LyricsQualityEvaluation Empty { get; } = new(false, int.MinValue, 0, 0, 0, 0);
+    public static LyricsQualityEvaluation Empty { get; } = new(false, false, int.MinValue, 0, 0, 0, 0);
 }

@@ -15,7 +15,7 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
 {
     private readonly IPlaylistService _playlistService;
     private readonly ILogger<PlaylistViewModel> _logger;
-    private readonly Dictionary<string, TrackItemViewModel> _trackCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, TrackItemViewModel> _trackCache = [with(StringComparer.OrdinalIgnoreCase)];
     private bool _refreshScheduled;
     private bool _isUiActive;
     private bool _disposed;
@@ -119,16 +119,28 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task AddPlaylistAsync(CancellationToken cancellationToken)
     {
-        if (FolderPickRequested is null || IsScanning) return;
+        if (FolderPickRequested is null || IsScanning)
+        {
+            return;
+        }
+
         var folderPath = await FolderPickRequested.Invoke();
-        if (string.IsNullOrWhiteSpace(folderPath)) return;
+        if (string.IsNullOrWhiteSpace(folderPath))
+        {
+            return;
+        }
+
         await ScanAsync(() => _playlistService.AddPlaylistAsync(string.Empty, folderPath, IncludeSubfolders, cancellationToken), cancellationToken);
     }
 
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task RescanPlaylistAsync(CancellationToken cancellationToken)
     {
-        if (SelectedPlaylist is null || IsScanning) return;
+        if (SelectedPlaylist is null || IsScanning)
+        {
+            return;
+        }
+
         var playlistId = SelectedPlaylist.Id;
         await ScanAsync(() => _playlistService.RescanPlaylistAsync(playlistId, IncludeSubfolders, cancellationToken), cancellationToken);
     }
@@ -369,7 +381,7 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
             desiredIds.Add(track.Id);
             if (!_trackCache.TryGetValue(track.Id, out var item) || !ReferenceEquals(item.Track, track))
             {
-                if (item is not null) item.PropertyChanged -= OnTrackItemPropertyChanged;
+                item?.PropertyChanged -= OnTrackItemPropertyChanged;
                 item = new TrackItemViewModel(track);
                 item.PropertyChanged += OnTrackItemPropertyChanged;
                 _trackCache[track.Id] = item;
@@ -399,7 +411,7 @@ public partial class PlaylistViewModel : ObservableObject, IDisposable
         var query = SearchText.Trim();
         var desiredItems = string.IsNullOrWhiteSpace(query)
             ? Tracks.ToArray()
-            : Tracks.Where(item => MatchesSearch(item, query)).ToArray();
+            : [.. Tracks.Where(item => MatchesSearch(item, query))];
 
         ApplyTrackOrder(VisibleTracks, desiredItems);
         HasVisibleTracks = VisibleTracks.Count > 0;

@@ -9,37 +9,42 @@ using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.Services.Lyrics;
 
-public sealed class LyricsService : ILyricsService
+public sealed class LyricsService(ICacheService cacheService, ILyricsProviderManager providerManager, INetworkAccessService networkAccessService, ILogger<LyricsService> logger) : ILyricsService
 {
-    private const string CacheKeyVersion = "lyrics-v2";
+    private const string CacheKeyVersion = "lyrics-v3";
     private const string CacheCategory = "lyrics";
 
     /// <summary>歌词与曲目绑定、几乎不会变:命中后 30 天内不再联网刷新。</summary>
     private static readonly TimeSpan LyricsCacheTtl = TimeSpan.FromDays(30);
 
+    /// <summary>
+    /// 纯文本歌词的时间轴是估算出来的(不可拖动)。保留较短 TTL,以便日后有联网机会时
+    /// 换用真正的逐行同步歌词。
+    /// </summary>
+    private static readonly TimeSpan EstimatedLyricsCacheTtl = TimeSpan.FromDays(7);
+
     /// <summary>「查过、确实没有歌词」的结论缓存 7 天,避免每次换曲都重打全部 provider。</summary>
     private static readonly TimeSpan MissingLyricsTtl = TimeSpan.FromDays(7);
-
-    private readonly ICacheService _cacheService;
-    private readonly INetworkAccessService _networkAccessService;
-    private readonly ILogger<LyricsService> _logger;
-    private readonly IReadOnlyList<ILyricsProvider> _providers;
-
-    public LyricsService(ICacheService cacheService, ILyricsProviderManager providerManager, INetworkAccessService networkAccessService, ILogger<LyricsService> logger)
-    {
-        _cacheService = cacheService;
-        _networkAccessService = networkAccessService;
-        _logger = logger;
-        _providers = providerManager.Providers;
-    }
+    private readonly IReadOnlyList<ILyricsProvider> _providers = providerManager.Providers;
 
     public async Task<IReadOnlyList<LyricLine>> GetLyricsAsync(Track track, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var localLyrics = await ReadLocalLyricsAsync(track, cancellationToken);
-        if (localLyrics.Count > 0) return localLyrics;
+        if (localLyrics.Count > 0)
+        {
+            return localLyrics;
+        }
 
         var cacheKey = BuildCacheKey(track);
+
+        // 必须先查墓碑再看缓存值:CacheService.GetTextAsync 命中墓碑会把它当作 miss 删除,
+        // 如果先读缓存,墓碑就永远不会生效。墓碑存在时不可能同时有有效的缓存值。
+        if (await IsKnownMissingAsync(cacheKey, cancellationToken))
+        {
+            return [];
+        }
+
         LyricsSelection? bestFallback = null;
 
         var cached = await ReadCachedLyricsAsync(cacheKey, cancellationToken);
@@ -55,31 +60,62 @@ public sealed class LyricsService : ILyricsService
         }
 
         // 墓碑(negative cache)命中时跳过联网:上次查过没有,短期内重打 4 个 provider 也大概率没有。
-        if (_networkAccessService.IsEnabled && !await IsKnownMissingAsync(cacheKey, cancellationToken))
+        if (networkAccessService.IsEnabled)
         {
-            var (winner, raceFallback, attempted) = await RaceProvidersAsync(track, cancellationToken);
+            var (winner, raceFallback, attempted, hadTransientFailure) =
+                await RaceProvidersAsync(track, cancellationToken);
+
+            LyricsSelection? fromNetwork = winner ?? raceFallback;
+            if (fromNetwork is { } candidate && IsBetterFallback(candidate, bestFallback))
+            {
+                bestFallback = candidate;
+            }
 
             if (winner is { } accepted)
             {
-                await _cacheService.SetTextAsync(
-                    CacheCategory, cacheKey, FormatCachedLyrics(accepted.Lyrics), LyricsCacheTtl, cancellationToken);
+                await TryCacheLyricsAsync(cacheKey, accepted, cancellationToken);
                 return accepted.Lyrics;
             }
 
-            if (raceFallback is { } fallback)
+            if (fromNetwork is { } acceptedFallback &&
+                acceptedFallback.Quality.IsAccepted &&
+                bestFallback is { } selected &&
+                ReferenceEquals(selected.Lyrics, acceptedFallback.Lyrics))
             {
-                if (bestFallback is null || fallback.Quality.Score > bestFallback.Value.Quality.Score)
-                {
-                    bestFallback = fallback;
-                }
+                // 纯文本/估算歌词也缓存,避免每次换曲都重新联网;但 TTL 更短,以便日后升级为同步歌词。
+                await TryCacheLyricsAsync(cacheKey, acceptedFallback, cancellationToken);
             }
-            else if (attempted)
+            else if (raceFallback is null && attempted && !hadTransientFailure)
             {
-                await _cacheService.MarkMissingAsync(CacheCategory, cacheKey, MissingLyricsTtl, cancellationToken);
+                // 只有所有 provider 都明确回答「没有」时才写墓碑。任何一个网络/解析异常都意味着
+                // 这次结论不可靠,不能把后续重试压制 7 天。
+                await TryMarkMissingAsync(cacheKey, cancellationToken);
             }
         }
 
         return bestFallback?.Lyrics ?? [];
+    }
+
+    private static bool IsBetterFallback(LyricsSelection candidate, LyricsSelection? current)
+    {
+        if (current is not { } existing)
+        {
+            return true;
+        }
+
+        // 先比较「质量是否达标」:被截断的同步歌词不应压过一首合理的纯文本歌词。
+        if (candidate.Quality.IsAccepted != existing.Quality.IsAccepted)
+        {
+            return candidate.Quality.IsAccepted;
+        }
+
+        // 在都达标(或都不达标)时,真正的同步歌词优于把纯文本按行数平均分配的伪时间轴。
+        if (candidate.Quality.HasTimedLines != existing.Quality.HasTimedLines)
+        {
+            return candidate.Quality.HasTimedLines;
+        }
+
+        return candidate.Quality.Score > existing.Quality.Score;
     }
 
     /// <summary>
@@ -88,51 +124,90 @@ public sealed class LyricsService : ILyricsService
     /// race 让延迟 = 最快达标的源,挂死或超时的源由链接的取消令牌撤掉,不再拖住整条链路。
     /// 全部未达标时,返回其中质量最高的 fallback(与原串行实现语义一致)。
     /// </summary>
-    private async Task<(LyricsSelection? Winner, LyricsSelection? BestFallback, bool Attempted)> RaceProvidersAsync(
+    private async Task<(LyricsSelection? Winner, LyricsSelection? BestFallback, bool Attempted, bool HadTransientFailure)> RaceProvidersAsync(
         Track track,
         CancellationToken cancellationToken)
     {
         // Cancel the remaining requests explicitly when a winner is found.
         using var raceCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        var pending = new List<Task<LyricsSelection?>>(_providers.Count);
+        var pending = new List<Task<ProviderOutcome>>(_providers.Count);
         foreach (var provider in _providers)
         {
             pending.Add(QueryProviderAsync(provider, track, raceCts.Token));
         }
 
         var attempted = pending.Count > 0;
-        LyricsSelection? bestFallback = null;
-        while (pending.Count > 0)
+        if (!attempted)
         {
-            var completed = await Task.WhenAny(pending);
-            pending.Remove(completed);
+            return (null, null, false, false);
+        }
 
-            // QueryProviderAsync 内部消化了全部异常,这里 await 不会抛出。
-            if (await completed is not { } selection)
+        var hadTransientFailure = false;
+        LyricsSelection? bestFallback = null;
+
+        // 调用方取消不应依赖任何 provider 是否及时响应:单独用一个信号任务参与 WhenAny。
+        var cancellationSignal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellationRegistration = cancellationToken.Register(
+            static state => ((TaskCompletionSource)state!).TrySetResult(),
+            cancellationSignal);
+
+        try
+        {
+            while (pending.Count > 0)
             {
-                continue;
+                var completed = await Task.WhenAny(pending.Append(cancellationSignal.Task));
+                if (ReferenceEquals(completed, cancellationSignal.Task))
+                {
+                    break;
+                }
+
+                var providerTask = (Task<ProviderOutcome>)completed;
+                pending.Remove(providerTask);
+
+                // QueryProviderAsync 内部消化了全部异常,这里 await 不会抛出。
+                var outcome = await providerTask;
+                if (outcome.TransientFailure)
+                {
+                    hadTransientFailure = true;
+                    continue;
+                }
+
+                if (outcome.Selection is not { } selection)
+                {
+                    continue;
+                }
+
+                // 只有真正的同步歌词才值得提前结束竞速;估算出来的纯文本继续等待其他 provider,
+                // 否则快速返回的纯文本会永远压住稍慢但质量更高的同步歌词。
+                if (selection.Quality.IsAccepted && selection.Quality.HasTimedLines)
+                {
+                    raceCts.Cancel();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return (selection, null, true, hadTransientFailure);
+                }
+
+                if (IsBetterFallback(selection, bestFallback))
+                {
+                    bestFallback = selection;
+                }
             }
-
-            if (selection.Quality.IsAccepted)
+        }
+        finally
+        {
+            raceCts.Cancel();
+            foreach (var task in pending)
             {
-                await raceCts.CancelAsync();
-                cancellationToken.ThrowIfCancellationRequested();
-                return (selection, null, true);
-            }
-
-            if (bestFallback is null || selection.Quality.Score > bestFallback.Value.Quality.Score)
-            {
-                bestFallback = selection;
+                ObserveFault(task);
             }
         }
 
         // 竞速期间调用方可能已换曲:保持原有语义,把取消异常抛给上层。
         cancellationToken.ThrowIfCancellationRequested();
-        return (null, bestFallback, attempted);
+        return (null, bestFallback, attempted, hadTransientFailure);
     }
 
-    private async Task<LyricsSelection?> QueryProviderAsync(
+    private async Task<ProviderOutcome> QueryProviderAsync(
         ILyricsProvider provider,
         Track track,
         CancellationToken cancellationToken)
@@ -140,19 +215,60 @@ public sealed class LyricsService : ILyricsService
         try
         {
             var lyrics = await provider.GetLyricsAsync(track, cancellationToken);
-            return lyrics is { Count: > 0 } ? CreateSelection(track, lyrics) : null;
+            return new ProviderOutcome(
+                lyrics is { Count: > 0 } ? CreateSelection(track, lyrics) : null,
+                TransientFailure: false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             // 竞速取消或调用方换曲:记为 miss,调用方取消由竞速收口处统一抛出。
-            return null;
+            return new ProviderOutcome(null, TransientFailure: false);
         }
         catch (Exception ex)
         {
-            // 单个 provider 失败不能影响其他竞速任务。
-            _logger.LogWarning(ex, "[Lyrics:{Provider}] 获取歌词失败: {Message}", provider.Name, ex.Message);
-            return null;
+            // 单个 provider 失败不能影响其他竞速任务,但必须让 service 知道「这次结果不可信」,
+            // 以免网络故障被写成长期墓碑。
+            logger.LogWarning(ex, "[Lyrics:{Provider}] 获取歌词失败: {Message}", provider.Name, ex.Message);
+            return new ProviderOutcome(null, TransientFailure: true);
         }
+    }
+
+    private async Task TryCacheLyricsAsync(string cacheKey, LyricsSelection selection, CancellationToken cancellationToken)
+    {
+        var ttl = selection.Quality.HasTimedLines ? LyricsCacheTtl : EstimatedLyricsCacheTtl;
+        try
+        {
+            await cacheService.SetTextAsync(
+                CacheCategory, cacheKey, FormatCachedLyrics(selection.Lyrics), ttl, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // 缓存失败不应丢掉已经成功获取的歌词。
+            logger.LogWarning(ex, "[Lyrics] 写入缓存歌词失败: {Message}", ex.Message);
+        }
+    }
+
+    private async Task TryMarkMissingAsync(string cacheKey, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cacheService.MarkMissingAsync(CacheCategory, cacheKey, MissingLyricsTtl, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "[Lyrics] 写入歌词缺失标记失败: {Message}", ex.Message);
+        }
+    }
+
+    private static void ObserveFault(Task task)
+    {
+        // 竞速结束后不等待慢 provider(否则赢家返回又要被拖住),但要显式观察潜在异常,
+        // 避免留下未观察的 Task 故障。
+        _ = task.ContinueWith(
+            static completed => _ = completed.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private async Task<IReadOnlyList<LyricLine>> ReadLocalLyricsAsync(Track track, CancellationToken cancellationToken)
@@ -173,7 +289,10 @@ public sealed class LyricsService : ILyricsService
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogDebug(ex, "[Lyrics] Cannot read embedded lyrics: {Path}", track.FilePath);
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.LogDebug(ex, "[Lyrics] Cannot read embedded lyrics: {Path}", track.FilePath);
+            }
         }
 
         try
@@ -184,7 +303,7 @@ public sealed class LyricsService : ILyricsService
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _logger.LogWarning(ex, "[Lyrics] Cannot read sidecar: {Path}", track.FilePath);
+            logger.LogWarning(ex, "[Lyrics] Cannot read sidecar: {Path}", track.FilePath);
         }
         return [];
     }
@@ -204,7 +323,7 @@ public sealed class LyricsService : ILyricsService
     {
         try
         {
-            var text = await _cacheService.GetTextAsync(CacheCategory, cacheKey, cancellationToken);
+            var text = await cacheService.GetTextAsync(CacheCategory, cacheKey, cancellationToken);
             return text is null ? [] : ParseCachedLyrics(text);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -213,7 +332,7 @@ public sealed class LyricsService : ILyricsService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[Lyrics] 读取缓存歌词失败: {Message}", ex.Message);
+            logger.LogWarning(ex, "[Lyrics] 读取缓存歌词失败: {Message}", ex.Message);
             return [];
         }
     }
@@ -222,7 +341,7 @@ public sealed class LyricsService : ILyricsService
     {
         try
         {
-            return await _cacheService.IsKnownMissingAsync(CacheCategory, cacheKey, cancellationToken);
+            return await cacheService.IsKnownMissingAsync(CacheCategory, cacheKey, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -230,16 +349,16 @@ public sealed class LyricsService : ILyricsService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[Lyrics] 读取歌词缺失标记失败: {Message}", ex.Message);
+            logger.LogWarning(ex, "[Lyrics] 读取歌词缺失标记失败: {Message}", ex.Message);
             return false;
         }
     }
 
     /// <summary>
-    /// 单趟解析缓存文本:每行 `ticks\tbase64(UTF-8 歌词)`。base64 保证歌词内的换行不破坏行协议;
-    /// 写入时已按时间升序,因此读取不再需要 OrderBy。
+    /// 单趟解析缓存文本:每行 `ticks\t是否同步(0/1)\tbase64(UTF-8 歌词)`。
+    /// base64 保证歌词内的换行不破坏行协议;写入时已按时间升序,因此读取不再需要 OrderBy。
     /// </summary>
-    private static IReadOnlyList<LyricLine> ParseCachedLyrics(string text)
+    private static List<LyricLine> ParseCachedLyrics(string text)
     {
         var rows = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         var lines = new List<LyricLine>(rows.Length);
@@ -253,10 +372,20 @@ public sealed class LyricsService : ILyricsService
                 continue;
             }
 
+            var remainder = row[(tab + 1)..];
+            var secondTab = remainder.IndexOf('\t');
+            var isTimed = true;
+            if (secondTab > 0 && remainder[..secondTab] is "0" or "1")
+            {
+                isTimed = remainder[0] == '1';
+                remainder = remainder[(secondTab + 1)..];
+            }
+
             lines.Add(new LyricLine
             {
+                IsTimed = isTimed,
                 Time = new TimeSpan(ticks),
-                Text = DecodeCachedText(row[(tab + 1)..].TrimEnd('\r'))
+                Text = DecodeCachedText(remainder.TrimEnd('\r'))
             });
         }
 
@@ -275,6 +404,8 @@ public sealed class LyricsService : ILyricsService
 
             builder
                 .Append(line.Time.Ticks)
+                .Append('\t')
+                .Append(line.IsTimed ? '1' : '0')
                 .Append('\t')
                 .Append(Convert.ToBase64String(Encoding.UTF8.GetBytes(line.Text)));
         }
@@ -303,4 +434,6 @@ public sealed class LyricsService : ILyricsService
     }
 
     private readonly record struct LyricsSelection(IReadOnlyList<LyricLine> Lyrics, LyricsQualityEvaluation Quality);
+
+    private readonly record struct ProviderOutcome(LyricsSelection? Selection, bool TransientFailure);
 }

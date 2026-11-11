@@ -5,10 +5,10 @@ using AvaPlayer.Services.Database;
 
 namespace AvaPlayer.Services.Playlist;
 
-public sealed class PlaylistService : IPlaylistService
+public sealed class PlaylistService(
+    IDatabaseService databaseService,
+    ITrackScannerService trackScannerService) : IPlaylistService
 {
-    private readonly IDatabaseService _databaseService;
-    private readonly ITrackScannerService _trackScannerService;
     private readonly Random _random = new();
     private PlaybackMode _playbackMode;
     private bool _isLoading;
@@ -16,12 +16,6 @@ public sealed class PlaylistService : IPlaylistService
     private string? _playbackPlaylistId;
 
     private IList<Track> PlaybackQueue => _playbackQueue is not null ? _playbackQueue : Queue;
-
-    public PlaylistService(IDatabaseService databaseService, ITrackScannerService trackScannerService)
-    {
-        _databaseService = databaseService;
-        _trackScannerService = trackScannerService;
-    }
 
     public ObservableCollection<Track> Queue { get; } = new();
 
@@ -46,7 +40,7 @@ public sealed class PlaylistService : IPlaylistService
             _playbackMode = value;
             if (!_isLoading)
             {
-                _ = _databaseService.SaveSettingAsync("playback-mode", value.ToString());
+                _ = databaseService.SaveSettingAsync("playback-mode", value.ToString());
             }
         }
     }
@@ -56,9 +50,9 @@ public sealed class PlaylistService : IPlaylistService
         _isLoading = true;
         try
         {
-            await _databaseService.InitializeAsync(cancellationToken);
+            await databaseService.InitializeAsync(cancellationToken);
 
-            var modeSetting = await _databaseService.GetSettingAsync("playback-mode", cancellationToken);
+            var modeSetting = await databaseService.GetSettingAsync("playback-mode", cancellationToken);
             if (Enum.TryParse<PlaybackMode>(modeSetting, out var playbackMode))
             {
                 PlaybackMode = playbackMode;
@@ -66,7 +60,7 @@ public sealed class PlaylistService : IPlaylistService
 
             await ReloadPlaylistsAsync(cancellationToken);
 
-            var selectedIdSetting = await _databaseService.GetSettingAsync("selected-playlist-id", cancellationToken);
+            var selectedIdSetting = await databaseService.GetSettingAsync("selected-playlist-id", cancellationToken);
             var selected = Playlists.FirstOrDefault(p => p.Id == selectedIdSetting) ?? Playlists.FirstOrDefault();
             await SelectPlaylistCoreAsync(selected, persistSelection: false, cancellationToken);
         }
@@ -92,19 +86,19 @@ public sealed class PlaylistService : IPlaylistService
         var playlistName = ResolvePlaylistName(name, folderPath);
         var playlistId = StableId.ForPath(folderPath);
 
-        var scannedTracks = await _trackScannerService.ScanFolderAsync(folderPath, includeSubfolders, cancellationToken);
+        var scannedTracks = await trackScannerService.ScanFolderAsync(folderPath, includeSubfolders, cancellationToken);
         var tracks = scannedTracks
             .Select(track => WithPlaylist(track, playlistId))
             .ToArray();
 
-        await _databaseService.SavePlaylistAsync(new PlaylistInfo
+        await databaseService.SavePlaylistAsync(new PlaylistInfo
         {
             Id = playlistId,
             Name = playlistName,
             FolderPath = folderPath,
             IncludeSubfolders = includeSubfolders
         }, cancellationToken);
-        await _databaseService.SaveTracksAsync(tracks, cancellationToken);
+        await databaseService.SaveTracksAsync(tracks, cancellationToken);
 
         await ReloadPlaylistsAsync(cancellationToken);
         await SelectPlaylistCoreAsync(
@@ -122,13 +116,13 @@ public sealed class PlaylistService : IPlaylistService
     {
         var playlist = Playlists.FirstOrDefault(p => p.Id == playlistId)
             ?? throw new ArgumentException("歌单不存在", nameof(playlistId));
-        var scanned = await _trackScannerService.ScanFolderAsync(playlist.FolderPath, includeSubfolders, cancellationToken);
-        await _databaseService.ReplacePlaylistTracksAsync(playlistId,
+        var scanned = await trackScannerService.ScanFolderAsync(playlist.FolderPath, includeSubfolders, cancellationToken);
+        await databaseService.ReplacePlaylistTracksAsync(playlistId,
             scanned.Select(track => WithPlaylist(track, playlistId)), includeSubfolders, cancellationToken);
         await ReloadPlaylistsAsync(cancellationToken);
         if (_playbackPlaylistId == playlistId)
         {
-            var updated = await _databaseService.GetTracksAsync(playlistId, cancellationToken);
+            var updated = await databaseService.GetTracksAsync(playlistId, cancellationToken);
             _playbackQueue = OrderTracks(updated.Where(t => File.Exists(t.FilePath))).ToList();
         }
         if (SelectedPlaylist?.Id == playlistId)
@@ -143,7 +137,7 @@ public sealed class PlaylistService : IPlaylistService
         ArgumentException.ThrowIfNullOrWhiteSpace(playlistId);
         ArgumentException.ThrowIfNullOrWhiteSpace(newName);
 
-        await _databaseService.RenamePlaylistAsync(playlistId, newName.Trim(), cancellationToken);
+        await databaseService.RenamePlaylistAsync(playlistId, newName.Trim(), cancellationToken);
         await ReloadPlaylistsAsync(cancellationToken);
     }
 
@@ -152,7 +146,7 @@ public sealed class PlaylistService : IPlaylistService
         ArgumentException.ThrowIfNullOrWhiteSpace(playlistId);
 
         var wasSelected = SelectedPlaylist?.Id == playlistId;
-        await _databaseService.DeletePlaylistAsync(playlistId, cancellationToken);
+        await databaseService.DeletePlaylistAsync(playlistId, cancellationToken);
         await ReloadPlaylistsAsync(cancellationToken);
 
         if (wasSelected)
@@ -182,7 +176,7 @@ public sealed class PlaylistService : IPlaylistService
             return;
         }
 
-        await _databaseService.DeleteTracksAsync(removedPaths, cancellationToken, SelectedPlaylist?.Id);
+        await databaseService.DeleteTracksAsync(removedPaths, cancellationToken, SelectedPlaylist?.Id);
 
         for (var i = Queue.Count - 1; i >= 0; i--)
         {
@@ -259,7 +253,7 @@ public sealed class PlaylistService : IPlaylistService
 
         if (persistSelection && !_isLoading)
         {
-            await _databaseService.SaveSettingAsync("selected-playlist-id", playlist?.Id ?? string.Empty,
+            await databaseService.SaveSettingAsync("selected-playlist-id", playlist?.Id ?? string.Empty,
                 cancellationToken);
         }
 
@@ -271,7 +265,7 @@ public sealed class PlaylistService : IPlaylistService
     {
         IReadOnlyList<Track> tracks = playlistId is null
             ? []
-            : await _databaseService.GetTracksAsync(playlistId, cancellationToken);
+            : await databaseService.GetTracksAsync(playlistId, cancellationToken);
         Queue.Clear();
 
         foreach (var track in OrderTracks(tracks.Where(static track => File.Exists(track.FilePath))))
@@ -283,7 +277,7 @@ public sealed class PlaylistService : IPlaylistService
 
     private async Task ReloadPlaylistsAsync(CancellationToken cancellationToken)
     {
-        var playlists = await _databaseService.GetPlaylistsAsync(cancellationToken);
+        var playlists = await databaseService.GetPlaylistsAsync(cancellationToken);
 
         Playlists.Clear();
         foreach (var playlist in playlists)

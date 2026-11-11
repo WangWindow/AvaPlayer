@@ -26,28 +26,37 @@ public partial class MainWindow : Window
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == WindowStateProperty) UpdateMaximizeRestoreIcon();
+        if (change.Property == WindowStateProperty)
+        {
+            UpdateMaximizeRestoreIcon();
+        }
+
         if (change.Property == WindowStateProperty || change.Property == ActualTransparencyLevelProperty)
+        {
             ApplyCornerPreference();
+        }
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         DetachSettings();
         _settings = (DataContext as MainWindowViewModel)?.Settings;
-        if (_settings is not null) _settings.PropertyChanged += OnSettingsChanged;
+        _settings?.PropertyChanged += OnSettingsChanged;
         ApplyCornerPreference();
     }
 
     private void DetachSettings()
     {
-        if (_settings is not null) _settings.PropertyChanged -= OnSettingsChanged;
+        _settings?.PropertyChanged -= OnSettingsChanged;
         _settings = null;
     }
 
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SettingsViewModel.UseRoundedWindowCorners)) ApplyCornerPreference();
+        if (e.PropertyName == nameof(SettingsViewModel.UseRoundedWindowCorners))
+        {
+            ApplyCornerPreference();
+        }
     }
 
     private void ApplyCornerPreference()
@@ -57,10 +66,9 @@ public partial class MainWindow : Window
             ? Win32Properties.WindowCornerPreference.Round
             : Win32Properties.WindowCornerPreference.DoNotRound);
         var normal = WindowState == WindowState.Normal;
-        if (WindowSurface is not null)
-            WindowSurface.CornerRadius = new CornerRadius(rounded && normal &&
+        WindowSurface?.CornerRadius = new CornerRadius(rounded && normal &&
                 ActualTransparencyLevel != WindowTransparencyLevel.None ? 12 : 0);
-        if (ResizeGrips is not null) ResizeGrips.IsVisible = normal && CanResize;
+        ResizeGrips?.IsVisible = normal && CanResize;
     }
 
     private void OnResizeGripPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -76,7 +84,11 @@ public partial class MainWindow : Window
 
     private async void OnOpened(object? sender, EventArgs e)
     {
-        if (_settings is null) return;
+        if (_settings is null)
+        {
+            return;
+        }
+
         var size = await _settings.LoadWindowSizeAsync();
         var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
         var available = screen?.WorkingArea.Size.ToSize(screen.Scaling) ?? new Size(1280, 900);
@@ -89,17 +101,33 @@ public partial class MainWindow : Window
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
         if (_settings is not null && WindowState == WindowState.Normal)
+        {
             _ = _settings.SaveWindowSizeAsync(Bounds.Size);
+        }
     }
 
     private async void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Handled || DataContext is not MainWindowViewModel vm) return;
+        if (e.Handled || DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
         if (e.Key == Key.Escape)
         {
-            if (vm.IsPlaylistVisible) vm.ClosePlaylistCommand.Execute(null);
-            else if (vm.PlayerBar.IsSettingsVisible) vm.PlayerBar.ToggleSettingsCommand.Execute(null);
-            else return;
+            if (vm.IsPlaylistVisible)
+            {
+                vm.ClosePlaylistCommand.Execute(null);
+            }
+            else if (vm.PlayerBar.IsSettingsVisible)
+            {
+                vm.PlayerBar.ToggleSettingsCommand.Execute(null);
+            }
+            else
+            {
+                return;
+            }
+
             e.Handled = true;
             return;
         }
@@ -133,7 +161,11 @@ public partial class MainWindow : Window
 
     private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.Handled || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (e.Handled || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
         if (e.ClickCount == 2)
         {
             WindowState = WindowState == WindowState.Maximized
@@ -166,7 +198,9 @@ public partial class MainWindow : Window
     private void UpdateMaximizeRestoreIcon()
     {
         if (MaximizeRestoreIcon is null)
+        {
             return;
+        }
 
         MaximizeRestoreIcon.Icon = WindowState == WindowState.Maximized
             ? FluentIcons.Common.Icon.FullScreenMinimize

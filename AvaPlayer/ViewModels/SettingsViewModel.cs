@@ -179,7 +179,9 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
 
             var savedStyle = await _settings.GetAsync(TrayIconStyleSettingKey, cancellationToken);
             if (savedStyle is "light" or "dark")
+            {
                 TrayIconStyle = savedStyle;
+            }
 
             await _positionMemory.LoadAsync(cancellationToken);
             IsPlaybackPositionMemoryEnabled = _positionMemory.IsEnabled;
@@ -200,7 +202,9 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
             var height = await _settings.GetAsync("window-height");
             if (double.TryParse(width, CultureInfo.InvariantCulture, out var w) && double.IsFinite(w) && w > 0
                 && double.TryParse(height, CultureInfo.InvariantCulture, out var h) && double.IsFinite(h) && h > 0)
+            {
                 return new Size(w, h);
+            }
         }
         catch (Exception) { CacheStatus = "无法读取窗口大小"; }
         return new Size(1040, 760);
@@ -221,7 +225,11 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
+
         _disposed = true;
         _lyricPreferences.PropertyChanged -= OnLyricPreferenceChanged;
     }

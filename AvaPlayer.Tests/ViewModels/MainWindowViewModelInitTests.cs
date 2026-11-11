@@ -100,7 +100,7 @@ public sealed class MainWindowViewModelInitTests : IDisposable
             NullLogger<PlayerBarViewModel>.Instance);
         var playlistVm = new PlaylistViewModel(playlist, NullLogger<PlaylistViewModel>.Instance);
         var settingsVm = new SettingsViewModel(settings, networkAccess, lyricPreferences, positionMemory, _cache);
-        var lyricsVm = new LyricsViewModel(lyricPreferences, NullLogger<LyricsViewModel>.Instance);
+        var lyricsVm = new LyricsViewModel(lyricPreferences);
 
         return new MainWindowViewModel(playerBar, playlistVm, settingsVm, lyricsVm, playlist, session);
     }

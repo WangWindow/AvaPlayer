@@ -35,6 +35,36 @@ public sealed class LrcApiProviderTests
         public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
     }
 
+    [Theory]
+    [InlineData(System.Net.HttpStatusCode.NotFound)]
+    [InlineData(System.Net.HttpStatusCode.NoContent)]
+    public async Task GetLyricsAsync_definitive_no_result_returns_null(System.Net.HttpStatusCode statusCode)
+    {
+        var provider = new LrcApiProvider(new TestHttpClientFactory(new StatusHandler(statusCode)));
+
+        Assert.Null(await provider.GetLyricsAsync(new Track { Title = "Song", Artist = "Artist" }));
+    }
+
+    [Theory]
+    [InlineData(System.Net.HttpStatusCode.InternalServerError)]
+    [InlineData(System.Net.HttpStatusCode.TooManyRequests)]
+    [InlineData(System.Net.HttpStatusCode.BadGateway)]
+    public async Task GetLyricsAsync_transient_status_throws(System.Net.HttpStatusCode statusCode)
+    {
+        var provider = new LrcApiProvider(new TestHttpClientFactory(new StatusHandler(statusCode)));
+
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => provider.GetLyricsAsync(new Track { Title = "Song", Artist = "Artist" }));
+    }
+
+    private sealed class StatusHandler(System.Net.HttpStatusCode statusCode) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(statusCode));
+    }
+
     private sealed class RecordingHandler(string responseText) : HttpMessageHandler
     {
         public Uri? RequestUri { get; private set; }

@@ -22,7 +22,10 @@ public partial class PlayerBarView : UserControl
         ProgressSlider.AddHandler(KeyUpEvent, OnSeekKeyUp, RoutingStrategies.Bubble, handledEventsToo: true);
         ProgressSlider.PointerCaptureLost += (_, _) =>
         {
-            if (DataContext is PlayerBarViewModel vm) vm.IsUserSeeking = false;
+            if (DataContext is PlayerBarViewModel vm)
+            {
+                vm.IsUserSeeking = false;
+            }
         };
     }
 
@@ -30,7 +33,11 @@ public partial class PlayerBarView : UserControl
 
     private void UpdatePlaybackLayout(Size size)
     {
-        if (DataContext is not PlayerBarViewModel vm) return;
+        if (DataContext is not PlayerBarViewModel vm)
+        {
+            return;
+        }
+
         var compact = size.Height < 300;
         PlaybackRoot.Margin = new Thickness(size.Width < 430 ? 24 : 48, compact ? 8 : 24);
         CoverBorder.IsVisible = !compact;
@@ -69,24 +76,37 @@ public partial class PlayerBarView : UserControl
         if (VolumeInlinePanel.IsOpen && e.Source is Visual source &&
             !VolumeButton.IsVisualAncestorOf(source) && source != VolumeButton &&
             !VolumeInlinePanel.IsVisualAncestorOf(source) && source != VolumeInlinePanel)
+        {
             VolumeInlinePanel.IsOpen = false;
+        }
     }
 
     private void OnTopLevelKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Escape || !VolumeInlinePanel.IsOpen) return;
+        if (e.Key != Key.Escape || !VolumeInlinePanel.IsOpen)
+        {
+            return;
+        }
+
         VolumeInlinePanel.IsOpen = false;
         e.Handled = true;
     }
 
     private void OnSeekStarted(object? sender, PointerPressedEventArgs e)
     {
-        if (DataContext is PlayerBarViewModel vm) vm.IsUserSeeking = true;
+        if (DataContext is PlayerBarViewModel vm)
+        {
+            vm.IsUserSeeking = true;
+        }
     }
 
     private async void OnSeekCompleted(object? sender, PointerReleasedEventArgs e)
     {
-        if (DataContext is not PlayerBarViewModel vm) return;
+        if (DataContext is not PlayerBarViewModel vm)
+        {
+            return;
+        }
+
         vm.IsUserSeeking = false;
         await vm.SeekCommand.ExecuteAsync(ProgressSlider.Value);
     }
@@ -95,6 +115,8 @@ public partial class PlayerBarView : UserControl
     {
         if (e.Key is Key.Left or Key.Right or Key.Home or Key.End or Key.PageUp or Key.PageDown
             && DataContext is PlayerBarViewModel vm)
+        {
             await vm.SeekCommand.ExecuteAsync(ProgressSlider.Value);
+        }
     }
 }

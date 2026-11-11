@@ -24,7 +24,7 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
     private readonly ILyricPresentationService _lyricPresentation;
     private readonly IPlaybackSessionClient _sessionClient;
     private readonly ILogger<PlayerBarViewModel> _logger;
-    private IDisposable? _snapshotSubscription;
+    private readonly IDisposable? _snapshotSubscription;
 
     private CancellationTokenSource? _lyricsCts;
     private CancellationTokenSource? _albumArtCts;
@@ -219,7 +219,7 @@ public partial class PlayerBarViewModel : ObservableObject, IDisposable
     private void Resume() => _ = _sessionClient.ResumeAsync();
 
     [RelayCommand]
-    private Task PlayTrackAsync(Track track) => _sessionClient.PlayTrackAsync(track);
+    private Task<PlaybackStartResult> PlayTrackAsync(Track track) => _sessionClient.PlayTrackAsync(track);
 
     [RelayCommand]
     private Task PreviousAsync() => _sessionClient.PreviousAsync();

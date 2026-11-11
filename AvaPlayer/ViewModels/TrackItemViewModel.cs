@@ -3,14 +3,9 @@ using AvaPlayer.Models;
 
 namespace AvaPlayer.ViewModels;
 
-public partial class TrackItemViewModel : ObservableObject
+public partial class TrackItemViewModel(Track track) : ObservableObject
 {
-    public TrackItemViewModel(Track track)
-    {
-        Track = track;
-    }
-
-    public Track Track { get; }
+    public Track Track { get; } = track;
 
     [ObservableProperty]
     public partial bool IsCurrent { get; set; }

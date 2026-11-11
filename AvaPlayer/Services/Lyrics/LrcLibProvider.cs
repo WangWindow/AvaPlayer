@@ -1,18 +1,12 @@
+using System.Net;
 using System.Text.Json;
 using AvaPlayer.Helpers;
 using AvaPlayer.Models;
 
 namespace AvaPlayer.Services.Lyrics;
 
-public sealed class LrcLibProvider : ILyricsProvider
+public sealed class LrcLibProvider(IHttpClientFactory httpClientFactory) : ILyricsProvider
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public LrcLibProvider(IHttpClientFactory httpClientFactory)
-    {
-        _httpClientFactory = httpClientFactory;
-    }
-
     public string Name => "LRCLIB";
 
     public async Task<IReadOnlyList<LyricLine>?> GetLyricsAsync(Track track, CancellationToken cancellationToken = default)
@@ -33,12 +27,16 @@ public sealed class LrcLibProvider : ILyricsProvider
             query.Add($"duration={(int)Math.Round(track.DurationSeconds)}");
         }
 
-        var client = _httpClientFactory.CreateClient();
+        var client = httpClientFactory.CreateClient();
         using var response = await client.GetAsync($"https://lrclib.net/api/get?{string.Join("&", query)}", cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        // 404/204 是明确的「没有这首歌的歌词」;其余非成功状态(429/5xx 等)是瞬时故障,
+        // 必须向上抛出,让 LyricsService 避免写入长期墓碑。
+        if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.NoContent)
         {
             return null;
         }
+
+        response.EnsureSuccessStatusCode();
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
@@ -57,33 +55,10 @@ public sealed class LrcLibProvider : ILyricsProvider
             var plainLyrics = plainElement.GetString();
             if (!string.IsNullOrWhiteSpace(plainLyrics))
             {
-                return BuildEstimatedLyrics(plainLyrics, track.DurationSeconds);
+                return LrcLibProviderHelpers.BuildEstimatedLyrics(plainLyrics, track.DurationSeconds);
             }
         }
 
         return null;
-    }
-
-    private static IReadOnlyList<LyricLine> BuildEstimatedLyrics(string text, double durationSeconds)
-    {
-        var lines = text
-            .Replace("\r\n", "\n")
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        if (lines.Length == 0)
-        {
-            return [];
-        }
-
-        var totalDuration = Math.Max(durationSeconds, lines.Length * 4d);
-        var step = totalDuration / Math.Max(1, lines.Length);
-
-        return lines
-            .Select((line, index) => new LyricLine
-            {
-                Time = TimeSpan.FromSeconds(index * step),
-                Text = line
-            })
-            .ToArray();
     }
 }

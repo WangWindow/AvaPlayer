@@ -12,11 +12,10 @@ public static partial class LrcParser
     public static IReadOnlyList<LyricLine> ParseLocal(string text)
     {
         var timed = Parse(text);
-        return timed.Count > 0 ? timed : text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+        return timed.Count > 0 ? timed : [.. text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim())
             .Where(line => line.Length > 0 && !(line.StartsWith('[') && line.EndsWith(']')))
-            .Select(line => new LyricLine { Text = line, IsTimed = false })
-            .ToArray();
+            .Select(line => new LyricLine { Text = line, IsTimed = false })];
     }
 
     public static IReadOnlyList<LyricLine> Parse(string text)
@@ -65,9 +64,7 @@ public static partial class LrcParser
             }
         }
 
-        return lines
-            .OrderBy(static line => line.Time)
-            .ToArray();
+        return [.. lines.OrderBy(static line => line.Time)];
     }
 
     private static bool ShouldAppendContinuation(string lineText)

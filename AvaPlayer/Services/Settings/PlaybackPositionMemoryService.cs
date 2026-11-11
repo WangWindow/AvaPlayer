@@ -2,18 +2,12 @@ using Microsoft.Extensions.Logging;
 
 namespace AvaPlayer.Services.Settings;
 
-public sealed class PlaybackPositionMemoryService : IPlaybackPositionMemoryService
+public sealed class PlaybackPositionMemoryService(
+    ISettingsService settings,
+    ILogger<PlaybackPositionMemoryService> logger) : IPlaybackPositionMemoryService
 {
     private const string SettingKey = "playback-position-memory";
-    private readonly ISettingsService _settings;
-    private readonly ILogger<PlaybackPositionMemoryService> _logger;
     private bool _isLoading;
-
-    public PlaybackPositionMemoryService(ISettingsService settings, ILogger<PlaybackPositionMemoryService> logger)
-    {
-        _settings = settings;
-        _logger = logger;
-    }
 
     public bool IsEnabled
     {
@@ -35,7 +29,7 @@ public sealed class PlaybackPositionMemoryService : IPlaybackPositionMemoryServi
         _isLoading = true;
         try
         {
-            var saved = await _settings.GetAsync(SettingKey, cancellationToken);
+            var saved = await settings.GetAsync(SettingKey, cancellationToken);
             if (bool.TryParse(saved, out var isEnabled))
             {
                 _isEnabled = isEnabled;
@@ -56,11 +50,11 @@ public sealed class PlaybackPositionMemoryService : IPlaybackPositionMemoryServi
     {
         try
         {
-            await _settings.SetAsync(SettingKey, value);
+            await settings.SetAsync(SettingKey, value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[PlaybackPositionMemory] 保存设置失败: {Value}", value);
+            logger.LogError(ex, "[PlaybackPositionMemory] 保存设置失败: {Value}", value);
         }
     }
 }

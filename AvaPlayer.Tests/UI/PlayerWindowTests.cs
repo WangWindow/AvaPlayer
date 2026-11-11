@@ -5,7 +5,6 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
@@ -453,7 +452,7 @@ public sealed class PlayerWindowTests : IDisposable
         {
             Cache = new CacheService(_directory.FilePath("cache"));
             var preferences = new LyricsPreferenceService(Settings, NullLogger<LyricsPreferenceService>.Instance);
-            var lyrics = new LyricsViewModel(preferences, NullLogger<LyricsViewModel>.Instance);
+            var lyrics = new LyricsViewModel(preferences);
             var playlist = PlaylistService;
             playlist.AddPlaylist(new PlaylistInfo { Id = "p1", Name = "我的音乐", FolderPath = _directory.Root, TrackCount = 2 });
             playlist.AddTrack(new Track { Id = "1", FilePath = "1.wav", Title = "Song One", Artist = "Artist", DurationSeconds = 120 });

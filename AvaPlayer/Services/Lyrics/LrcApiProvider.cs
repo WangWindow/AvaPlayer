@@ -1,3 +1,4 @@
+using System.Net;
 using AvaPlayer.Helpers;
 using AvaPlayer.Models;
 
@@ -7,15 +8,9 @@ namespace AvaPlayer.Services.Lyrics;
 /// LrcAPI's legacy single-result endpoint. It returns the matched song as
 /// plain LRC text, which can be parsed by the same parser as local .lrc files.
 /// </summary>
-public sealed class LrcApiProvider : ILyricsProvider
+public sealed class LrcApiProvider(IHttpClientFactory httpClientFactory) : ILyricsProvider
 {
     private const string Endpoint = "https://api.lrc.cx/lyrics";
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public LrcApiProvider(IHttpClientFactory httpClientFactory)
-    {
-        _httpClientFactory = httpClientFactory;
-    }
 
     public string Name => "LrcAPI";
 
@@ -34,15 +29,17 @@ public sealed class LrcApiProvider : ILyricsProvider
             query.Add($"album={Uri.EscapeDataString(track.DisplayAlbum)}");
         }
 
-        var client = _httpClientFactory.CreateClient();
+        var client = httpClientFactory.CreateClient();
         using var response = await client.GetAsync(
             $"{Endpoint}?{string.Join("&", query)}",
             cancellationToken);
 
-        if (!response.IsSuccessStatusCode)
+        if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.NoContent)
         {
             return null;
         }
+
+        response.EnsureSuccessStatusCode();
 
         var lrcText = await response.Content.ReadAsStringAsync(cancellationToken);
         if (string.IsNullOrWhiteSpace(lrcText))

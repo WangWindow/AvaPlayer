@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Headers;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -7,8 +9,16 @@ using AvaPlayer.Models;
 
 namespace AvaPlayer.Services.Lyrics;
 
-public sealed partial class NetEaseProvider : ILyricsProvider
+public sealed partial class NetEaseProvider(IHttpClientFactory httpClientFactory) : ILyricsProvider
 {
+    private const int MaxSearchResults = 10;
+    private const int MaxLyricCandidates = 3;
+    private const int MinimumCandidateScore = 48;
+    private const int CandidateScoreWindow = 24;
+    private const int StrongSearchScore = 90;
+    private const double StrongCoverageRatio = 0.82;
+    private const int MaxJsonResponseBytes = 2 * 1024 * 1024;
+
     private static readonly string[] VariantMarkers =
     [
         "live",
@@ -28,13 +38,6 @@ public sealed partial class NetEaseProvider : ILyricsProvider
         "纯音乐"
     ];
 
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public NetEaseProvider(IHttpClientFactory httpClientFactory)
-    {
-        _httpClientFactory = httpClientFactory;
-    }
-
     public string Name => "NetEase";
 
     [GeneratedRegex(@"(\(.*?\)|（.*?）|\[.*?\]|【.*?】)", RegexOptions.Compiled)]
@@ -42,74 +45,76 @@ public sealed partial class NetEaseProvider : ILyricsProvider
 
     public async Task<IReadOnlyList<LyricLine>?> GetLyricsAsync(Track track, CancellationToken cancellationToken = default)
     {
-        var candidates = await SearchSongCandidatesAsync(track, cancellationToken);
+        var metadata = CreateTrackMetadata(track);
+        var candidates = await SearchSongCandidatesAsync(metadata, cancellationToken);
         if (candidates.Count == 0)
         {
             return null;
         }
 
-        var client = _httpClientFactory.CreateClient();
-        LyricsMatch? bestMatch = null;
-
-        foreach (var candidate in candidates)
-        {
-            var lyrics = await FetchLyricsAsync(client, candidate.Id, cancellationToken);
-            if (lyrics is not { Count: > 0 })
-            {
-                continue;
-            }
-
-            var quality = LyricsQualityEvaluator.Evaluate(track, lyrics);
-            var totalScore = candidate.SearchScore + quality.Score;
-            if (!quality.IsAccepted)
-            {
-                totalScore -= 12;
-            }
-
-            if (!bestMatch.HasValue || totalScore > bestMatch.Value.Score)
-            {
-                bestMatch = new LyricsMatch(lyrics, totalScore);
-            }
-
-            if (candidate.SearchScore >= 90 &&
-                quality.IsAccepted &&
-                quality.CoverageRatio >= 0.82)
-            {
-                break;
-            }
-        }
-
-        return bestMatch?.Lyrics;
+        var client = httpClientFactory.CreateClient();
+        return await FetchBestLyricsAsync(client, candidates, track, cancellationToken);
     }
 
     private async Task<IReadOnlyList<ScoredSongCandidate>> SearchSongCandidatesAsync(
-        Track track,
+        TrackMetadata metadata,
         CancellationToken cancellationToken)
     {
-        var queryTerms = new[]
-        {
-            track.DisplayTitle,
-            string.IsNullOrWhiteSpace(track.Artist) ? null : track.Artist,
-            string.IsNullOrWhiteSpace(track.Album) ? null : track.Album
-        };
+        var client = httpClientFactory.CreateClient();
+        var candidates = await SearchCandidatesAsync(
+            client,
+            BuildQueryText(metadata.DisplayTitle, metadata.Artist, metadata.Album),
+            metadata,
+            cancellationToken);
 
-        var queryText = string.Join(' ', queryTerms.Where(static term => !string.IsNullOrWhiteSpace(term)));
+        // Only spend the extra round-trip when the fuller query produced no usable candidate.
+        if (candidates.Count == 0 && !string.IsNullOrWhiteSpace(metadata.Album))
+        {
+            candidates = await SearchCandidatesAsync(
+                client,
+                BuildQueryText(metadata.DisplayTitle, metadata.Artist),
+                metadata,
+                cancellationToken);
+        }
+
+        if (candidates.Count == 0)
+        {
+            return [];
+        }
+
+        candidates.Sort(static (left, right) => right.SearchScore.CompareTo(left.SearchScore));
+
+        var cutoff = Math.Max(MinimumCandidateScore, candidates[0].SearchScore - CandidateScoreWindow);
+        return [.. candidates
+            .Where(candidate => candidate.SearchScore >= cutoff)
+            .Take(MaxLyricCandidates)];
+    }
+
+    private static async Task<List<ScoredSongCandidate>> SearchCandidatesAsync(
+        HttpClient client,
+        string queryText,
+        TrackMetadata metadata,
+        CancellationToken cancellationToken)
+    {
         if (string.IsNullOrWhiteSpace(queryText))
         {
             return [];
         }
 
-        var client = _httpClientFactory.CreateClient();
-        using var request = CreateRequest($"https://music.163.com/api/cloudsearch/pc?s={Uri.EscapeDataString(queryText)}&type=1&limit=10");
-        using var response = await client.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        using var request = CreateRequest(
+            $"https://music.163.com/api/cloudsearch/pc?s={Uri.EscapeDataString(queryText)}&type=1&limit={MaxSearchResults}");
+        using var response = await client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
         {
             return [];
         }
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        response.EnsureSuccessStatusCode();
 
+        using var document = await ReadJsonDocumentAsync(response, cancellationToken);
         if (!document.RootElement.TryGetProperty("result", out var resultElement) ||
             !resultElement.TryGetProperty("songs", out var songsElement) ||
             songsElement.ValueKind != JsonValueKind.Array ||
@@ -126,25 +131,123 @@ public sealed partial class NetEaseProvider : ILyricsProvider
                 continue;
             }
 
-            var score = ScoreCandidate(track, candidate);
-            if (score >= 48)
+            var score = ScoreCandidate(metadata, candidate);
+            if (score >= MinimumCandidateScore)
             {
                 candidates.Add(new ScoredSongCandidate(candidate.Id, score));
             }
         }
 
-        if (candidates.Count == 0)
+        return candidates;
+    }
+
+    private static async Task<IReadOnlyList<LyricLine>?> FetchBestLyricsAsync(
+        HttpClient client,
+        IReadOnlyList<ScoredSongCandidate> candidates,
+        Track track,
+        CancellationToken cancellationToken)
+    {
+        // Bounded fan-out: at most MaxLyricCandidates requests are started, and the whole
+        // group is cancelled as soon as one candidate is both high-scoring and high-quality.
+        using var fetchCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var pending = new List<Task<CandidateMatch>>(candidates.Count);
+        foreach (var candidate in candidates)
         {
-            return [];
+            pending.Add(FetchCandidateAsync(client, candidate, track, fetchCts.Token));
         }
 
-        candidates.Sort(static (left, right) => right.SearchScore.CompareTo(left.SearchScore));
+        LyricsMatch? bestMatch = null;
+        Exception? transientFailure = null;
 
-        var cutoff = Math.Max(48, candidates[0].SearchScore - 24);
-        return candidates
-            .Where(candidate => candidate.SearchScore >= cutoff)
-            .Take(3)
-            .ToArray();
+        while (pending.Count > 0)
+        {
+            var completed = await Task.WhenAny(pending);
+            pending.Remove(completed);
+
+            var outcome = await completed;
+            if (outcome.Failure is not null)
+            {
+                transientFailure ??= outcome.Failure;
+                continue;
+            }
+
+            if (outcome.Match is not { } match)
+            {
+                continue;
+            }
+
+            if (!bestMatch.HasValue || match.Score > bestMatch.Value.Score)
+            {
+                bestMatch = match;
+            }
+
+            if (outcome.IsStrongMatch)
+            {
+                await fetchCts.CancelAsync();
+                break;
+            }
+        }
+
+        if (pending.Count > 0)
+        {
+            // FetchCandidateAsync converts cancellation into a normal empty outcome.
+            await Task.WhenAll(pending);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (bestMatch is { } accepted)
+        {
+            return accepted.Lyrics;
+        }
+
+        // A transport or server failure is not evidence that lyrics do not exist; surface it
+        // so the service layer can avoid negative-caching during an outage.
+        if (transientFailure is not null)
+        {
+            ExceptionDispatchInfo.Capture(transientFailure).Throw();
+        }
+
+        return null;
+    }
+
+    private static async Task<CandidateMatch> FetchCandidateAsync(
+        HttpClient client,
+        ScoredSongCandidate candidate,
+        Track track,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var lyrics = await FetchLyricsAsync(client, candidate.Id, cancellationToken);
+            if (lyrics is not { Count: > 0 })
+            {
+                return default;
+            }
+
+            var quality = LyricsQualityEvaluator.Evaluate(track, lyrics);
+            var totalScore = candidate.SearchScore + quality.Score;
+            if (!quality.IsAccepted)
+            {
+                totalScore -= 12;
+            }
+
+            var isStrongMatch =
+                candidate.SearchScore >= StrongSearchScore &&
+                quality.IsAccepted &&
+                quality.CoverageRatio >= StrongCoverageRatio;
+
+            return new CandidateMatch(new LyricsMatch(lyrics, totalScore), isStrongMatch, null);
+        }
+        catch (OperationCanceledException)
+        {
+            // Internal fan-out cancellation (or caller cancellation, rethrown by the caller).
+            return default;
+        }
+        catch (Exception exception)
+        {
+            return new CandidateMatch(null, false, exception);
+        }
     }
 
     private static async Task<IReadOnlyList<LyricLine>?> FetchLyricsAsync(
@@ -153,14 +256,18 @@ public sealed partial class NetEaseProvider : ILyricsProvider
         CancellationToken cancellationToken)
     {
         using var lyricRequest = CreateRequest($"https://music.163.com/api/song/lyric?id={songId}&lv=1&kv=1&tv=-1");
-        using var lyricResponse = await client.SendAsync(lyricRequest, cancellationToken);
-        if (!lyricResponse.IsSuccessStatusCode)
+        using var lyricResponse = await client.SendAsync(
+            lyricRequest,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        if (lyricResponse.StatusCode == HttpStatusCode.NotFound)
         {
             return null;
         }
 
-        await using var lyricStream = await lyricResponse.Content.ReadAsStreamAsync(cancellationToken);
-        using var lyricDocument = await JsonDocument.ParseAsync(lyricStream, cancellationToken: cancellationToken);
+        lyricResponse.EnsureSuccessStatusCode();
+
+        using var lyricDocument = await ReadJsonDocumentAsync(lyricResponse, cancellationToken);
 
         if (!lyricDocument.RootElement.TryGetProperty("lrc", out var lrcElement) ||
             !lrcElement.TryGetProperty("lyric", out var lyricElement))
@@ -173,6 +280,19 @@ public sealed partial class NetEaseProvider : ILyricsProvider
             ? null
             : LrcParser.Parse(lyricText);
     }
+
+    private static TrackMetadata CreateTrackMetadata(Track track) =>
+        new(
+            track.DisplayTitle,
+            track.Artist,
+            track.Album,
+            NormalizeSearchText(track.DisplayTitle),
+            NormalizeSearchText(track.Artist),
+            NormalizeSearchText(track.Album),
+            track.DurationSeconds);
+
+    private static string BuildQueryText(params string?[] terms) =>
+        string.Join(' ', terms.Where(static term => !string.IsNullOrWhiteSpace(term)));
 
     private static bool TryParseCandidate(JsonElement songElement, out SongCandidate candidate)
     {
@@ -221,25 +341,21 @@ public sealed partial class NetEaseProvider : ILyricsProvider
                 .Where(static name => !string.IsNullOrWhiteSpace(name)));
     }
 
-    private static int ScoreCandidate(Track track, SongCandidate candidate)
+    private static int ScoreCandidate(TrackMetadata track, SongCandidate candidate)
     {
-        var trackTitle = NormalizeSearchText(track.DisplayTitle);
-        var trackArtist = NormalizeSearchText(track.Artist);
-        var trackAlbum = NormalizeSearchText(track.Album);
-
         var score = 0;
-        score += ScoreTitleMatch(trackTitle, candidate);
+        score += ScoreTitleMatch(track.NormalizedTitle, candidate);
         score += ScoreTextMatch(
-            trackArtist,
+            track.NormalizedArtist,
             NormalizeSearchText(candidate.Artist),
             exactScore: 28,
             strongScore: 18,
             fuzzyScore: 10);
 
-        if (!string.IsNullOrWhiteSpace(trackAlbum))
+        if (!string.IsNullOrWhiteSpace(track.NormalizedAlbum))
         {
             score += ScoreTextMatch(
-                trackAlbum,
+                track.NormalizedAlbum,
                 NormalizeSearchText(candidate.Album),
                 exactScore: 14,
                 strongScore: 8,
@@ -475,6 +591,43 @@ public sealed partial class NetEaseProvider : ILyricsProvider
             .ToArray();
     }
 
+    private static async Task<JsonDocument> ReadJsonDocumentAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        if (response.Content.Headers.ContentLength is > MaxJsonResponseBytes)
+        {
+            throw new HttpRequestException($"NetEase response exceeded the {MaxJsonResponseBytes} byte limit.");
+        }
+
+        var capacity = response.Content.Headers.ContentLength is > 0 and <= MaxJsonResponseBytes
+            ? (int)response.Content.Headers.ContentLength.Value
+            : 0;
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var buffer = new MemoryStream(capacity);
+        var chunk = new byte[16 * 1024];
+
+        while (true)
+        {
+            var bytesRead = await stream.ReadAsync(chunk, cancellationToken);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+
+            if (buffer.Length + bytesRead > MaxJsonResponseBytes)
+            {
+                throw new HttpRequestException($"NetEase response exceeded the {MaxJsonResponseBytes} byte limit.");
+            }
+
+            buffer.Write(chunk, 0, bytesRead);
+        }
+
+        buffer.Position = 0;
+        return await JsonDocument.ParseAsync(buffer, cancellationToken: cancellationToken);
+    }
+
     private static uint ToBigramKey(char first, char second) =>
         ((uint)first << 16) | second;
 
@@ -486,7 +639,18 @@ public sealed partial class NetEaseProvider : ILyricsProvider
         return request;
     }
 
+    private readonly record struct TrackMetadata(
+        string DisplayTitle,
+        string Artist,
+        string Album,
+        string NormalizedTitle,
+        string NormalizedArtist,
+        string NormalizedAlbum,
+        double DurationSeconds);
+
     private readonly record struct LyricsMatch(IReadOnlyList<LyricLine> Lyrics, int Score);
+
+    private readonly record struct CandidateMatch(LyricsMatch? Match, bool IsStrongMatch, Exception? Failure);
 
     private readonly record struct ScoredSongCandidate(long Id, int SearchScore);
 

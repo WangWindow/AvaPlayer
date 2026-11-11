@@ -1,11 +1,10 @@
-using System;
 using Avalonia;
 using Avalonia.OpenGL;
 using AvaPlayer.Helpers;
 
 namespace AvaPlayer;
 
-sealed class Program
+internal sealed class Program
 {
     internal static SingleInstanceManager? SingleInstance { get; private set; }
 
