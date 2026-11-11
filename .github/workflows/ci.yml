@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: 11.0.x
+
+jobs:
+  verify:
+    name: Verify (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - windows-2025
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore AvaPlayer.slnx
+
+      - name: Build
+        run: dotnet build AvaPlayer.slnx -c Debug --no-restore
+
+      - name: Test
+        run: dotnet test AvaPlayer.Tests/AvaPlayer.Tests.csproj -c Debug --no-build
+
+      - name: Verify formatting
+        run: dotnet format AvaPlayer.slnx whitespace --verify-no-changes --no-restore
+
+      - name: Verify analyzers
+        run: dotnet format AvaPlayer.slnx analyzers --verify-no-changes --no-restore

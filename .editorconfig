@@ -11,5 +11,12 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-[*.{axaml,csproj,iss,wxs,json}]
+[*.{props,targets,axaml,csproj,iss,wxs,wixproj,json,slnx}]
 indent_size = 2
+
+[*.cs]
+dotnet_style_namespace_declarations = file_scoped:suggestion
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
+csharp_prefer_braces = true:suggestion
+dotnet_diagnostic.IDE0005.severity = warning
+dotnet_diagnostic.IDE0055.severity = warning

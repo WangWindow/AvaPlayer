@@ -4,7 +4,7 @@ using MiniAudioEx.Core.StandardAPI;
 namespace AvaPlayer.Services.Audio;
 
 /// <summary>
-/// Implements <see cref="IPlayerService"/> using MiniAudioExNET (JAJ.Packages.MiniAudioEx v3.3.5).
+/// Implements <see cref="IPlayerService"/> using MiniAudioExNET.
 /// AOT-safe: no reflection, no unsafe code, no dynamic dispatch.
 /// </summary>
 public sealed class MiniAudioPlayerService : IPlayerService

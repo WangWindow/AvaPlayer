@@ -1,3 +1,4 @@
+using System.Globalization;
 using AvaPlayer.Helpers;
 using AvaPlayer.Models;
 using AvaPlayer.Services.Cache;
@@ -60,6 +61,24 @@ public sealed class LocalLyricsTests : IDisposable
     {
         Assert.All(LrcParser.ParseLocal("First\nSecond"), line => Assert.False(line.IsTimed));
         Assert.True(Assert.Single(LrcParser.ParseLocal("[00:01.00]Timed")).IsTimed);
+    }
+
+    [Fact]
+    public void Local_timestamps_are_parsed_independently_of_current_culture()
+    {
+        var previousCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+
+            var line = Assert.Single(LrcParser.ParseLocal("[01:23.45]Timed"));
+
+            Assert.Equal(TimeSpan.FromMilliseconds(83_450), line.Time);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previousCulture;
+        }
     }
 
     public void Dispose()

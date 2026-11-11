@@ -54,6 +54,7 @@
           <TextBlock Grid.Column="1"
                      Text="AvaPlayer"
                      FontSize="13"
+                     FontWeight="SemiBold"
                      VerticalAlignment="Center"
                      Classes="player-title" />
 

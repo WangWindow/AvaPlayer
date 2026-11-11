@@ -22,11 +22,11 @@ public sealed class FakeMediaTransportService : IMediaTransportService
     public int UpdatePositionCallCount { get; set; }
     public int UpdatePlaybackModeCallCount { get; set; }
 
-    public event EventHandler? PlayRequested;
-    public event EventHandler? PauseRequested;
-    public event EventHandler? NextRequested;
-    public event EventHandler? PreviousRequested;
-    public event EventHandler<TimeSpan>? SeekRequested;
+    public event EventHandler? PlayRequested { add { } remove { } }
+    public event EventHandler? PauseRequested { add { } remove { } }
+    public event EventHandler? NextRequested { add { } remove { } }
+    public event EventHandler? PreviousRequested { add { } remove { } }
+    public event EventHandler<TimeSpan>? SeekRequested { add { } remove { } }
 
     public Task InitializeAsync(CancellationToken cancellationToken = default)
     {

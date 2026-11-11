@@ -17,12 +17,13 @@
           <SolidColorBrush x:Key="ItemHoverBrush" Color="#18FFFFFF" />
           <SolidColorBrush x:Key="ItemSelectedBrush" Color="#30FFFFFF" />
           <SolidColorBrush x:Key="ItemSelectedHoverBrush" Color="#3AFFFFFF" />
-          <SolidColorBrush x:Key="TrackSubtitleBrush" Color="#99FFFFFF" />
-          <SolidColorBrush x:Key="PlayerMutedForegroundBrush" Color="#8CFFFFFF" />
+          <SolidColorBrush x:Key="TrackSubtitleBrush" Color="#A6FFFFFF" />
+          <SolidColorBrush x:Key="PlayerMutedForegroundBrush" Color="#99FFFFFF" />
           <SolidColorBrush x:Key="CurrentTrackSubtitleBrush" Color="#CCFFFFFF" />
           <SolidColorBrush x:Key="CurrentTrackDurationBrush" Color="#E6FFFFFF" />
           <SolidColorBrush x:Key="SearchBackgroundBrush" Color="#10FFFFFF" />
           <SolidColorBrush x:Key="SurfaceBorderBrush" Color="#24FFFFFF" />
+          <SolidColorBrush x:Key="FocusRingBrush" Color="#B3FFFFFF" />
           <SolidColorBrush x:Key="ImmersiveMenuBackgroundBrush" Color="#B214101D" />
           <SolidColorBrush x:Key="MenuForegroundBrush" Color="#F2FFFFFF" />
           <SolidColorBrush x:Key="MenuOpenBrush" Color="#20FFFFFF" />
@@ -30,9 +31,9 @@
           <SolidColorBrush x:Key="LyricActiveBackgroundBrush" Color="#08FFFFFF" />
           <SolidColorBrush x:Key="SliderTrackBrush" Color="#35FFFFFF" />
           <SolidColorBrush x:Key="PlayerSecondaryForegroundBrush" Color="#B3FFFFFF" />
-          <SolidColorBrush x:Key="PlayerTimeForegroundBrush" Color="#A6FFFFFF" />
-          <SolidColorBrush x:Key="LyricsStatusForegroundBrush" Color="#80FFFFFF" />
-          <SolidColorBrush x:Key="LyricsEmptyForegroundBrush" Color="#66FFFFFF" />
+          <SolidColorBrush x:Key="PlayerTimeForegroundBrush" Color="#B3FFFFFF" />
+          <SolidColorBrush x:Key="LyricsStatusForegroundBrush" Color="#A6FFFFFF" />
+          <SolidColorBrush x:Key="LyricsEmptyForegroundBrush" Color="#99FFFFFF" />
           <SolidColorBrush x:Key="TitlebarBackgroundBrush" Color="#C014101D" />
           <SolidColorBrush x:Key="TitlebarButtonHoverBrush" Color="#26FFFFFF" />
           <SolidColorBrush x:Key="TitlebarButtonPressedBrush" Color="#40FFFFFF" />
@@ -51,12 +52,13 @@
           <SolidColorBrush x:Key="ItemHoverBrush" Color="#0C000000" />
           <SolidColorBrush x:Key="ItemSelectedBrush" Color="#18000000" />
           <SolidColorBrush x:Key="ItemSelectedHoverBrush" Color="#20000000" />
-          <SolidColorBrush x:Key="TrackSubtitleBrush" Color="#66000000" />
-          <SolidColorBrush x:Key="PlayerMutedForegroundBrush" Color="#55000000" />
+          <SolidColorBrush x:Key="TrackSubtitleBrush" Color="#73000000" />
+          <SolidColorBrush x:Key="PlayerMutedForegroundBrush" Color="#5E000000" />
           <SolidColorBrush x:Key="CurrentTrackSubtitleBrush" Color="#88000000" />
           <SolidColorBrush x:Key="CurrentTrackDurationBrush" Color="#77000000" />
           <SolidColorBrush x:Key="SearchBackgroundBrush" Color="#08000000" />
           <SolidColorBrush x:Key="SurfaceBorderBrush" Color="#18000000" />
+          <SolidColorBrush x:Key="FocusRingBrush" Color="#B3000000" />
           <SolidColorBrush x:Key="ImmersiveMenuBackgroundBrush" Color="#F4F1F0F8" />
           <SolidColorBrush x:Key="MenuForegroundBrush" Color="#1A1A1A" />
           <SolidColorBrush x:Key="MenuOpenBrush" Color="#12000000" />
@@ -64,9 +66,9 @@
           <SolidColorBrush x:Key="LyricActiveBackgroundBrush" Color="#06000000" />
           <SolidColorBrush x:Key="SliderTrackBrush" Color="#20000000" />
           <SolidColorBrush x:Key="PlayerSecondaryForegroundBrush" Color="#66000000" />
-          <SolidColorBrush x:Key="PlayerTimeForegroundBrush" Color="#55000000" />
-          <SolidColorBrush x:Key="LyricsStatusForegroundBrush" Color="#55000000" />
-          <SolidColorBrush x:Key="LyricsEmptyForegroundBrush" Color="#40000000" />
+          <SolidColorBrush x:Key="PlayerTimeForegroundBrush" Color="#66000000" />
+          <SolidColorBrush x:Key="LyricsStatusForegroundBrush" Color="#73000000" />
+          <SolidColorBrush x:Key="LyricsEmptyForegroundBrush" Color="#66000000" />
           <SolidColorBrush x:Key="TitlebarBackgroundBrush" Color="#E0F4F1F0" />
           <SolidColorBrush x:Key="TitlebarButtonHoverBrush" Color="#12000000" />
           <SolidColorBrush x:Key="TitlebarButtonPressedBrush" Color="#1E000000" />

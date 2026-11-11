@@ -2,6 +2,13 @@ using AvaPlayer.Models;
 
 namespace AvaPlayer.Services.Database;
 
+/// <summary>
+/// Persistence seam for library, playlist, and application-setting data.
+/// </summary>
+/// <remarks>
+/// Initialization is idempotent; callers may invoke it before any database operation.
+/// Multi-setting writes are atomic, and deleting library rows never removes source files.
+/// </remarks>
 public interface IDatabaseService
 {
     string DatabasePath { get; }

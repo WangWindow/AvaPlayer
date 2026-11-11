@@ -1,5 +1,12 @@
 namespace AvaPlayer.Services.Audio;
 
+/// <summary>
+/// Low-level audio backend seam used by the playback session.
+/// </summary>
+/// <remarks>
+/// Position and duration are measured in seconds; volume uses the UI's 0-100 scale.
+/// Implementations raise state events after the corresponding playback state changes.
+/// </remarks>
 public interface IPlayerService : IDisposable
 {
     bool IsReady { get; }

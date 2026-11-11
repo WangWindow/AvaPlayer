@@ -531,30 +531,30 @@ public sealed class MprisMediaTransportService : IMediaTransportService
             switch (memberName)
             {
                 case "Get":
-                {
-                    var interfaceName = reader.ReadString();
-                    var propertyName = reader.ReadString();
-                    var value = _owner.GetProperty(interfaceName, propertyName);
-                    if (value is null)
                     {
-                        context.ReplyError("org.freedesktop.DBus.Error.InvalidArgs", $"Unknown property '{propertyName}'.");
-                        return;
-                    }
+                        var interfaceName = reader.ReadString();
+                        var propertyName = reader.ReadString();
+                        var value = _owner.GetProperty(interfaceName, propertyName);
+                        if (value is null)
+                        {
+                            context.ReplyError("org.freedesktop.DBus.Error.InvalidArgs", $"Unknown property '{propertyName}'.");
+                            return;
+                        }
 
-                    using var writer = context.CreateReplyWriter("v");
-                    writer.WriteVariant(value.Value);
-                    context.Reply(writer.CreateMessage());
-                    break;
-                }
+                        using var writer = context.CreateReplyWriter("v");
+                        writer.WriteVariant(value.Value);
+                        context.Reply(writer.CreateMessage());
+                        break;
+                    }
                 case "GetAll":
-                {
-                    var interfaceName = reader.ReadString();
-                    var properties = _owner.GetAllProperties(interfaceName);
-                    using var writer = context.CreateReplyWriter("a{sv}");
-                    writer.WriteDictionary(properties);
-                    context.Reply(writer.CreateMessage());
-                    break;
-                }
+                    {
+                        var interfaceName = reader.ReadString();
+                        var properties = _owner.GetAllProperties(interfaceName);
+                        using var writer = context.CreateReplyWriter("a{sv}");
+                        writer.WriteDictionary(properties);
+                        context.Reply(writer.CreateMessage());
+                        break;
+                    }
                 case "Set":
                     context.ReplyError("org.freedesktop.DBus.Error.PropertyReadOnly", "Properties are read-only.");
                     break;
@@ -607,17 +607,17 @@ public sealed class MprisMediaTransportService : IMediaTransportService
                     ReplyEmpty(context);
                     break;
                 case "SetPosition":
-                {
-                    var trackId = reader.ReadString();
-                    var requestedPosition = FromMicroseconds(reader.ReadInt64());
-                    if (string.Equals(trackId, _owner.GetCurrentTrackObjectPath(), StringComparison.Ordinal))
                     {
-                        _owner.RaiseSeekRequested(requestedPosition);
-                    }
+                        var trackId = reader.ReadString();
+                        var requestedPosition = FromMicroseconds(reader.ReadInt64());
+                        if (string.Equals(trackId, _owner.GetCurrentTrackObjectPath(), StringComparison.Ordinal))
+                        {
+                            _owner.RaiseSeekRequested(requestedPosition);
+                        }
 
-                    ReplyEmpty(context);
-                    break;
-                }
+                        ReplyEmpty(context);
+                        break;
+                    }
                 default:
                     context.ReplyUnknownMethodError();
                     break;

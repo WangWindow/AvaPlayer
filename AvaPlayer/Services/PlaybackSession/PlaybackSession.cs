@@ -375,7 +375,7 @@ public sealed class PlaybackSession : IPlaybackSessionClient, IDisposable
                     Status = PlaybackStatus.Stopped,
                     Position = previous.Position
                 });
-            var kind = ex switch
+            var kind = ex.GetBaseException() switch
             {
                 FileNotFoundException => PlaybackStartFailureKind.FileNotFound,
                 _ when !_player.IsReady => PlaybackStartFailureKind.EngineUnavailable,

@@ -15,11 +15,16 @@ permissions:
   contents: read
 
 env:
-  DOTNET_VERSION: 10.0.x
+  DOTNET_VERSION: 11.0.x
 
 jobs:
+  validate:
+    name: Validate source before packaging
+    uses: ./.github/workflows/ci.yml
+
   build-windows:
     name: Build Windows ${{ matrix.rid }}
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -80,6 +85,7 @@ jobs:
 
   build-linux:
     name: Build Linux ${{ matrix.rid }}
+    needs: validate
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false

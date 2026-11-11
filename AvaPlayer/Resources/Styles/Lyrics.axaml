@@ -13,6 +13,7 @@
     <Setter Property="Transitions">
       <Transitions>
         <ThicknessTransition Property="Padding" Duration="0:0:0.22" />
+        <BrushTransition Property="Background" Duration="0:0:0.16" />
       </Transitions>
     </Setter>
   </Style>
@@ -21,6 +22,10 @@
   </Style>
   <Style Selector="Button.lyric-line-button:pressed">
     <Setter Property="Background" Value="{DynamicResource LyricLineButtonPressedBackgroundBrush}" />
+  </Style>
+  <Style Selector="Button.lyric-line-button:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="Button.lyric-line-button.near">
     <Setter Property="Padding" Value="18,12" />

@@ -71,6 +71,7 @@
                 Grid.Column="1"
                 Minimum="0"
                 Maximum="{Binding Duration}"
+                AutomationProperties.Name="播放进度"
                 Value="{Binding Position, Mode=TwoWay}" />
         <TextBlock Grid.Column="2"
                    Text="{Binding DurationText}"
@@ -90,6 +91,7 @@
           <Button Classes="ghost"
                   Width="40" Height="40"
                   ToolTip.Tip="{Binding PlaybackModeTooltip}"
+                  AutomationProperties.Name="{Binding PlaybackModeTooltip}"
                   Command="{Binding TogglePlaybackModeCommand}">
             <fi:FluentIcon Icon="{Binding PlaybackModeIcon}" FontSize="18" />
           </Button>

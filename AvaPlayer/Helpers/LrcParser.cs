@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using AvaPlayer.Models;
 
@@ -5,7 +6,7 @@ namespace AvaPlayer.Helpers;
 
 public static partial class LrcParser
 {
-    [GeneratedRegex(@"\[(?<min>\d{1,2}):(?<sec>\d{1,2})(?:[.:](?<frac>\d{1,3}))?\]", RegexOptions.Compiled)]
+    [GeneratedRegex(@"\[(?<min>\d{1,2}):(?<sec>\d{1,2})(?:[.:](?<frac>\d{1,3}))?\]")]
     private static partial Regex TimestampRegex();
 
     public static IReadOnlyList<LyricLine> ParseLocal(string text)
@@ -101,18 +102,21 @@ public static partial class LrcParser
 
     private static TimeSpan ParseTimestamp(Match match)
     {
-        var minutes = int.Parse(match.Groups["min"].Value);
-        var seconds = int.Parse(match.Groups["sec"].Value);
+        var minutes = ParseDigits(match.Groups["min"].Value);
+        var seconds = ParseDigits(match.Groups["sec"].Value);
         var fractionText = match.Groups["frac"].Value;
 
         var milliseconds = fractionText.Length switch
         {
-            1 => int.Parse(fractionText) * 100,
-            2 => int.Parse(fractionText) * 10,
-            3 => int.Parse(fractionText),
+            1 => ParseDigits(fractionText) * 100,
+            2 => ParseDigits(fractionText) * 10,
+            3 => ParseDigits(fractionText),
             _ => 0
         };
 
         return new TimeSpan(0, 0, minutes, seconds, milliseconds);
     }
+
+    private static int ParseDigits(string value) =>
+        int.Parse(value, NumberStyles.None, CultureInfo.InvariantCulture);
 }

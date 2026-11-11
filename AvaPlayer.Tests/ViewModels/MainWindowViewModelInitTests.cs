@@ -122,7 +122,7 @@ sealed class InitTestLyricsService : ILyricsService
 
 sealed class InitTestLyricPresentationService : ILyricPresentationService
 {
-    public event EventHandler<TimeSpan>? SeekRequested;
+    public event EventHandler<TimeSpan>? SeekRequested { add { } remove { } }
 
     public void BeginLoading() { }
     public void LoadLyrics(IReadOnlyList<LyricLine> lines) { }
@@ -134,7 +134,7 @@ sealed class InitTestNetworkAccessService : INetworkAccessService
 {
     public bool IsNetworkEnabled { get; set; } = true;
     public bool IsEnabled => IsNetworkEnabled;
-    public event EventHandler<bool>? NetworkAccessChanged;
+    public event EventHandler<bool>? NetworkAccessChanged { add { } remove { } }
 
     public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task PersistAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -146,7 +146,7 @@ sealed class InitTestLyricPreferencesService : ILyricPreferencesService
     public bool IsAutoCenterEnabled { get; set; } = true;
     public bool IsLyricClickSeekEnabled { get; set; } = true;
 
-    public event PropertyChangedEventHandler? PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged { add { } remove { } }
 
     public Task LoadAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }

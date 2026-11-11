@@ -6,6 +6,8 @@
   </Style>
   <Style Selector="Border.settings-group">
     <Setter Property="Background" Value="{DynamicResource SettingsGroupBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="14" />
     <Setter Property="Padding" Value="14,2" />
   </Style>
@@ -20,6 +22,7 @@
   <Style Selector="TextBlock.settings-group-label">
     <Setter Property="Foreground" Value="{DynamicResource PlayerMutedForegroundBrush}" />
     <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="Margin" Value="12,8,0,0" />
   </Style>
   <Style Selector="TextBlock.settings-label">
@@ -43,14 +46,28 @@
     <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="Padding" Value="12,6" />
     <Setter Property="MinWidth" Value="32" />
+    <Setter Property="MinHeight" Value="32" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="Button.settings-chip:pointerover">
     <Setter Property="Background" Value="{DynamicResource ItemHoverBrush}" />
   </Style>
   <Style Selector="Button.settings-chip.selected">
     <Setter Property="Background" Value="{DynamicResource ItemSelectedBrush}" />
+  </Style>
+  <Style Selector="Button.settings-chip:pressed">
+    <Setter Property="Background" Value="{DynamicResource ControlPressedBrush}" />
+  </Style>
+  <Style Selector="Button.settings-chip:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
   </Style>
 </Styles>

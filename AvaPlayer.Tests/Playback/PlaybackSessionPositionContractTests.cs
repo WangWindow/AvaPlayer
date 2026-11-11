@@ -276,6 +276,18 @@ public sealed class PlaybackSessionPositionContractTests : IDisposable
     }
 
     [Fact]
+    public async Task Failed_PlayTrackAsync_classifies_wrapped_file_not_found()
+    {
+        _player.PlayAsyncError = (path, ct) =>
+            new InvalidOperationException("Audio file load failed", new FileNotFoundException(path));
+
+        var result = await _session.PlayTrackAsync(SampleTrack);
+
+        var failed = Assert.IsType<PlaybackStartResult.Failed>(result);
+        Assert.Equal(PlaybackStartFailureKind.FileNotFound, failed.Kind);
+    }
+
+    [Fact]
     public async Task Failed_PlayTrackAsync_preserves_idle_snapshot()
     {
         var idleSnap = _session.LatestSnapshot;

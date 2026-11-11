@@ -9,12 +9,21 @@
     <Setter Property="Padding" Value="8" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="Button.ghost:pointerover">
     <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}" />
   </Style>
   <Style Selector="Button.ghost:pressed">
     <Setter Property="Background" Value="{DynamicResource ControlPressedBrush}" />
+  </Style>
+  <Style Selector="Button.ghost:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="Button.ghost-large">
     <Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}" />
@@ -26,12 +35,21 @@
     <Setter Property="Padding" Value="0" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="Button.ghost-large:pointerover">
     <Setter Property="Background" Value="{DynamicResource PrimaryButtonHoverBrush}" />
   </Style>
   <Style Selector="Button.ghost-large:pressed">
     <Setter Property="Background" Value="{DynamicResource PrimaryButtonPressedBrush}" />
+  </Style>
+  <Style Selector="Button.ghost-large:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="ContextMenu.immersive-menu">
     <Setter Property="Background" Value="{DynamicResource ImmersiveMenuBackgroundBrush}" />

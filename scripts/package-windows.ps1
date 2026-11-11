@@ -14,7 +14,7 @@ $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $ProjectPath = Join-Path $RepoRoot "AvaPlayer\AvaPlayer.csproj"
 $BuildPropsPath = Join-Path $RepoRoot "Directory.Build.props"
 $WixProjPath = Join-Path $RepoRoot "scripts\windows\AvaPlayer.wixproj"
-$WindowsTargetFramework = "net10.0-windows10.0.19041.0"
+$WindowsTargetFramework = "net11.0-windows10.0.19041.0"
 
 if (-not $Version) {
     [xml]$BuildPropsXml = Get-Content -LiteralPath $BuildPropsPath

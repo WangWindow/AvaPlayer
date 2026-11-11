@@ -29,6 +29,7 @@
       <ComboBox Classes="playlist-selector" Grid.Column="0" IsEnabled="{Binding !IsScanning}"
                 MinWidth="0"
                 HorizontalAlignment="Stretch"
+                AutomationProperties.Name="选择歌单" ToolTip.Tip="选择歌单"
                 IsVisible="{Binding ShowPlaylistSelector}"
                 ItemsSource="{Binding Playlists}"
                 SelectedItem="{Binding SelectedPlaylist, Mode=TwoWay}">
@@ -46,17 +47,18 @@
       </ComboBox>
       <TextBox Grid.Column="0"
                PlaceholderText="歌单名称"
+               AutomationProperties.Name="歌单名称"
                Text="{Binding EditingPlaylistName, Mode=TwoWay}"
                IsVisible="{Binding IsRenamingPlaylist}" />
       <Button Grid.Column="1"
-              Classes="ghost"
+              Classes="playlist-icon-button"
               Command="{Binding AddPlaylistCommand}" IsEnabled="{Binding !IsScanning}"
               AutomationProperties.Name="添加歌单" ToolTip.Tip="添加歌单（选择一个音乐文件夹）">
         <fi:FluentIcon Icon="FolderAdd"
                        FontSize="16" />
       </Button>
       <Button Grid.Column="2"
-              Classes="ghost"
+              Classes="playlist-icon-button"
               Command="{Binding BeginRenamePlaylistCommand}"
               IsEnabled="{Binding CanManagePlaylist}"
               IsVisible="{Binding ShowPlaylistSelector}"
@@ -65,7 +67,7 @@
                        FontSize="16" />
       </Button>
       <Button Grid.Column="3"
-              Classes="ghost"
+              Classes="playlist-icon-button"
               Command="{Binding DeletePlaylistCommand}"
               IsEnabled="{Binding CanManagePlaylist}"
               IsVisible="{Binding ShowPlaylistSelector}"
@@ -74,9 +76,7 @@
                        FontSize="16" />
       </Button>
       <Button Grid.Column="2"
-              Classes="ghost"
-              Height="36"
-              Padding="12,8"
+              Classes="playlist-icon-button"
               ToolTip.Tip="确认重命名" AutomationProperties.Name="确认重命名" Command="{Binding ConfirmRenamePlaylistCommand}"
               IsVisible="{Binding IsRenamingPlaylist}">
         <fi:FluentIcon Icon="Checkmark" FontSize="16" />
@@ -87,7 +87,8 @@
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
           <fi:FluentIcon Icon="Search" Classes="playlist-search-icon" FontSize="14" VerticalAlignment="Center" />
           <TextBox Grid.Column="1" Classes="playlist-search-text" Background="Transparent" BorderThickness="0"
-                   PlaceholderText="搜索当前播放列表" Text="{Binding SearchText, Mode=TwoWay}" />
+                   PlaceholderText="搜索当前播放列表" AutomationProperties.Name="搜索当前播放列表"
+                   Text="{Binding SearchText, Mode=TwoWay}" />
           <Button Grid.Column="2" Classes="ghost" Width="24" Height="24" Padding="0"
                   ToolTip.Tip="清除搜索" AutomationProperties.Name="清除搜索"
                   Command="{Binding ClearSearchCommand}" IsVisible="{Binding ShowClearSearch}">
@@ -110,16 +111,16 @@
                     IsChecked="{Binding IncludeSubfolders, Mode=TwoWay}" IsEnabled="{Binding !IsScanning}">
         <fi:FluentIcon Icon="TextBulletListTree" FontSize="18" />
       </ToggleButton>
-      <Button x:Name="RescanButton" Grid.Column="2" Classes="ghost" ToolTip.Tip="重新扫描当前文件夹" AutomationProperties.Name="重新扫描"
+      <Button x:Name="RescanButton" Grid.Column="2" Classes="playlist-icon-button" ToolTip.Tip="重新扫描当前文件夹" AutomationProperties.Name="重新扫描"
               Command="{Binding RescanPlaylistCommand}" IsEnabled="{Binding HasSelectedPlaylist}" IsVisible="{Binding !IsScanning}">
         <fi:FluentIcon Icon="ArrowClockwise" FontSize="18" />
       </Button>
-      <Button Grid.Column="2" Classes="ghost" ToolTip.Tip="取消扫描" AutomationProperties.Name="取消扫描"
+      <Button Grid.Column="2" Classes="playlist-icon-button" ToolTip.Tip="取消扫描" AutomationProperties.Name="取消扫描"
               Command="{Binding CancelScanCommand}" IsVisible="{Binding IsScanning}">
         <fi:FluentIcon Icon="Dismiss" FontSize="18" />
       </Button>
     </Grid>
-    <TextBlock Grid.Row="3" Text="{Binding ScanStatus}" IsVisible="{Binding HasScanStatus}" Classes="playlist-toolbar-label" FontSize="11"
+    <TextBlock Grid.Row="3" Text="{Binding ScanStatus}" IsVisible="{Binding HasScanStatus}" Classes="playlist-status-label"
                TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ScanStatus}" />
     <Grid Grid.Row="2" Margin="0,10,0,0">
       <StackPanel HorizontalAlignment="Center"
@@ -127,12 +128,11 @@
                   Spacing="12"
                   IsVisible="{Binding ShowEmptyState}">
         <fi:FluentIcon Icon="MusicNote2"
+                       Classes="playlist-empty-icon"
                        FontSize="44"
-                       Opacity="0.6"
                        HorizontalAlignment="Center" />
         <TextBlock Text="{Binding EmptyStateText}"
-                   Opacity="0.7"
-                   FontSize="14"
+                   Classes="playlist-empty-text"
                    HorizontalAlignment="Center" />
       </StackPanel>
       <StackPanel HorizontalAlignment="Center"
@@ -140,12 +140,11 @@
                   Spacing="12"
                   IsVisible="{Binding ShowSearchEmptyState}">
         <fi:FluentIcon Icon="Search"
+                       Classes="playlist-empty-icon"
                        FontSize="40"
-                       Opacity="0.6"
                        HorizontalAlignment="Center" />
         <TextBlock Text="{Binding SearchEmptyStateText}"
-                   Opacity="0.7"
-                   FontSize="14"
+                   Classes="playlist-empty-text"
                    HorizontalAlignment="Center" />
       </StackPanel>
       <ListBox x:Name="TrackList" ScrollViewer.HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasVisibleTracks}"

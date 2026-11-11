@@ -1,8 +1,16 @@
 using System.Collections.ObjectModel;
 using AvaPlayer.Models;
+using AvaPlayer.Services.Database;
 
 namespace AvaPlayer.Services.Playlist;
 
+/// <summary>
+/// Owns the library's playlist catalog, selected track queue, and navigation state.
+/// </summary>
+/// <remarks>
+/// Persistence and folder enumeration are delegated to <see cref="IDatabaseService"/>
+/// and <see cref="ITrackScannerService"/> implementations.
+/// </remarks>
 public interface IPlaylistService
 {
     ObservableCollection<Track> Queue { get; }
