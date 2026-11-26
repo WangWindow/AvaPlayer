@@ -1,115 +1,145 @@
-<Window xmlns="https://github.com/avaloniaui"
+<Window x:Class="AvaPlayer.Views.MainWindow"
+        xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:AvaPlayer.ViewModels"
-        xmlns:views="using:AvaPlayer.Views"
         xmlns:fi="using:FluentIcons.Avalonia"
-        x:Class="AvaPlayer.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
-        Icon="/Resources/logo.ico"
+        xmlns:views="using:AvaPlayer.Views"
+        xmlns:vm="using:AvaPlayer.ViewModels"
+        Title="AvaPlayer"
         Width="1020"
         Height="660"
         MinWidth="720"
         MinHeight="480"
-        WindowStartupLocation="CenterScreen"
-        Title="AvaPlayer"
+        x:DataType="vm:MainWindowViewModel"
         Background="Transparent"
+        Icon="/Resources/logo.ico"
+        TransparencyBackgroundFallback="{DynamicResource SystemControlBackgroundAltHighBrush}"
         TransparencyLevelHint="Transparent"
-        TransparencyBackgroundFallback="{DynamicResource SystemControlBackgroundAltHighBrush}">
-  <Border x:Name="WindowSurface" Background="{DynamicResource SystemControlBackgroundAltHighBrush}" ClipToBounds="True">
+        WindowStartupLocation="CenterScreen">
+  <Border x:Name="WindowSurface"
+          Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+          ClipToBounds="True">
     <Panel>
-      <Border Classes="player-backdrop" Background="{Binding PlayerBar.BackgroundBrush}" IsHitTestVisible="False" />
-      <!-- Main content area -->
-      <Grid Margin="0,32,0,0"
-             ColumnDefinitions="50*,50*">
+      <Border Background="{Binding PlayerBar.BackgroundBrush}"
+              Classes="player-backdrop"
+              IsHitTestVisible="False" />
+      <!--  Main content area  -->
+      <Grid Margin="0,32,0,0" ColumnDefinitions="50*,50*">
         <Border x:Name="PlayerPanel" Grid.Column="0">
           <views:PlayerBarView DataContext="{Binding PlayerBar}" />
         </Border>
 
-        <Border Grid.Column="1"
-                x:Name="LyricsPanel" Classes="lyrics-panel"
+        <Border x:Name="LyricsPanel"
+                Grid.Column="1"
+                Classes="lyrics-panel"
                 IsVisible="{Binding !#SettingsReveal.IsVisible}">
           <views:LyricsView DataContext="{Binding Lyrics}" />
         </Border>
 
-        <views:RevealPresenter x:Name="SettingsReveal" Classes="settings-stage" Grid.Column="1" TransitionDuration="0:0:0.24"
-                               IsOpen="{Binding PlayerBar.IsSettingsVisible}">
+        <views:RevealPresenter x:Name="SettingsReveal"
+                               Grid.Column="1"
+                               Classes="settings-stage"
+                               IsOpen="{Binding PlayerBar.IsSettingsVisible}"
+                               TransitionDuration="0:0:0.24">
           <views:SettingsView DataContext="{Binding Settings}" />
         </views:RevealPresenter>
       </Grid>
 
-      <!-- Integrated titlebar row (UWP-style) -->
+      <!--  Integrated titlebar row (UWP-style)  -->
       <Border Height="32"
               VerticalAlignment="Top"
               Classes="titlebar"
               PointerPressed="OnTitleBarPointerPressed">
         <Grid ColumnDefinitions="40,Auto,*,40,46,46,46">
-          <!-- Playlist / sidebar toggle -->
-          <Button Grid.Column="0"
+          <!--  Playlist / sidebar toggle  -->
+          <Button x:Name="PlaylistToggle"
+                  Grid.Column="0"
+                  AutomationProperties.Name="歌单"
                   Classes="titlebar-icon-button"
-                  x:Name="PlaylistToggle" ToolTip.Tip="歌单" AutomationProperties.Name="歌单" Command="{Binding TogglePlaylistCommand}">
-            <fi:FluentIcon Icon="AppsList" FontSize="16" />
+                  Command="{Binding TogglePlaylistCommand}"
+                  ToolTip.Tip="歌单">
+            <fi:FluentIcon FontSize="16" Icon="AppsList" />
           </Button>
 
-          <!-- App title -->
+          <!--  App title  -->
           <TextBlock Grid.Column="1"
-                     Text="AvaPlayer"
+                     VerticalAlignment="Center"
+                     Classes="player-title"
                      FontSize="13"
                      FontWeight="SemiBold"
-                     VerticalAlignment="Center"
-                     Classes="player-title" />
+                     Text="AvaPlayer" />
 
-          <!-- Settings toggle -->
-          <Button Grid.Column="3"
+          <!--  Settings toggle  -->
+          <Button x:Name="SettingsToggle"
+                  Grid.Column="3"
+                  AutomationProperties.Name="{Binding PlayerBar.SettingsToggleToolTip}"
                   Classes="titlebar-icon-button"
-                  x:Name="SettingsToggle" ToolTip.Tip="{Binding PlayerBar.SettingsToggleToolTip}" AutomationProperties.Name="{Binding PlayerBar.SettingsToggleToolTip}" Command="{Binding PlayerBar.ToggleSettingsCommand}">
-            <fi:FluentIcon Icon="{Binding PlayerBar.SettingsToggleIcon}" FontSize="16" />
+                  Command="{Binding PlayerBar.ToggleSettingsCommand}"
+                  ToolTip.Tip="{Binding PlayerBar.SettingsToggleToolTip}">
+            <fi:FluentIcon FontSize="16" Icon="{Binding PlayerBar.SettingsToggleIcon}" />
           </Button>
 
-          <!-- Minimize -->
+          <!--  Minimize  -->
           <Button Grid.Column="4"
+                  AutomationProperties.Name="最小化"
                   Classes="titlebar-button"
-                  ToolTip.Tip="最小化" AutomationProperties.Name="最小化" Click="OnMinimizeClick">
-            <fi:FluentIcon Icon="Subtract" FontSize="12" />
+                  Click="OnMinimizeClick"
+                  ToolTip.Tip="最小化">
+            <fi:FluentIcon FontSize="12" Icon="Subtract" />
           </Button>
 
-          <!-- Maximize / Restore -->
+          <!--  Maximize / Restore  -->
           <Button x:Name="MaximizeRestoreButton"
                   Grid.Column="5"
+                  AutomationProperties.Name="最大化 / 还原"
                   Classes="titlebar-button"
-                  ToolTip.Tip="最大化 / 还原" AutomationProperties.Name="最大化 / 还原" Click="OnMaximizeRestoreClick">
+                  Click="OnMaximizeRestoreClick"
+                  ToolTip.Tip="最大化 / 还原">
             <fi:FluentIcon x:Name="MaximizeRestoreIcon"
-                           Icon="FullScreenMaximize"
-                           FontSize="12" />
+                           FontSize="12"
+                           Icon="FullScreenMaximize" />
           </Button>
 
-          <!-- Close -->
+          <!--  Close  -->
           <Button Grid.Column="6"
+                  AutomationProperties.Name="关闭"
                   Classes="titlebar-button titlebar-close"
-                  ToolTip.Tip="关闭" AutomationProperties.Name="关闭" Click="OnCloseClick">
-            <fi:FluentIcon Icon="Dismiss" FontSize="12" />
+                  Click="OnCloseClick"
+                  ToolTip.Tip="关闭">
+            <fi:FluentIcon FontSize="12" Icon="Dismiss" />
           </Button>
         </Grid>
       </Border>
 
-      <!-- Playlist drawer -->
-      <views:RevealPresenter x:Name="PlaylistReveal" Classes="playlist-reveal" Margin="0,32,0,0" IsOpen="{Binding IsPlaylistVisible}">
+      <!--  Playlist drawer  -->
+      <views:RevealPresenter x:Name="PlaylistReveal"
+                             Margin="0,32,0,0"
+                             Classes="playlist-reveal"
+                             IsOpen="{Binding IsPlaylistVisible}">
         <Grid>
           <Border Classes="playlist-drawer-scrim" />
 
           <Grid ColumnDefinitions="380,*">
-            <Border x:Name="PlaylistDrawer" Grid.Column="0"
+            <Border x:Name="PlaylistDrawer"
+                    Grid.Column="0"
                     Classes="playlist-drawer-panel">
-              <Grid RowDefinitions="Auto,*">
+              <Grid>
+                <Border Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}" />
+                <Border Background="{Binding PlayerBar.BackgroundBrush}"
+                        Opacity="{DynamicResource PlayerBackdropOpacity}" />
+                <Border Background="{DynamicResource PlaylistDrawerTintBrush}" />
+                <Grid RowDefinitions="Auto,*">
                 <DockPanel Margin="16,16,16,12">
-                  <TextBlock Text="播放列表"
+                  <TextBlock VerticalAlignment="Center"
                              Classes="player-title"
                              FontSize="18"
                              FontWeight="SemiBold"
-                             VerticalAlignment="Center" />
+                             Text="播放列表" />
                 </DockPanel>
 
-                <views:PlaylistView x:Name="LibraryContent" Grid.Row="1"
+                <views:PlaylistView x:Name="LibraryContent"
+                                    Grid.Row="1"
                                     DataContext="{Binding Playlist}" />
+                </Grid>
               </Grid>
             </Border>
 
@@ -122,14 +152,66 @@
       </views:RevealPresenter>
 
       <Grid x:Name="ResizeGrips" IsHitTestVisible="True">
-        <Border Height="5" VerticalAlignment="Top" Margin="8,0" Background="Transparent" Cursor="TopSide" Tag="North" PointerPressed="OnResizeGripPointerPressed" />
-        <Border Height="5" VerticalAlignment="Bottom" Margin="8,0" Background="Transparent" Cursor="BottomSide" Tag="South" PointerPressed="OnResizeGripPointerPressed" />
-        <Border Width="5" HorizontalAlignment="Left" Margin="0,8" Background="Transparent" Cursor="LeftSide" Tag="West" PointerPressed="OnResizeGripPointerPressed" />
-        <Border Width="5" HorizontalAlignment="Right" Margin="0,8" Background="Transparent" Cursor="RightSide" Tag="East" PointerPressed="OnResizeGripPointerPressed" />
-        <Border Width="8" Height="8" HorizontalAlignment="Left" VerticalAlignment="Top" Background="Transparent" Cursor="TopLeftCorner" Tag="NorthWest" PointerPressed="OnResizeGripPointerPressed" />
-        <Border Width="8" Height="8" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Cursor="TopRightCorner" Tag="NorthEast" PointerPressed="OnResizeGripPointerPressed" />
-        <Border Width="8" Height="8" HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="Transparent" Cursor="BottomLeftCorner" Tag="SouthWest" PointerPressed="OnResizeGripPointerPressed" />
-        <Border Width="8" Height="8" HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="Transparent" Cursor="BottomRightCorner" Tag="SouthEast" PointerPressed="OnResizeGripPointerPressed" />
+        <Border Height="5"
+                Margin="8,0"
+                VerticalAlignment="Top"
+                Background="Transparent"
+                Cursor="TopSide"
+                PointerPressed="OnResizeGripPointerPressed"
+                Tag="North" />
+        <Border Height="5"
+                Margin="8,0"
+                VerticalAlignment="Bottom"
+                Background="Transparent"
+                Cursor="BottomSide"
+                PointerPressed="OnResizeGripPointerPressed"
+                Tag="South" />
+        <Border Width="5"
+                Margin="0,8"
+                HorizontalAlignment="Left"
+                Background="Transparent"
+                Cursor="LeftSide"
+                PointerPressed="OnResizeGripPointerPressed"
+                Tag="West" />
+        <Border Width="5"
+                Margin="0,8"
+                HorizontalAlignment="Right"
+                Background="Transparent"
+                Cursor="RightSide"
+                PointerPressed="OnResizeGripPointerPressed"
+                Tag="East" />
+        <Border Width="8"
+                Height="8"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Background="Transparent"
+                Cursor="TopLeftCorner"
+                PointerPressed="OnResizeGripPointerPressed"
+                Tag="NorthWest" />
+        <Border Width="8"
+                Height="8"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Background="Transparent"
+                Cursor="TopRightCorner"
+                PointerPressed="OnResizeGripPointerPressed"
+                Tag="NorthEast" />
+        <Border Width="8"
+                Height="8"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Bottom"
+                Background="Transparent"
+                Cursor="BottomLeftCorner"
+                PointerPressed="OnResizeGripPointerPressed"
+                Tag="SouthWest" />
+        <Border Width="8"
+                Height="8"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Background="Transparent"
+                Cursor="BottomRightCorner"
+                PointerPressed="OnResizeGripPointerPressed"
+                Tag="SouthEast" />
       </Grid>
     </Panel>
   </Border>

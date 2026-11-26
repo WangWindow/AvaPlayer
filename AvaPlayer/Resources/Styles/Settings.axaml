@@ -1,12 +1,11 @@
-<Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Style Selector="Border.settings-panel">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
   </Style>
   <Style Selector="Border.settings-group">
-    <Setter Property="Background" Value="{DynamicResource SettingsGroupBackgroundBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorderBrush}" />
+    <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="14" />
     <Setter Property="Padding" Value="14,2" />
@@ -17,33 +16,32 @@
   </Style>
   <Style Selector="Border.settings-divider">
     <Setter Property="Height" Value="1" />
-    <Setter Property="Background" Value="{DynamicResource SurfaceBorderBrush}" />
+    <Setter Property="Background" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
   </Style>
   <Style Selector="TextBlock.settings-group-label">
-    <Setter Property="Foreground" Value="{DynamicResource PlayerMutedForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
     <Setter Property="FontSize" Value="12" />
     <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="Margin" Value="12,8,0,0" />
   </Style>
   <Style Selector="TextBlock.settings-label">
-    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
     <Setter Property="FontSize" Value="14" />
   </Style>
   <Style Selector="TextBlock.settings-title">
-    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
   </Style>
   <Style Selector="TextBlock.settings-description">
-    <Setter Property="Foreground" Value="{DynamicResource PlayerMutedForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
     <Setter Property="FontSize" Value="12" />
   </Style>
   <Style Selector="ToggleSwitch.settings-switch">
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="MinWidth" Value="0" />
-    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
   </Style>
   <Style Selector="Button.settings-chip">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="8" />
     <Setter Property="Padding" Value="12,6" />
@@ -58,16 +56,20 @@
     </Setter>
   </Style>
   <Style Selector="Button.settings-chip:pointerover">
-    <Setter Property="Background" Value="{DynamicResource ItemHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
   </Style>
   <Style Selector="Button.settings-chip.selected">
-    <Setter Property="Background" Value="{DynamicResource ItemSelectedBrush}" />
+    <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.settings-chip.selected:pointerover">
+    <Setter Property="Background" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
   </Style>
   <Style Selector="Button.settings-chip:pressed">
-    <Setter Property="Background" Value="{DynamicResource ControlPressedBrush}" />
+    <Setter Property="Background" Value="{DynamicResource ControlAltFillColorTertiaryBrush}" />
   </Style>
   <Style Selector="Button.settings-chip:focus-visible">
-    <Setter Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource FocusStrokeColorOuterBrush}" />
     <Setter Property="BorderThickness" Value="1" />
   </Style>
 </Styles>

@@ -1,6 +1,6 @@
-<Application xmlns="https://github.com/avaloniaui"
+<Application x:Class="AvaPlayer.App"
+             xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="AvaPlayer.App"
              RequestedThemeVariant="Default">
   <Application.Styles>
     <Fluent2Theme />
@@ -9,26 +9,21 @@
 
   <TrayIcon.Icons>
     <TrayIcons>
-      <TrayIcon Icon="/Resources/logo-tray.png"
-                ToolTipText="AvaPlayer"
-                Clicked="OnPlayPauseClick">
+      <TrayIcon Clicked="OnPlayPauseClick"
+                Icon="/Resources/logo-tray.png"
+                ToolTipText="AvaPlayer">
         <TrayIcon.Menu>
           <NativeMenu>
-            <NativeMenuItem Header="显示窗口"
-                            Click="OnShowWindowClick" />
-            <NativeMenuItem Header="轻量模式"
-                            ToggleType="CheckBox"
-                            Click="OnLightweightModeClick" />
+            <NativeMenuItem Click="OnShowWindowClick" Header="显示窗口" />
+            <NativeMenuItem Click="OnLightweightModeClick"
+                            Header="轻量模式"
+                            ToggleType="CheckBox" />
             <NativeMenuItemSeparator />
-            <NativeMenuItem Header="上一首"
-                            Click="OnPreviousTrackClick" />
-            <NativeMenuItem Header="播放 / 暂停"
-                            Click="OnPlayPauseClick" />
-            <NativeMenuItem Header="下一首"
-                            Click="OnNextTrackClick" />
+            <NativeMenuItem Click="OnPreviousTrackClick" Header="上一首" />
+            <NativeMenuItem Click="OnPlayPauseClick" Header="播放 / 暂停" />
+            <NativeMenuItem Click="OnNextTrackClick" Header="下一首" />
             <NativeMenuItemSeparator />
-            <NativeMenuItem Header="退出"
-                            Click="OnExitClick" />
+            <NativeMenuItem Click="OnExitClick" Header="退出" />
           </NativeMenu>
         </TrayIcon.Menu>
       </TrayIcon>

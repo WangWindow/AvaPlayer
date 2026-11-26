@@ -47,7 +47,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public partial bool IsPlaylistVisible { get; set; }
 
     [RelayCommand]
-    private void TogglePlaylist() => IsPlaylistVisible = !IsPlaylistVisible;
+    private void TogglePlaylist()
+    {
+        IsPlaylistVisible = !IsPlaylistVisible;
+        if (IsPlaylistVisible)
+        {
+            // The drawer is a modal overlay; leaving settings open underneath
+            // shows two competing full-height panes.
+            PlayerBar.IsSettingsVisible = false;
+        }
+    }
 
     [RelayCommand]
     private void ClosePlaylist() => IsPlaylistVisible = false;

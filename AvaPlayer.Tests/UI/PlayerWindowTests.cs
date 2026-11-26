@@ -84,7 +84,7 @@ public sealed class PlayerWindowTests : IDisposable
         SaveFrame(window, $"sidebar-{width}-{height}-{scaling}.png");
         fixture.ViewModel.ClosePlaylistCommand.Execute(null);
         Assert.True(library.IsEffectivelyEnabled);
-        await AdvanceAnimationsAsync();
+        await WaitForAsync(() => !library.IsEffectivelyVisible);
         window.UpdateLayout();
         Assert.False(library.IsEffectivelyVisible, $"VM={fixture.ViewModel.IsPlaylistVisible}, presenter={window.FindControl<RevealPresenter>("PlaylistReveal")!.IsOpen}, opacity={window.FindControl<RevealPresenter>("PlaylistReveal")!.Opacity}, enabled={library.IsEffectivelyEnabled}");
         fixture.Session.Publish(fixture.Session.LatestSnapshot with
@@ -112,7 +112,10 @@ public sealed class PlayerWindowTests : IDisposable
         Assert.Null(window.FindControl<Border>("PlayerPanel")!.Background);
         Assert.Null(window.FindControl<Border>("LyricsPanel")!.Background);
         var lyric = window.GetVisualDescendants().OfType<TextBlock>().First(b => b.Classes.Contains("lyric-line"));
-        Assert.Equal(dark ? Colors.White : Color.Parse("#1A1A1A"), Assert.IsAssignableFrom<ISolidColorBrush>(lyric.Foreground).Color);
+        var expectedForeground = Assert.IsAssignableFrom<ISolidColorBrush>(
+            window.FindResource(window.ActualThemeVariant, "TextFillColorPrimaryBrush"));
+        Assert.Equal(expectedForeground.Color,
+            Assert.IsAssignableFrom<ISolidColorBrush>(lyric.Foreground).Color);
         SaveFrame(window, $"player-{width}-{height}-{scaling}.png");
 
         var settingsToggle = window.FindControl<Button>("SettingsToggle")!;
@@ -129,6 +132,10 @@ public sealed class PlayerWindowTests : IDisposable
         var settingsPanel = settings.GetVisualDescendants().OfType<Border>()
             .Single(b => b.Classes.Contains("settings-panel"));
         Assert.Equal(new Thickness(0), settingsPanel.BorderThickness);
+        var settingsTitle = settings.GetVisualDescendants().OfType<TextBlock>()
+            .Single(t => t.Classes.Contains("settings-title"));
+        Assert.True(settingsTitle.IsEffectivelyVisible);
+        Assert.DoesNotContain(settingsTitle.GetVisualAncestors(), ancestor => ancestor is ScrollViewer);
         Assert.All(settings.GetVisualDescendants().OfType<Grid>().Where(g => g.Classes.Contains("settings-row")),
             row => Assert.InRange(row.Bounds.Height, 0, 84));
         Assert.Equal(FluentIcons.Common.Icon.ChevronLeft,
@@ -411,6 +418,15 @@ public sealed class PlayerWindowTests : IDisposable
         Assert.Equal("keep.wav", await fixture.Settings.GetAsync("current-track-path"));
         return true;
     }, CancellationToken.None);
+
+    private static async Task WaitForAsync(Func<bool> condition, int timeoutMilliseconds = 1000)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        while (!condition() && stopwatch.ElapsedMilliseconds < timeoutMilliseconds)
+        {
+            await AdvanceAnimationsAsync(20);
+        }
+    }
 
     private static async Task AdvanceAnimationsAsync(int milliseconds = 320, Action? onFrame = null)
     {

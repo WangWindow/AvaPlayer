@@ -1,30 +1,32 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl x:Class="AvaPlayer.Views.LyricsView"
+             xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AvaPlayer.ViewModels"
              x:Name="Root"
-             x:Class="AvaPlayer.Views.LyricsView"
              x:DataType="vm:LyricsViewModel">
   <Grid Margin="24,32">
-    <TextBlock Classes="lyrics-status" Text="加载歌词中..."
-               FontSize="14"
-               HorizontalAlignment="Center"
+    <TextBlock HorizontalAlignment="Center"
                VerticalAlignment="Center"
-               IsVisible="{Binding IsLoading}" />
-    <TextBlock Classes="lyrics-empty" Text="暂无歌词"
+               Classes="lyrics-status"
                FontSize="14"
-               HorizontalAlignment="Center"
+               IsVisible="{Binding IsLoading}"
+               Text="加载歌词中..." />
+    <TextBlock HorizontalAlignment="Center"
                VerticalAlignment="Center"
-               IsVisible="{Binding ShowEmptyState}" />
+               Classes="lyrics-empty"
+               FontSize="14"
+               IsVisible="{Binding ShowEmptyState}"
+               Text="暂无歌词" />
     <ScrollViewer x:Name="LyricsScroller"
-                  IsVisible="{Binding HasLyrics}"
                   HorizontalScrollBarVisibility="Disabled"
+                  IsVisible="{Binding HasLyrics}"
                   VerticalScrollBarVisibility="Hidden">
       <StackPanel>
         <Border x:Name="TopSpacer" />
         <ItemsControl x:Name="LyricsItems"
-                      ItemsSource="{Binding Lines}"
                       MaxWidth="560"
-                      HorizontalAlignment="Stretch">
+                      HorizontalAlignment="Stretch"
+                      ItemsSource="{Binding Lines}">
           <ItemsControl.Styles>
             <Style Selector="ContentPresenter">
               <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -33,19 +35,19 @@
           </ItemsControl.Styles>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:LyricLineViewModel">
-              <Button Classes="lyric-line-button"
+              <Button HorizontalAlignment="Stretch"
+                      Classes="lyric-line-button"
                       Classes.active="{Binding IsCurrent}"
                       Classes.near="{Binding IsNearCurrent}"
+                      ClipToBounds="False"
                       Command="{Binding #Root((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
-                      CommandParameter="{Binding}"
-                      HorizontalAlignment="Stretch"
-                      ClipToBounds="False">
-                <TextBlock Text="{Binding Text}"
+                      CommandParameter="{Binding}">
+                <TextBlock Classes="lyric-line"
+                           Classes.active="{Binding IsCurrent}"
+                           Classes.near="{Binding IsNearCurrent}"
                            FontSize="{Binding DisplayFontSize}"
                            Opacity="{Binding DisplayOpacity}"
-                           Classes="lyric-line"
-                           Classes.active="{Binding IsCurrent}"
-                           Classes.near="{Binding IsNearCurrent}" />
+                           Text="{Binding Text}" />
               </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

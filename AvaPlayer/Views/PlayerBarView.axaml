@@ -1,10 +1,10 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl x:Class="AvaPlayer.Views.PlayerBarView"
+             xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:AvaPlayer.ViewModels"
              xmlns:fi="using:FluentIcons.Avalonia"
              xmlns:views="using:AvaPlayer.Views"
+             xmlns:vm="using:AvaPlayer.ViewModels"
              x:Name="Root"
-             x:Class="AvaPlayer.Views.PlayerBarView"
              x:DataType="vm:PlayerBarViewModel">
   <Grid x:Name="PlaybackRoot" Margin="24,16">
     <Grid x:Name="PlaybackContent">
@@ -16,119 +16,157 @@
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
-      <!-- Cover art -->
-      <Border x:Name="CoverBorder" Grid.Row="1"
+      <!--  Cover art  -->
+      <Border x:Name="CoverBorder"
+              Grid.Row="1"
               Width="{Binding CoverSize}"
               Height="{Binding CoverSize}"
               HorizontalAlignment="Center"
-              CornerRadius="18"
+              BoxShadow="0 12 36 0 #50000000"
               ClipToBounds="True"
-              BoxShadow="0 12 36 0 #50000000">
+              CornerRadius="18">
         <Grid>
-          <Border Background="{DynamicResource SearchBackgroundBrush}"
-                  IsVisible="{Binding ShowAlbumArtPlaceholder}" />
-          <fi:FluentIcon Icon="MusicNote2"
-                         FontSize="72"
-                         Foreground="{DynamicResource PlayerMutedForegroundBrush}"
-                         HorizontalAlignment="Center"
+          <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" IsVisible="{Binding ShowAlbumArtPlaceholder}" />
+          <fi:FluentIcon HorizontalAlignment="Center"
                          VerticalAlignment="Center"
+                         FontSize="72"
+                         Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                         Icon="MusicNote2"
                          IsVisible="{Binding ShowAlbumArtPlaceholder}" />
-          <Image Source="{Binding AlbumArtBitmap}"
-                 Stretch="UniformToFill"
-                 IsVisible="{Binding HasAlbumArt}" />
+          <Image IsVisible="{Binding HasAlbumArt}"
+                 Source="{Binding AlbumArtBitmap}"
+                 Stretch="UniformToFill" />
         </Grid>
       </Border>
-      <!-- Title & Artist -->
-      <StackPanel x:Name="TrackDetails" Grid.Row="2"
-                  Spacing="8"
-                  HorizontalAlignment="Center"
+      <!--  Title & Artist  -->
+      <StackPanel x:Name="TrackDetails"
+                  Grid.Row="2"
                   MaxWidth="400"
-                  Margin="0,24,0,0">
-        <TextBlock Classes="player-title" Text="{Binding TitleDisplay}"
+                  Margin="0,24,0,0"
+                  HorizontalAlignment="Center"
+                  Spacing="8">
+        <TextBlock Classes="player-title"
                    FontSize="22"
                    FontWeight="SemiBold"
+                   Text="{Binding TitleDisplay}"
                    TextAlignment="Center"
                    TextTrimming="CharacterEllipsis" />
-        <TextBlock x:Name="ArtistText" Text="{Binding ArtistDisplay}"
+        <TextBlock x:Name="ArtistText"
                    Classes="player-subtitle"
                    FontSize="13"
+                   Text="{Binding ArtistDisplay}"
                    TextAlignment="Center"
                    TextWrapping="Wrap" />
       </StackPanel>
-      <!-- Progress bar -->
-      <Grid x:Name="ProgressGrid" Grid.Row="3"
+      <!--  Progress bar  -->
+      <Grid x:Name="ProgressGrid"
+            Grid.Row="3"
             MaxWidth="360"
+            Margin="0,16,0,0"
             HorizontalAlignment="Stretch"
-            ColumnDefinitions="Auto,*,Auto"
-            Margin="0,16,0,0">
+            ColumnDefinitions="Auto,*,Auto">
         <TextBlock Grid.Column="0"
-                   Text="{Binding PositionText}"
+                   Margin="0,0,10,0"
+                   VerticalAlignment="Center"
                    Classes="player-time"
                    FontSize="12"
-                   Margin="0,0,10,0"
-                   VerticalAlignment="Center" />
-        <Slider x:Name="ProgressSlider" Classes="white"
+                   Text="{Binding PositionText}" />
+        <Slider x:Name="ProgressSlider"
                 Grid.Column="1"
-                Minimum="0"
-                Maximum="{Binding Duration}"
                 AutomationProperties.Name="播放进度"
+                Maximum="{Binding Duration}"
+                Minimum="0"
                 Value="{Binding Position, Mode=TwoWay}" />
         <TextBlock Grid.Column="2"
-                   Text="{Binding DurationText}"
+                   Margin="10,0,0,0"
+                   VerticalAlignment="Center"
                    Classes="player-time"
                    FontSize="12"
-                   Margin="10,0,0,0"
-                   VerticalAlignment="Center" />
+                   Text="{Binding DurationText}" />
       </Grid>
-      <!-- Playback controls -->
-      <Grid x:Name="ControlGrid" Grid.Row="4"
+      <!--  Playback controls  -->
+      <Grid x:Name="ControlGrid"
+            Grid.Row="4"
             Width="292"
-            HorizontalAlignment="Center"
-            Margin="0,12,0,0">
-        <StackPanel Orientation="Horizontal"
-                    HorizontalAlignment="Center"
+            Margin="0,12,0,0"
+            HorizontalAlignment="Center">
+        <StackPanel HorizontalAlignment="Center"
+                    Orientation="Horizontal"
                     Spacing="10">
-          <Button Classes="ghost"
-                  Width="40" Height="40"
-                  ToolTip.Tip="{Binding PlaybackModeTooltip}"
+          <Button Width="40"
+                  Height="40"
                   AutomationProperties.Name="{Binding PlaybackModeTooltip}"
-                  Command="{Binding TogglePlaybackModeCommand}">
-            <fi:FluentIcon Icon="{Binding PlaybackModeIcon}" FontSize="18" />
+                  Classes="ghost"
+                  Command="{Binding TogglePlaybackModeCommand}"
+                  ToolTip.Tip="{Binding PlaybackModeTooltip}">
+            <fi:FluentIcon FontSize="18" Icon="{Binding PlaybackModeIcon}" />
           </Button>
-          <Button Classes="ghost"
-                  Width="40" Height="40"
-                  ToolTip.Tip="上一首（Ctrl+←）" AutomationProperties.Name="上一首"
-                  Command="{Binding PreviousCommand}">
-            <fi:FluentIcon Icon="Previous" FontSize="18" />
+          <Button Width="40"
+                  Height="40"
+                  AutomationProperties.Name="上一首"
+                  Classes="ghost"
+                  Command="{Binding PreviousCommand}"
+                  ToolTip.Tip="上一首（Ctrl+←）">
+            <fi:FluentIcon FontSize="18" Icon="Previous" />
           </Button>
-          <Button Classes="ghost-large"
-                  ToolTip.Tip="播放 / 暂停（Ctrl+P）" AutomationProperties.Name="播放 / 暂停"
-                  Command="{Binding PlayPauseCommand}">
-            <fi:FluentIcon Icon="{Binding PlayPauseIcon}" FontSize="24" />
+          <Button AutomationProperties.Name="播放 / 暂停"
+                  Classes="ghost-large"
+                  Command="{Binding PlayPauseCommand}"
+                  ToolTip.Tip="播放 / 暂停（Ctrl+P）">
+            <fi:FluentIcon FontSize="24" Icon="{Binding PlayPauseIcon}" />
           </Button>
-          <Button Classes="ghost"
-                  Width="40" Height="40"
-                  ToolTip.Tip="下一首（Ctrl+→）" AutomationProperties.Name="下一首"
-                  Command="{Binding NextCommand}">
-            <fi:FluentIcon Icon="Next" FontSize="18" />
+          <Button Width="40"
+                  Height="40"
+                  AutomationProperties.Name="下一首"
+                  Classes="ghost"
+                  Command="{Binding NextCommand}"
+                  ToolTip.Tip="下一首（Ctrl+→）">
+            <fi:FluentIcon FontSize="18" Icon="Next" />
           </Button>
-          <Button x:Name="VolumeButton" Classes="ghost" Width="40" Height="40"
-                  ToolTip.Tip="音量" AutomationProperties.Name="音量" Click="OnVolumeButtonClick">
-            <fi:FluentIcon Icon="{Binding VolumeIcon}" FontSize="18" />
+          <Button x:Name="VolumeButton"
+                  Width="40"
+                  Height="40"
+                  AutomationProperties.Name="音量"
+                  Classes="ghost"
+                  Click="OnVolumeButtonClick"
+                  ToolTip.Tip="音量">
+            <fi:FluentIcon FontSize="18" Icon="{Binding VolumeIcon}" />
           </Button>
         </StackPanel>
       </Grid>
-      <!-- The volume reveal uses the lower spacer, outside the centered playback group. -->
-      <views:RevealPresenter x:Name="VolumeInlinePanel" Classes="volume-inline-host" Grid.Row="5"
-                             TransitionDuration="0:0:0.22" Width="292" HorizontalAlignment="Center"
-                             HorizontalContentAlignment="Stretch" VerticalAlignment="Top" ClipToBounds="True">
-        <Grid Margin="16,18,16,8" ColumnDefinitions="38,*,38" ColumnSpacing="14" Height="24">
-          <fi:FluentIcon Icon="{Binding VolumeIcon}" Foreground="{DynamicResource PlayerForegroundBrush}"
-                         FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
-          <Slider x:Name="VolumeSlider" Grid.Column="1" Classes="white" Height="24" MinHeight="0" Minimum="0" Maximum="100"
-                  Value="{Binding Volume, Mode=TwoWay}" AutomationProperties.Name="音量" />
-          <TextBlock Grid.Column="2" Classes="volume-text" Text="{Binding VolumeText}" FontSize="12"
-                     TextAlignment="Center" VerticalAlignment="Center" />
+      <!--  The volume reveal uses the lower spacer, outside the centered playback group.  -->
+      <views:RevealPresenter x:Name="VolumeInlinePanel"
+                             Grid.Row="5"
+                             Width="292"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Top"
+                             HorizontalContentAlignment="Stretch"
+                             Classes="volume-inline-host"
+                             ClipToBounds="True"
+                             TransitionDuration="0:0:0.22">
+        <Grid Height="24"
+              Margin="16,18,16,8"
+              ColumnDefinitions="38,*,38"
+              ColumnSpacing="14">
+          <fi:FluentIcon HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         FontSize="16"
+                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                         Icon="{Binding VolumeIcon}" />
+          <Slider x:Name="VolumeSlider"
+                  Grid.Column="1"
+                  Height="24"
+                  MinHeight="0"
+                  AutomationProperties.Name="音量"
+                  Maximum="100"
+                  Minimum="0"
+                  Value="{Binding Volume, Mode=TwoWay}" />
+          <TextBlock Grid.Column="2"
+                     VerticalAlignment="Center"
+                     Classes="volume-text"
+                     FontSize="12"
+                     Text="{Binding VolumeText}"
+                     TextAlignment="Center" />
         </Grid>
       </views:RevealPresenter>
     </Grid>

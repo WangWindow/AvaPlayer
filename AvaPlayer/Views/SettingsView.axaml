@@ -1,86 +1,202 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl x:Class="AvaPlayer.Views.SettingsView"
+             xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:AvaPlayer.ViewModels"
              xmlns:fi="using:FluentIcons.Avalonia"
-             x:Class="AvaPlayer.Views.SettingsView"
+             xmlns:vm="using:AvaPlayer.ViewModels"
              x:DataType="vm:SettingsViewModel">
+  <UserControl.Resources>
+    <!--
+      Fluent2's ToggleSwitch reserves 154px for On/Off content. These rows are
+      switch-only, so let the control size to its track and right-align.
+    -->
+    <x:Double x:Key="ToggleSwitchThemeMinWidth">0</x:Double>
+  </UserControl.Resources>
   <Border Classes="settings-panel">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-      <StackPanel MaxWidth="560" Margin="24,20,24,24" Spacing="10">
-        <TextBlock Classes="settings-title" Text="设置" FontSize="26" FontWeight="SemiBold" Margin="4,0,0,8" />
-        <TextBlock Classes="settings-group-label" Text="外观" />
-        <Border Classes="settings-group"><StackPanel>
-          <Grid Classes="settings-row" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-            <StackPanel VerticalAlignment="Center" Spacing="3">
-              <TextBlock Classes="settings-label" Text="窗口圆角" />
+    <DockPanel LastChildFill="True">
+      <!--  Fixed header: the page title must stay visible while settings scroll.  -->
+      <TextBlock Margin="24,20,24,10"
+                 Classes="settings-title"
+                 DockPanel.Dock="Top"
+                 FontSize="26"
+                 FontWeight="SemiBold"
+                 Text="设置" />
+      <ScrollViewer x:Name="SettingsScroll"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="24,0,24,24" Spacing="10">
+          <TextBlock Classes="settings-group-label" Text="外观" />
+          <Border Classes="settings-group">
+            <StackPanel>
+              <Grid Classes="settings-row"
+                    ColumnDefinitions="*,Auto"
+                    ColumnSpacing="12">
+                <StackPanel VerticalAlignment="Center" Spacing="3">
+                  <TextBlock Classes="settings-label" Text="窗口圆角" />
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="2">
+                  <ToggleSwitch Grid.Column="1"
+                                AutomationProperties.Name="窗口圆角"
+                                Classes="settings-switch"
+                                IsChecked="{Binding UseRoundedWindowCorners, Mode=TwoWay}"
+                                OffContent=""
+                                OnContent="" />
+                </StackPanel>
+              </Grid>
+              <Border Classes="settings-divider" />
+              <Grid Classes="settings-row"
+                    ColumnDefinitions="*,Auto"
+                    ColumnSpacing="12">
+                <StackPanel VerticalAlignment="Center" Spacing="3">
+                  <TextBlock Classes="settings-label" Text="歌词字号" />
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="2">
+                  <Button AutomationProperties.Name="小"
+                          Classes="settings-chip"
+                          Classes.selected="{Binding IsSmallFontPreset}"
+                          Command="{Binding UseSmallFontCommand}">
+                    <TextBlock Text="小" />
+                  </Button>
+                  <Button AutomationProperties.Name="中"
+                          Classes="settings-chip"
+                          Classes.selected="{Binding IsMediumFontPreset}"
+                          Command="{Binding UseMediumFontCommand}">
+                    <TextBlock Text="中" />
+                  </Button>
+                  <Button AutomationProperties.Name="大"
+                          Classes="settings-chip"
+                          Classes.selected="{Binding IsLargeFontPreset}"
+                          Command="{Binding UseLargeFontCommand}">
+                    <TextBlock Text="大" />
+                  </Button>
+                </StackPanel>
+              </Grid>
+              <Border Classes="settings-divider" />
+              <Grid Classes="settings-row"
+                    ColumnDefinitions="*,Auto"
+                    ColumnSpacing="12">
+                <StackPanel VerticalAlignment="Center" Spacing="3">
+                  <TextBlock Classes="settings-label" Text="托盘图标" />
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="2">
+                  <Button AutomationProperties.Name="浅色"
+                          Classes="settings-chip"
+                          Classes.selected="{Binding IsTrayIconLight}"
+                          Command="{Binding UseLightTrayIconCommand}">
+                    <TextBlock Text="浅色" />
+                  </Button>
+                  <Button AutomationProperties.Name="深色"
+                          Classes="settings-chip"
+                          Classes.selected="{Binding IsTrayIconDark}"
+                          Command="{Binding UseDarkTrayIconCommand}">
+                    <TextBlock Text="深色" />
+                  </Button>
+                </StackPanel>
+              </Grid>
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" Classes="settings-switch" AutomationProperties.Name="窗口圆角" OnContent="" OffContent="" IsChecked="{Binding UseRoundedWindowCorners, Mode=TwoWay}" />
-          </Grid>
-          <Border Classes="settings-divider" />
-          <Grid Classes="settings-row" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-            <StackPanel VerticalAlignment="Center" Spacing="3">
-              <TextBlock Classes="settings-label" Text="歌词字号" />
+          </Border>
+          <TextBlock Classes="settings-group-label" Text="播放与歌词" />
+          <Border Classes="settings-group">
+            <StackPanel>
+              <Grid Classes="settings-row"
+                    ColumnDefinitions="*,Auto"
+                    ColumnSpacing="12">
+                <StackPanel VerticalAlignment="Center" Spacing="3">
+                  <TextBlock Classes="settings-label" Text="记忆播放进度" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1"
+                              AutomationProperties.Name="记忆播放进度"
+                              Classes="settings-switch"
+                              IsChecked="{Binding IsPlaybackPositionMemoryEnabled, Mode=TwoWay}"
+                              OffContent=""
+                              OnContent="" />
+              </Grid>
+              <Border Classes="settings-divider" />
+              <Grid Classes="settings-row"
+                    ColumnDefinitions="*,Auto"
+                    ColumnSpacing="12">
+                <StackPanel VerticalAlignment="Center" Spacing="3">
+                  <TextBlock Classes="settings-label" Text="歌词自动居中" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1"
+                              AutomationProperties.Name="歌词自动居中"
+                              Classes="settings-switch"
+                              IsChecked="{Binding LyricsPreferences.IsAutoCenterEnabled, Mode=TwoWay}"
+                              OffContent=""
+                              OnContent="" />
+              </Grid>
+              <Border Classes="settings-divider" />
+              <Grid Classes="settings-row"
+                    ColumnDefinitions="*,Auto"
+                    ColumnSpacing="12">
+                <StackPanel VerticalAlignment="Center" Spacing="3">
+                  <TextBlock Classes="settings-label" Text="点击歌词跳转" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1"
+                              AutomationProperties.Name="点击歌词跳转"
+                              Classes="settings-switch"
+                              IsChecked="{Binding LyricsPreferences.IsLyricClickSeekEnabled, Mode=TwoWay}"
+                              OffContent=""
+                              OnContent="" />
+              </Grid>
             </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="2">
-              <Button Classes="settings-chip" Classes.selected="{Binding IsSmallFontPreset}" Command="{Binding UseSmallFontCommand}" AutomationProperties.Name="小"><TextBlock Text="小" /></Button>
-              <Button Classes="settings-chip" Classes.selected="{Binding IsMediumFontPreset}" Command="{Binding UseMediumFontCommand}" AutomationProperties.Name="中"><TextBlock Text="中" /></Button>
-              <Button Classes="settings-chip" Classes.selected="{Binding IsLargeFontPreset}" Command="{Binding UseLargeFontCommand}" AutomationProperties.Name="大"><TextBlock Text="大" /></Button>
+          </Border>
+          <TextBlock Classes="settings-group-label" Text="内容" />
+          <Border Classes="settings-group">
+            <StackPanel>
+              <Grid Classes="settings-row"
+                    ColumnDefinitions="*,Auto"
+                    ColumnSpacing="12">
+                <StackPanel VerticalAlignment="Center" Spacing="3">
+                  <TextBlock Classes="settings-label" Text="联网补全" />
+                  <TextBlock Classes="settings-description"
+                             MaxLines="2"
+                             Text="优先使用文件内的歌词和封面"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1"
+                              AutomationProperties.Name="联网补全"
+                              Classes="settings-switch"
+                              IsChecked="{Binding IsNetworkEnabled, Mode=TwoWay}"
+                              OffContent=""
+                              OnContent="" />
+              </Grid>
+              <Border Classes="settings-divider" />
+              <Grid Classes="settings-row"
+                    ColumnDefinitions="*,Auto"
+                    ColumnSpacing="12">
+                <StackPanel VerticalAlignment="Center" Spacing="3">
+                  <TextBlock Classes="settings-label" Text="刷新歌词与封面" />
+                  <TextBlock Classes="settings-description"
+                             MaxLines="2"
+                             Text="清除缓存并重新读取当前歌曲"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        AutomationProperties.Name="刷新歌词与封面"
+                        Classes="ghost"
+                        Command="{Binding RefreshCacheCommand}"
+                        ToolTip.Tip="刷新歌词与封面">
+                  <fi:FluentIcon FontSize="18" Icon="ArrowClockwise" />
+                </Button>
+              </Grid>
             </StackPanel>
-          </Grid>
-          <Border Classes="settings-divider" />
-          <Grid Classes="settings-row" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-            <StackPanel VerticalAlignment="Center" Spacing="3">
-              <TextBlock Classes="settings-label" Text="托盘图标" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="2">
-              <Button Classes="settings-chip" Classes.selected="{Binding IsTrayIconLight}" Command="{Binding UseLightTrayIconCommand}" AutomationProperties.Name="浅色"><TextBlock Text="浅色" /></Button>
-              <Button Classes="settings-chip" Classes.selected="{Binding IsTrayIconDark}" Command="{Binding UseDarkTrayIconCommand}" AutomationProperties.Name="深色"><TextBlock Text="深色" /></Button>
-            </StackPanel>
-          </Grid>
-        </StackPanel></Border>
-        <TextBlock Classes="settings-group-label" Text="播放与歌词" />
-        <Border Classes="settings-group"><StackPanel>
-          <Grid Classes="settings-row" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-            <StackPanel VerticalAlignment="Center" Spacing="3">
-              <TextBlock Classes="settings-label" Text="记忆播放进度" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" Classes="settings-switch" AutomationProperties.Name="记忆播放进度" OnContent="" OffContent="" IsChecked="{Binding IsPlaybackPositionMemoryEnabled, Mode=TwoWay}" />
-          </Grid>
-          <Border Classes="settings-divider" />
-          <Grid Classes="settings-row" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-            <StackPanel VerticalAlignment="Center" Spacing="3">
-              <TextBlock Classes="settings-label" Text="歌词自动居中" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" Classes="settings-switch" AutomationProperties.Name="歌词自动居中" OnContent="" OffContent="" IsChecked="{Binding LyricsPreferences.IsAutoCenterEnabled, Mode=TwoWay}" />
-          </Grid>
-          <Border Classes="settings-divider" />
-          <Grid Classes="settings-row" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-            <StackPanel VerticalAlignment="Center" Spacing="3">
-              <TextBlock Classes="settings-label" Text="点击歌词跳转" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" Classes="settings-switch" AutomationProperties.Name="点击歌词跳转" OnContent="" OffContent="" IsChecked="{Binding LyricsPreferences.IsLyricClickSeekEnabled, Mode=TwoWay}" />
-          </Grid>
-        </StackPanel></Border>
-        <TextBlock Classes="settings-group-label" Text="内容" />
-        <Border Classes="settings-group"><StackPanel>
-          <Grid Classes="settings-row" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-            <StackPanel VerticalAlignment="Center" Spacing="3">
-              <TextBlock Classes="settings-label" Text="联网补全" />
-              <TextBlock Classes="settings-description" Text="优先使用文件内的歌词和封面" TextWrapping="Wrap" MaxLines="2" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" Classes="settings-switch" AutomationProperties.Name="联网补全" OnContent="" OffContent="" IsChecked="{Binding IsNetworkEnabled, Mode=TwoWay}" />
-          </Grid>
-          <Border Classes="settings-divider" />
-          <Grid Classes="settings-row" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-            <StackPanel VerticalAlignment="Center" Spacing="3">
-              <TextBlock Classes="settings-label" Text="刷新歌词与封面" />
-              <TextBlock Classes="settings-description" Text="清除缓存并重新读取当前歌曲" TextWrapping="Wrap" MaxLines="2" />
-            </StackPanel>
-            <Button Grid.Column="1" Classes="ghost" Width="36" Height="36" ToolTip.Tip="刷新歌词与封面" AutomationProperties.Name="刷新歌词与封面" Command="{Binding RefreshCacheCommand}"><fi:FluentIcon Icon="ArrowClockwise" FontSize="18" /></Button>
-          </Grid>
-        </StackPanel></Border>
-        <TextBlock Classes="settings-description" Text="{Binding CacheStatus}" Margin="12,0" TextWrapping="Wrap" MaxLines="2" />
-      </StackPanel>
-    </ScrollViewer>
+          </Border>
+          <TextBlock Margin="12,0"
+                     Classes="settings-description"
+                     MaxLines="2"
+                     Text="{Binding CacheStatus}"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+      </ScrollViewer>
+    </DockPanel>
   </Border>
 </UserControl>

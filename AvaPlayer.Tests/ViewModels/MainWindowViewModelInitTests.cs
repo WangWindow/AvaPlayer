@@ -85,6 +85,20 @@ public sealed class MainWindowViewModelInitTests : IDisposable
         Directory.Delete(_cache.RootPath, recursive: true);
     }
 
+    [Fact]
+    public void Opening_playlist_closes_settings()
+    {
+        var vm = CreateViewModel(new FakePlaylistService(), new FakePlaybackSessionClient());
+        vm.PlayerBar.IsSettingsVisible = true;
+        Assert.True(vm.Settings.IsSettingsVisible);
+
+        vm.TogglePlaylistCommand.Execute(null);
+
+        Assert.True(vm.IsPlaylistVisible);
+        Assert.False(vm.PlayerBar.IsSettingsVisible);
+        Assert.False(vm.Settings.IsSettingsVisible);
+    }
+
     private MainWindowViewModel CreateViewModel(IPlaylistService playlist, IPlaybackSessionClient session)
     {
         var settings = new FakeSettingsService();

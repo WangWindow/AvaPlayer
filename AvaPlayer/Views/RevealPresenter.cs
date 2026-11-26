@@ -84,13 +84,21 @@ public sealed class RevealPresenter : ContentControl
                     }
                 }
                 cancellation.Token.ThrowIfCancellationRequested();
-                Classes.Add("open");
+                if (ReferenceEquals(_visibilityChange, cancellation))
+                {
+                    Classes.Add("open");
+                }
             }
             else
             {
                 Classes.Remove("open");
                 await Task.Delay(TransitionDuration, cancellation.Token);
-                IsVisible = false;
+                // A new open may have started just as the delay completed. Do not
+                // let this stale close task hide the panel that just reopened.
+                if (ReferenceEquals(_visibilityChange, cancellation) && !IsOpen)
+                {
+                    IsVisible = false;
+                }
             }
         }
         catch (OperationCanceledException) { }

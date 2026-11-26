@@ -1,10 +1,10 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl x:Class="AvaPlayer.Views.PlaylistView"
+             xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:AvaPlayer.ViewModels"
-             xmlns:models="using:AvaPlayer.Models"
              xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:models="using:AvaPlayer.Models"
+             xmlns:vm="using:AvaPlayer.ViewModels"
              x:Name="Root"
-             x:Class="AvaPlayer.Views.PlaylistView"
              x:DataType="vm:PlaylistViewModel">
   <UserControl.Resources>
     <ResourceDictionary>
@@ -22,142 +22,187 @@
       <SolidColorBrush x:Key="ToggleButtonBackgroundDisabled" Color="Transparent" />
     </ResourceDictionary>
   </UserControl.Resources>
-  <Grid RowDefinitions="Auto,Auto,*,Auto"
-        Margin="16,0,16,16">
-    <Grid ColumnDefinitions="*,Auto,Auto,Auto"
-          ColumnSpacing="8">
-      <ComboBox Classes="playlist-selector" Grid.Column="0" IsEnabled="{Binding !IsScanning}"
+  <Grid Margin="16,0,16,16" RowDefinitions="Auto,Auto,*,Auto">
+    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+      <ComboBox Grid.Column="0"
                 MinWidth="0"
                 HorizontalAlignment="Stretch"
-                AutomationProperties.Name="选择歌单" ToolTip.Tip="选择歌单"
+                AutomationProperties.Name="选择歌单"
+                IsEnabled="{Binding !IsScanning}"
                 IsVisible="{Binding ShowPlaylistSelector}"
                 ItemsSource="{Binding Playlists}"
-                SelectedItem="{Binding SelectedPlaylist, Mode=TwoWay}">
+                SelectedItem="{Binding SelectedPlaylist, Mode=TwoWay}"
+                ToolTip.Tip="选择歌单">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="models:PlaylistInfo">
-            <StackPanel Orientation="Horizontal"
-                        Spacing="8">
-              <TextBlock Text="{Binding Name}"
-                         TextTrimming="CharacterEllipsis" />
-              <TextBlock Text="{Binding DisplayTrackCount}"
-                         Classes="playlist-subtitle" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Classes="playlist-subtitle" Text="{Binding DisplayTrackCount}" />
             </StackPanel>
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>
       <TextBox Grid.Column="0"
-               PlaceholderText="歌单名称"
                AutomationProperties.Name="歌单名称"
-               Text="{Binding EditingPlaylistName, Mode=TwoWay}"
-               IsVisible="{Binding IsRenamingPlaylist}" />
+               IsVisible="{Binding IsRenamingPlaylist}"
+               PlaceholderText="歌单名称"
+               Text="{Binding EditingPlaylistName, Mode=TwoWay}" />
       <Button Grid.Column="1"
-              Classes="playlist-icon-button"
-              Command="{Binding AddPlaylistCommand}" IsEnabled="{Binding !IsScanning}"
-              AutomationProperties.Name="添加歌单" ToolTip.Tip="添加歌单（选择一个音乐文件夹）">
-        <fi:FluentIcon Icon="FolderAdd"
-                       FontSize="16" />
+              AutomationProperties.Name="添加歌单"
+              Classes="ghost"
+              Command="{Binding AddPlaylistCommand}"
+              IsEnabled="{Binding !IsScanning}"
+              ToolTip.Tip="添加歌单（选择一个音乐文件夹）">
+        <fi:FluentIcon FontSize="16" Icon="FolderAdd" />
       </Button>
       <Button Grid.Column="2"
-              Classes="playlist-icon-button"
+              AutomationProperties.Name="重命名歌单"
+              Classes="ghost"
               Command="{Binding BeginRenamePlaylistCommand}"
               IsEnabled="{Binding CanManagePlaylist}"
               IsVisible="{Binding ShowPlaylistSelector}"
-              AutomationProperties.Name="重命名歌单" ToolTip.Tip="重命名歌单">
-        <fi:FluentIcon Icon="Edit"
-                       FontSize="16" />
+              ToolTip.Tip="重命名歌单">
+        <fi:FluentIcon FontSize="16" Icon="Edit" />
       </Button>
       <Button Grid.Column="3"
-              Classes="playlist-icon-button"
+              AutomationProperties.Name="删除歌单"
+              Classes="ghost"
               Command="{Binding DeletePlaylistCommand}"
               IsEnabled="{Binding CanManagePlaylist}"
               IsVisible="{Binding ShowPlaylistSelector}"
-              AutomationProperties.Name="删除歌单" ToolTip.Tip="删除当前歌单（仅移除索引，不删除磁盘文件）">
-        <fi:FluentIcon Icon="Delete"
-                       FontSize="16" />
+              ToolTip.Tip="删除当前歌单（仅移除索引，不删除磁盘文件）">
+        <fi:FluentIcon FontSize="16" Icon="Delete" />
       </Button>
       <Button Grid.Column="2"
-              Classes="playlist-icon-button"
-              ToolTip.Tip="确认重命名" AutomationProperties.Name="确认重命名" Command="{Binding ConfirmRenamePlaylistCommand}"
-              IsVisible="{Binding IsRenamingPlaylist}">
-        <fi:FluentIcon Icon="Checkmark" FontSize="16" />
+              AutomationProperties.Name="确认重命名"
+              Classes="ghost"
+              Command="{Binding ConfirmRenamePlaylistCommand}"
+              IsVisible="{Binding IsRenamingPlaylist}"
+              ToolTip.Tip="确认重命名">
+        <fi:FluentIcon FontSize="16" Icon="Checkmark" />
       </Button>
     </Grid>
-    <Grid x:Name="LibraryTools" Grid.Row="1" ColumnDefinitions="*,36,36" ColumnSpacing="6" Margin="0,10,0,0">
-      <Border Classes="playlist-search-bar" Padding="10,0" IsVisible="{Binding ShowNormalToolbar}">
+    <Grid x:Name="LibraryTools"
+          Grid.Row="1"
+          Margin="0,10,0,0"
+          ColumnDefinitions="*,36,36"
+          ColumnSpacing="6">
+      <Border Padding="10,0"
+              Classes="playlist-search-bar"
+              IsVisible="{Binding ShowNormalToolbar}">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
-          <fi:FluentIcon Icon="Search" Classes="playlist-search-icon" FontSize="14" VerticalAlignment="Center" />
-          <TextBox Grid.Column="1" Classes="playlist-search-text" Background="Transparent" BorderThickness="0"
-                   PlaceholderText="搜索当前播放列表" AutomationProperties.Name="搜索当前播放列表"
+          <fi:FluentIcon VerticalAlignment="Center"
+                         Classes="playlist-search-icon"
+                         FontSize="14"
+                         Icon="Search" />
+          <TextBox Grid.Column="1"
+                   AutomationProperties.Name="搜索当前播放列表"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   PlaceholderText="搜索当前播放列表"
                    Text="{Binding SearchText, Mode=TwoWay}" />
-          <Button Grid.Column="2" Classes="ghost" Width="24" Height="24" Padding="0"
-                  ToolTip.Tip="清除搜索" AutomationProperties.Name="清除搜索"
-                  Command="{Binding ClearSearchCommand}" IsVisible="{Binding ShowClearSearch}">
-            <fi:FluentIcon Icon="Dismiss" FontSize="12" />
+          <Button Grid.Column="2"
+                  Width="24"
+                  Height="24"
+                  Padding="0"
+                  AutomationProperties.Name="清除搜索"
+                  Classes="ghost"
+                  Command="{Binding ClearSearchCommand}"
+                  IsVisible="{Binding ShowClearSearch}"
+                  ToolTip.Tip="清除搜索">
+            <fi:FluentIcon FontSize="12" Icon="Dismiss" />
           </Button>
         </Grid>
       </Border>
-      <Grid ColumnDefinitions="*,36,36" ColumnSpacing="4" IsVisible="{Binding ShowEditToolbar}">
-        <TextBlock Text="{Binding EditSelectionText}" Classes="playlist-toolbar-label" FontSize="12" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Classes="ghost" ToolTip.Tip="移除选中歌曲" AutomationProperties.Name="移除选中歌曲"
-                Command="{Binding RemoveSelectedCommand}" IsEnabled="{Binding CanRemoveSelected}">
-          <fi:FluentIcon Icon="Delete" FontSize="16" />
+      <Grid ColumnDefinitions="*,36,36"
+            ColumnSpacing="4"
+            IsVisible="{Binding ShowEditToolbar}">
+        <TextBlock VerticalAlignment="Center"
+                   Classes="playlist-toolbar-label"
+                   FontSize="12"
+                   Text="{Binding EditSelectionText}" />
+        <Button Grid.Column="1"
+                AutomationProperties.Name="移除选中歌曲"
+                Classes="ghost"
+                Command="{Binding RemoveSelectedCommand}"
+                IsEnabled="{Binding CanRemoveSelected}"
+                ToolTip.Tip="移除选中歌曲">
+          <fi:FluentIcon FontSize="16" Icon="Delete" />
         </Button>
-        <Button Grid.Column="2" Classes="ghost" ToolTip.Tip="结束选择" AutomationProperties.Name="结束选择" Command="{Binding CancelEditCommand}">
-          <fi:FluentIcon Icon="Checkmark" FontSize="16" />
+        <Button Grid.Column="2"
+                AutomationProperties.Name="结束选择"
+                Classes="ghost"
+                Command="{Binding CancelEditCommand}"
+                ToolTip.Tip="结束选择">
+          <fi:FluentIcon FontSize="16" Icon="Checkmark" />
         </Button>
       </Grid>
-      <ToggleButton x:Name="SubfoldersToggle" Grid.Column="1" Classes="library-toggle"
-                    ToolTip.Tip="包含子文件夹" AutomationProperties.Name="包含子文件夹"
-                    IsChecked="{Binding IncludeSubfolders, Mode=TwoWay}" IsEnabled="{Binding !IsScanning}">
-        <fi:FluentIcon Icon="TextBulletListTree" FontSize="18" />
+      <ToggleButton x:Name="SubfoldersToggle"
+                    Grid.Column="1"
+                    MinWidth="0"
+                    Padding="8"
+                    HorizontalContentAlignment="Center"
+                    AutomationProperties.Name="包含子文件夹"
+                    IsChecked="{Binding IncludeSubfolders, Mode=TwoWay}"
+                    IsEnabled="{Binding !IsScanning}"
+                    ToolTip.Tip="包含子文件夹">
+        <fi:FluentIcon FontSize="18" Icon="TextBulletListTree" />
       </ToggleButton>
-      <Button x:Name="RescanButton" Grid.Column="2" Classes="playlist-icon-button" ToolTip.Tip="重新扫描当前文件夹" AutomationProperties.Name="重新扫描"
-              Command="{Binding RescanPlaylistCommand}" IsEnabled="{Binding HasSelectedPlaylist}" IsVisible="{Binding !IsScanning}">
-        <fi:FluentIcon Icon="ArrowClockwise" FontSize="18" />
+      <Button x:Name="RescanButton"
+              Grid.Column="2"
+              AutomationProperties.Name="重新扫描"
+              Classes="ghost"
+              Command="{Binding RescanPlaylistCommand}"
+              IsEnabled="{Binding HasSelectedPlaylist}"
+              IsVisible="{Binding !IsScanning}"
+              ToolTip.Tip="重新扫描当前文件夹">
+        <fi:FluentIcon FontSize="18" Icon="ArrowClockwise" />
       </Button>
-      <Button Grid.Column="2" Classes="playlist-icon-button" ToolTip.Tip="取消扫描" AutomationProperties.Name="取消扫描"
-              Command="{Binding CancelScanCommand}" IsVisible="{Binding IsScanning}">
-        <fi:FluentIcon Icon="Dismiss" FontSize="18" />
+      <Button Grid.Column="2"
+              AutomationProperties.Name="取消扫描"
+              Classes="ghost"
+              Command="{Binding CancelScanCommand}"
+              IsVisible="{Binding IsScanning}"
+              ToolTip.Tip="取消扫描">
+        <fi:FluentIcon FontSize="18" Icon="Dismiss" />
       </Button>
     </Grid>
-    <TextBlock Grid.Row="3" Text="{Binding ScanStatus}" IsVisible="{Binding HasScanStatus}" Classes="playlist-status-label"
-               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ScanStatus}" />
+    <TextBlock Grid.Row="3"
+               Classes="playlist-status-label"
+               IsVisible="{Binding HasScanStatus}"
+               Text="{Binding ScanStatus}"
+               TextTrimming="CharacterEllipsis"
+               ToolTip.Tip="{Binding ScanStatus}" />
     <Grid Grid.Row="2" Margin="0,10,0,0">
       <StackPanel HorizontalAlignment="Center"
                   VerticalAlignment="Center"
-                  Spacing="12"
-                  IsVisible="{Binding ShowEmptyState}">
-        <fi:FluentIcon Icon="MusicNote2"
+                  IsVisible="{Binding ShowEmptyState}"
+                  Spacing="12">
+        <fi:FluentIcon HorizontalAlignment="Center"
                        Classes="playlist-empty-icon"
                        FontSize="44"
-                       HorizontalAlignment="Center" />
-        <TextBlock Text="{Binding EmptyStateText}"
+                       Icon="MusicNote2" />
+        <TextBlock HorizontalAlignment="Center"
                    Classes="playlist-empty-text"
-                   HorizontalAlignment="Center" />
+                   Text="{Binding EmptyStateText}" />
       </StackPanel>
       <StackPanel HorizontalAlignment="Center"
                   VerticalAlignment="Center"
-                  Spacing="12"
-                  IsVisible="{Binding ShowSearchEmptyState}">
-        <fi:FluentIcon Icon="Search"
+                  IsVisible="{Binding ShowSearchEmptyState}"
+                  Spacing="12">
+        <fi:FluentIcon HorizontalAlignment="Center"
                        Classes="playlist-empty-icon"
                        FontSize="40"
-                       HorizontalAlignment="Center" />
-        <TextBlock Text="{Binding SearchEmptyStateText}"
+                       Icon="Search" />
+        <TextBlock HorizontalAlignment="Center"
                    Classes="playlist-empty-text"
-                   HorizontalAlignment="Center" />
+                   Text="{Binding SearchEmptyStateText}" />
       </StackPanel>
-      <ListBox x:Name="TrackList" ScrollViewer.HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasVisibleTracks}"
+      <ListBox x:Name="TrackList"
                Classes="playlist-list"
-               ItemsSource="{Binding VisibleTracks}">
-        <ListBox.Resources>
-          <!-- The row button owns selection visuals; retain the native list template. -->
-          <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="Transparent" />
-          <SolidColorBrush x:Key="SystemControlHighlightListMediumBrush" Color="Transparent" />
-          <SolidColorBrush x:Key="SystemControlHighlightListAccentLowBrush" Color="Transparent" />
-          <SolidColorBrush x:Key="SystemControlHighlightListAccentMediumBrush" Color="Transparent" />
-          <SolidColorBrush x:Key="SystemControlHighlightListAccentHighBrush" Color="Transparent" />
-        </ListBox.Resources>
+               IsVisible="{Binding HasVisibleTracks}"
+               ItemsSource="{Binding VisibleTracks}"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TrackItemViewModel">
             <Button Classes="playlist-item"
@@ -165,34 +210,36 @@
                     Command="{Binding #Root((vm:PlaylistViewModel)DataContext).SelectTrackCommand}"
                     CommandParameter="{Binding}">
               <Button.ContextMenu>
-                <ContextMenu Classes="immersive-menu">
-                  <MenuItem Header="播放" Command="{Binding #Root((vm:PlaylistViewModel)DataContext).SelectTrackCommand}" CommandParameter="{Binding}" />
-                  <MenuItem Header="从歌单移除" Command="{Binding #Root((vm:PlaylistViewModel)DataContext).RemoveTrackCommand}" CommandParameter="{Binding}" />
+                <ContextMenu>
+                  <MenuItem Command="{Binding #Root((vm:PlaylistViewModel)DataContext).SelectTrackCommand}"
+                            CommandParameter="{Binding}"
+                            Header="播放" />
+                  <MenuItem Command="{Binding #Root((vm:PlaylistViewModel)DataContext).RemoveTrackCommand}"
+                            CommandParameter="{Binding}"
+                            Header="从歌单移除" />
                   <Separator />
-                  <MenuItem Header="选择多首歌曲" Command="{Binding #Root((vm:PlaylistViewModel)DataContext).BeginEditCommand}" />
+                  <MenuItem Command="{Binding #Root((vm:PlaylistViewModel)DataContext).BeginEditCommand}" Header="选择多首歌曲" />
                 </ContextMenu>
               </Button.ContextMenu>
               <Grid ColumnDefinitions="24,*,Auto" ColumnSpacing="10">
                 <Grid Grid.Column="0"
                       HorizontalAlignment="Center"
                       VerticalAlignment="Center">
-                  <CheckBox
-                            IsVisible="{Binding #Root((vm:PlaylistViewModel)DataContext).ShowEditToolbar}"
-                            IsChecked="{Binding IsSelectedForRemoval, Mode=TwoWay}" />
+                  <CheckBox IsChecked="{Binding IsSelectedForRemoval, Mode=TwoWay}" IsVisible="{Binding #Root((vm:PlaylistViewModel)DataContext).ShowEditToolbar}" />
                   <Grid IsVisible="{Binding #Root((vm:PlaylistViewModel)DataContext).ShowNormalToolbar}">
-                    <fi:FluentIcon Icon="Play"
-                                   FontSize="14"
+                    <fi:FluentIcon FontSize="14"
+                                   Icon="Play"
                                    IsVisible="{Binding ShowCurrentGlyph}" />
-                    <fi:FluentIcon Icon="MusicNote2"
-                                   FontSize="16"
-                                   Opacity="0.6"
-                                   IsVisible="{Binding ShowIdleGlyph}" />
+                    <fi:FluentIcon FontSize="16"
+                                   Icon="MusicNote2"
+                                   IsVisible="{Binding ShowIdleGlyph}"
+                                   Opacity="0.6" />
                   </Grid>
                 </Grid>
                 <StackPanel Grid.Column="1"
-                            Spacing="3"
                             HorizontalAlignment="Stretch"
-                            VerticalAlignment="Center">
+                            VerticalAlignment="Center"
+                            Spacing="3">
                   <TextBlock Classes="playlist-title"
                              Text="{Binding Title}"
                              TextAlignment="Left"
@@ -203,9 +250,9 @@
                              TextTrimming="CharacterEllipsis" />
                 </StackPanel>
                 <TextBlock Grid.Column="2"
+                           VerticalAlignment="Center"
                            Classes="playlist-duration"
                            Text="{Binding DurationText}"
-                           VerticalAlignment="Center"
                            TextAlignment="Right" />
               </Grid>
             </Button>

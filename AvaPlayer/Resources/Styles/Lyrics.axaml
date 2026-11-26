@@ -1,6 +1,4 @@
-<Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:fi="using:FluentIcons.Avalonia">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Style Selector="Button.lyric-line-button">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
@@ -18,24 +16,24 @@
     </Setter>
   </Style>
   <Style Selector="Button.lyric-line-button:pointerover">
-    <Setter Property="Background" Value="{DynamicResource SearchBackgroundBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
   </Style>
   <Style Selector="Button.lyric-line-button:pressed">
-    <Setter Property="Background" Value="{DynamicResource LyricLineButtonPressedBackgroundBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
   </Style>
   <Style Selector="Button.lyric-line-button:focus-visible">
-    <Setter Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource FocusStrokeColorOuterBrush}" />
     <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="Button.lyric-line-button.near">
     <Setter Property="Padding" Value="18,12" />
   </Style>
   <Style Selector="Button.lyric-line-button.active">
-    <Setter Property="Background" Value="{DynamicResource LyricActiveBackgroundBrush}" />
+    <Setter Property="Background" Value="{DynamicResource ControlAltFillColorSecondaryBrush}" />
     <Setter Property="Padding" Value="18,14" />
   </Style>
   <Style Selector="TextBlock.lyric-line">
-    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
     <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="TextAlignment" Value="Center" />
@@ -56,9 +54,9 @@
     <Setter Property="Margin" Value="0,14" />
   </Style>
   <Style Selector="TextBlock.lyrics-status">
-    <Setter Property="Foreground" Value="{DynamicResource LyricsStatusForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
   </Style>
   <Style Selector="TextBlock.lyrics-empty">
-    <Setter Property="Foreground" Value="{DynamicResource LyricsEmptyForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
   </Style>
 </Styles>

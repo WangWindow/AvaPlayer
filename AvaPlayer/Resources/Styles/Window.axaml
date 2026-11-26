@@ -1,12 +1,10 @@
-<Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:fi="using:FluentIcons.Avalonia">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Style Selector="Border.titlebar">
     <Setter Property="Background" Value="{DynamicResource TitlebarBackgroundBrush}" />
   </Style>
   <Style Selector="Button.titlebar-icon-button">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="0" />
     <Setter Property="Width" Value="40" />
@@ -22,18 +20,18 @@
     </Setter>
   </Style>
   <Style Selector="Button.titlebar-icon-button:pointerover">
-    <Setter Property="Background" Value="{DynamicResource TitlebarButtonHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
   </Style>
   <Style Selector="Button.titlebar-icon-button:pressed">
-    <Setter Property="Background" Value="{DynamicResource TitlebarButtonPressedBrush}" />
+    <Setter Property="Background" Value="{DynamicResource ControlAltFillColorTertiaryBrush}" />
   </Style>
   <Style Selector="Button.titlebar-icon-button:focus-visible">
-    <Setter Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource FocusStrokeColorOuterBrush}" />
     <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="Button.titlebar-button">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="0" />
     <Setter Property="Width" Value="46" />
@@ -50,13 +48,13 @@
     </Setter>
   </Style>
   <Style Selector="Button.titlebar-button:pointerover">
-    <Setter Property="Background" Value="{DynamicResource TitlebarButtonHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
   </Style>
   <Style Selector="Button.titlebar-button:pressed">
-    <Setter Property="Background" Value="{DynamicResource TitlebarButtonPressedBrush}" />
+    <Setter Property="Background" Value="{DynamicResource ControlAltFillColorTertiaryBrush}" />
   </Style>
   <Style Selector="Button.titlebar-button:focus-visible">
-    <Setter Property="BorderBrush" Value="{DynamicResource FocusRingBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource FocusStrokeColorOuterBrush}" />
     <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="Button.titlebar-close:pointerover">
