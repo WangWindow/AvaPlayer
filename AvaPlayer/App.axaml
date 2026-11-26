@@ -3,7 +3,7 @@
              x:Class="AvaPlayer.App"
              RequestedThemeVariant="Default">
   <Application.Styles>
-    <FluentTheme />
+    <Fluent2Theme />
     <StyleInclude Source="avares://AvaPlayer/Resources/Styles.axaml" />
   </Application.Styles>
 

@@ -46,6 +46,16 @@ internal sealed class Program
         var builder = AppBuilder.Configure<App>()
             .UsePlatformDetect();
 
+#if WINDOWS
+        // Avalonia 12.2: opt in to the DWM composition swap chain. This lets
+        // the Windows backend use independent flips, reducing latency and
+        // making composition smoother.
+        builder = builder.With(new Win32PlatformOptions
+        {
+            UseCompositionSwapChain = true,
+        });
+#endif
+
 #if LINUX_WAYLAND
         // Linux: prefer the native Wayland backend, but keep X11/XWayland working.
         // UseWaylandWithFallback() uses Wayland when a usable compositor is
@@ -63,6 +73,13 @@ internal sealed class Program
         {
             builder = builder
                 .UseWaylandWithFallback()
+                // Avalonia 12.2: when X11 (not Wayland) ends up being used and
+                // the app renders in software, pass frames to the X server via
+                // shared memory instead of copying them, improving frame rate.
+                .With(new X11PlatformOptions
+                {
+                    UseXShmFramebuffer = true,
+                })
                 .With(new WaylandPlatformOptions
                 {
                     // Reconnect automatically when the compositor connection is
