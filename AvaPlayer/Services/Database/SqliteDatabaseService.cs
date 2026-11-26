@@ -235,12 +235,18 @@ public sealed class SqliteDatabaseService : IDatabaseService
 
         var assignCommand = connection.CreateCommand();
         assignCommand.Transaction = transaction;
+        // Normalize '/' to the current platform separator before prefix matching:
+        // legacy databases may contain Windows paths written with forward slashes,
+        // which a raw comparison against Path.DirectorySeparatorChar would miss.
         assignCommand.CommandText = """
             UPDATE tracks
             SET playlist_id = COALESCE((
                 SELECT p.id
                 FROM playlists p
-                WHERE instr(lower($sep) || lower(tracks.file_path) || $sep, lower($sep) || lower(p.folder_path) || $sep) = 1
+                WHERE instr(
+                    lower(replace($sep || tracks.file_path || $sep, '/', $sep)),
+                    lower(replace($sep || p.folder_path || $sep, '/', $sep))
+                ) = 1
                 ORDER BY length(p.folder_path) DESC
                 LIMIT 1
             ), '')

@@ -6,7 +6,9 @@ public sealed class TestDirectory : IDisposable
 
     public TestDirectory() => Directory.CreateDirectory(Root);
 
-    public string FilePath(string name) => Path.Combine(Root, name);
+    // Return a canonical absolute path: callers compare against paths produced by
+    // FilePaths.Normalize, and a raw Path.Combine keeps any '/' in `name` on Windows.
+    public string FilePath(string name) => Path.GetFullPath(Path.Combine(Root, name));
 
     public string CreateWave(string name = "track.wav", string? lyrics = null)
     {
