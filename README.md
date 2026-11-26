@@ -37,8 +37,6 @@ dotnet format AvaPlayer.slnx whitespace --verify-no-changes --no-restore
 dotnet format AvaPlayer.slnx analyzers --verify-no-changes --no-restore
 ```
 
-模块职责、依赖方向与服务生命周期见 [架构说明](docs/architecture.md)。
-
 ## 网络与隐私
 
 音乐文件与播放列表保留在本地。启用联网歌词/封面查询时，应用会把曲名、艺人等检索元数据发送给对应服务；不会上传音频文件。
