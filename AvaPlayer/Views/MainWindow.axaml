@@ -1,6 +1,7 @@
 <Window x:Class="AvaPlayer.Views.MainWindow"
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
         xmlns:fi="using:FluentIcons.Avalonia"
         xmlns:views="using:AvaPlayer.Views"
         xmlns:vm="using:AvaPlayer.ViewModels"
@@ -45,15 +46,17 @@
       </Grid>
 
       <!--  Integrated titlebar row (UWP-style)  -->
-      <Border Height="32"
+      <Border x:Name="TitleBarBorder"
+              Height="32"
               VerticalAlignment="Top"
               Classes="titlebar"
-              PointerPressed="OnTitleBarPointerPressed">
+              chrome:WindowDecorationProperties.ElementRole="TitleBar">
         <Grid ColumnDefinitions="40,Auto,*,40,46,46,46">
           <!--  Playlist / sidebar toggle  -->
           <Button x:Name="PlaylistToggle"
                   Grid.Column="0"
                   AutomationProperties.Name="歌单"
+                  chrome:WindowDecorationProperties.ElementRole="User"
                   Classes="titlebar-icon-button"
                   Command="{Binding TogglePlaylistCommand}"
                   ToolTip.Tip="歌单">
@@ -72,6 +75,7 @@
           <Button x:Name="SettingsToggle"
                   Grid.Column="3"
                   AutomationProperties.Name="{Binding PlayerBar.SettingsToggleToolTip}"
+                  chrome:WindowDecorationProperties.ElementRole="User"
                   Classes="titlebar-icon-button"
                   Command="{Binding PlayerBar.ToggleSettingsCommand}"
                   ToolTip.Tip="{Binding PlayerBar.SettingsToggleToolTip}">
@@ -79,8 +83,10 @@
           </Button>
 
           <!--  Minimize  -->
-          <Button Grid.Column="4"
+          <Button x:Name="MinimizeButton"
+                  Grid.Column="4"
                   AutomationProperties.Name="最小化"
+                  chrome:WindowDecorationProperties.ElementRole="MinimizeButton"
                   Classes="titlebar-button"
                   Click="OnMinimizeClick"
                   ToolTip.Tip="最小化">
@@ -91,6 +97,7 @@
           <Button x:Name="MaximizeRestoreButton"
                   Grid.Column="5"
                   AutomationProperties.Name="最大化 / 还原"
+                  chrome:WindowDecorationProperties.ElementRole="MaximizeButton"
                   Classes="titlebar-button"
                   Click="OnMaximizeRestoreClick"
                   ToolTip.Tip="最大化 / 还原">
@@ -100,8 +107,10 @@
           </Button>
 
           <!--  Close  -->
-          <Button Grid.Column="6"
+          <Button x:Name="CloseButton"
+                  Grid.Column="6"
                   AutomationProperties.Name="关闭"
+                  chrome:WindowDecorationProperties.ElementRole="CloseButton"
                   Classes="titlebar-button titlebar-close"
                   Click="OnCloseClick"
                   ToolTip.Tip="关闭">

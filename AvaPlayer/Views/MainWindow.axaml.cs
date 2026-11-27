@@ -20,6 +20,23 @@ public partial class MainWindow : Window
         Closed += (_, _) => DetachSettings();
         WindowDecorations = WindowDecorations.None;
         ExtendClientAreaToDecorationsHint = true;
+#if WINDOWS
+        // Win32 fallback for custom chrome hit-testing. The attached property is
+        // inherited by template/content visuals, so Snap Layouts also work when
+        // the pointer is over the icon rather than the button background.
+        Win32Properties.SetNonClientHitTestResult(
+            TitleBarBorder, Win32Properties.Win32HitTestValue.Caption);
+        Win32Properties.SetNonClientHitTestResult(
+            PlaylistToggle, Win32Properties.Win32HitTestValue.Client);
+        Win32Properties.SetNonClientHitTestResult(
+            SettingsToggle, Win32Properties.Win32HitTestValue.Client);
+        Win32Properties.SetNonClientHitTestResult(
+            MinimizeButton, Win32Properties.Win32HitTestValue.MinButton);
+        Win32Properties.SetNonClientHitTestResult(
+            MaximizeRestoreButton, Win32Properties.Win32HitTestValue.MaxButton);
+        Win32Properties.SetNonClientHitTestResult(
+            CloseButton, Win32Properties.Win32HitTestValue.Close);
+#endif
         KeyDown += OnWindowKeyDown;
     }
 
@@ -158,25 +175,6 @@ public partial class MainWindow : Window
     }
 
     // ── Custom titlebar handlers ──
-
-    private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (e.Handled || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-        {
-            return;
-        }
-
-        if (e.ClickCount == 2)
-        {
-            WindowState = WindowState == WindowState.Maximized
-                ? WindowState.Normal
-                : WindowState.Maximized;
-        }
-        else if (e.ClickCount == 1 && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-        {
-            BeginMoveDrag(e);
-        }
-    }
 
     private void OnMinimizeClick(object? sender, RoutedEventArgs e)
     {

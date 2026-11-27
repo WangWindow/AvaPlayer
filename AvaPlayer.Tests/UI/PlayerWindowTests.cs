@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Automation;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Chrome;
 using Avalonia.Controls.Templates;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -46,6 +47,17 @@ public sealed class PlayerWindowTests : IDisposable
         var window = fixture.Window;
         window.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
         window.Show();
+        var maximizeButton = window.FindControl<Button>("MaximizeRestoreButton")!;
+        Assert.Equal(WindowDecorationsElementRole.MaximizeButton,
+            WindowDecorationProperties.GetElementRole(maximizeButton));
+        var titlebar = window.GetVisualDescendants().OfType<Border>()
+            .Single(border => border.Classes.Contains("titlebar"));
+        Assert.Equal(WindowDecorationsElementRole.TitleBar,
+            WindowDecorationProperties.GetElementRole(titlebar));
+        Assert.Equal(Win32Properties.Win32HitTestValue.MaxButton,
+            Win32Properties.GetNonClientHitTestResult(maximizeButton));
+        Assert.Equal(Win32Properties.Win32HitTestValue.Caption,
+            Win32Properties.GetNonClientHitTestResult(titlebar));
         await fixture.ViewModel.InitializeAsync();
         window.SetRenderScaling(scaling);
         window.Width = width;
