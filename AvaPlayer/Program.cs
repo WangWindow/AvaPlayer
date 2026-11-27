@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.OpenGL;
 using AvaPlayer.Helpers;
 
@@ -44,7 +45,18 @@ internal sealed class Program
         // UseHarfBuzz() to "avoid X11": that would silently drop text-shaping
         // and other core services.
         var builder = AppBuilder.Configure<App>()
-            .UsePlatformDetect();
+            .UsePlatformDetect()
+            // Fluent2's default family is the composite "fonts:Inter#Inter, $Default"; $Default
+            // follows the platform default family. Skia takes that from fontconfig, and on
+            // systems that register legacy bitmap fonts (e.g. Wine's WinFonts, where
+            // "system-ui" can resolve to a .fon face) it has no SFNT tables at all. Avalonia
+            // 12.2 reads the table directory of every matched face and throws for those,
+            // aborting the first layout that needs a fallback glyph. Pin $Default to the
+            // embedded Inter collection so fallback never starts from such a system face.
+            .With(new FontManagerOptions
+            {
+                DefaultFamilyName = "fonts:Inter#Inter",
+            });
 
 #if WINDOWS
         // Avalonia 12.2: opt in to the DWM composition swap chain. This lets
