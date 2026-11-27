@@ -24,9 +24,11 @@
   </UserControl.Resources>
   <Grid Margin="16,0,16,16" RowDefinitions="Auto,Auto,*,Auto">
     <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
-      <ComboBox Grid.Column="0"
+      <ComboBox x:Name="PlaylistSelector"
+                Grid.Column="0"
                 MinWidth="0"
                 HorizontalAlignment="Stretch"
+                Background="Transparent"
                 AutomationProperties.Name="选择歌单"
                 IsEnabled="{Binding !IsScanning}"
                 IsVisible="{Binding ShowPlaylistSelector}"

@@ -56,10 +56,10 @@ public sealed class CacheServiceTests : IDisposable
     {
         await using var cache = CreateService();
 
-        await cache.SetTextAsync("lyrics", "expiring", "text", TimeSpan.FromMilliseconds(80));
+        await cache.SetTextAsync("lyrics", "expiring", "text", TimeSpan.FromMilliseconds(500));
         Assert.Equal("text", await cache.GetTextAsync("lyrics", "expiring"));
 
-        await Task.Delay(200);
+        await Task.Delay(800);
 
         Assert.Null(await cache.GetTextAsync("lyrics", "expiring"));
         var stats = await cache.GetStatsAsync("lyrics");

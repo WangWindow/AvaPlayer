@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Automation;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Templates;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -76,6 +77,16 @@ public sealed class PlayerWindowTests : IDisposable
         var selector = library.GetVisualDescendants().OfType<ComboBox>().Single();
         Assert.True(selector.IsEffectivelyVisible);
         Assert.True(selector.Bounds.Width > 0);
+        Assert.NotNull(selector.Background);
+        selector.IsDropDownOpen = true;
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+        var selectorPopup = selector.GetTemplateDescendants().OfType<Popup>().Single();
+        var popupBorder = Assert.IsType<Border>(selectorPopup.Child);
+        Assert.Same(fixture.ViewModel.PlayerBar.BackgroundBrush, popupBorder.Background);
+        selector.IsDropDownOpen = false;
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
         var playButton = window.GetVisualDescendants().OfType<Button>()
             .Single(button => AutomationProperties.GetName(button) == "播放 / 暂停");
         var playPosition = playButton.TranslatePoint(default, window)!.Value;
@@ -276,10 +287,16 @@ public sealed class PlayerWindowTests : IDisposable
         var coverTop = cover.TranslatePoint(default, player)!.Value.Y;
         var controlsBottom = playButton.TranslatePoint(new Point(0, playButton.Bounds.Height), player)!.Value.Y;
         Assert.InRange(Math.Abs(coverTop - (player.Bounds.Height - controlsBottom)), 0, 1);
+        var trackTitle = window.GetVisualDescendants().OfType<TextBlock>()
+            .Single(t => t.Name == "TrackTitle");
+        var titleCenter = trackTitle.TranslatePoint(new Point(trackTitle.Bounds.Width / 2, 0), window)!.Value.X;
+        var coverCenter = cover.TranslatePoint(new Point(cover.Bounds.Width / 2, 0), window)!.Value.X;
+        Assert.InRange(Math.Abs(titleCenter - coverCenter), 0, 3);
         SaveFrame(window, $"player-centered-{width}-{height}.png");
         Assert.InRange(cover.Bounds.Width, width >= 1040 ? 250 : 72, width / 2d - 96);
         Click(window, volumeButton);
         await AdvanceAnimationsAsync();
+        Assert.True(volume.IsVisible);
         Assert.Equal(coverBounds, cover.Bounds);
         Assert.Equal(coverPosition, cover.TranslatePoint(default, window));
         Assert.Equal(controlsPosition, controls.TranslatePoint(default, window));
@@ -287,7 +304,8 @@ public sealed class PlayerWindowTests : IDisposable
         Assert.True(slider.IsEffectivelyVisible);
         Assert.Equal(window, TopLevel.GetTopLevel(slider));
         Assert.InRange(volume.Bounds.Height, 28, 80);
-        Assert.InRange(slider.TranslatePoint(default, window)!.Value.Y + slider.Bounds.Height, 0, height);
+        var sliderTop = slider.TranslatePoint(default, volume)!.Value.Y;
+        Assert.InRange(sliderTop, 0, volume.Bounds.Height - slider.Bounds.Height);
         slider.Focus();
         var initialVolume = fixture.ViewModel.PlayerBar.Volume;
         window.KeyPressQwerty(PhysicalKey.ArrowRight, RawInputModifiers.None);
@@ -298,9 +316,8 @@ public sealed class PlayerWindowTests : IDisposable
         var playerCenter = playButton.TranslatePoint(new Point(playButton.Bounds.Width / 2, 0), window)!.Value.X;
         var sliderCenter = slider.TranslatePoint(new Point(slider.Bounds.Width / 2, 0), window)!.Value.X;
         Assert.InRange(Math.Abs(playerCenter - sliderCenter), 0, 0.5);
-        var thumb = slider.GetVisualDescendants().OfType<Thumb>().Single();
-        var thumbCenter = thumb.TranslatePoint(new Point(thumb.Bounds.Width / 2, 0), window)!.Value.X;
-        Assert.InRange(Math.Abs(playerCenter - thumbCenter), 0, 0.5);
+        var volumeCenter = volume.TranslatePoint(new Point(volume.Bounds.Width / 2, 0), window)!.Value.X;
+        Assert.InRange(Math.Abs(playerCenter - volumeCenter), 0, 0.5);
         SaveFrame(window, $"volume-{width}-{height}.png");
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         window.KeyReleaseQwerty(PhysicalKey.Escape, RawInputModifiers.None);
@@ -310,6 +327,7 @@ public sealed class PlayerWindowTests : IDisposable
         Assert.Equal(coverPosition, cover.TranslatePoint(default, window));
         Click(window, volumeButton);
         await AdvanceAnimationsAsync();
+        Assert.True(volume.IsVisible);
         var outside = new Point(width - 40, 80);
         window.MouseDown(outside, MouseButton.Left);
         window.MouseUp(outside, MouseButton.Left);

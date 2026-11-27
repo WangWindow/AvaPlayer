@@ -63,7 +63,12 @@
     <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
   </Style>
   <Style Selector="Button.settings-chip.selected:pointerover">
-    <Setter Property="Background" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
+    <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.settings-chip.selected:pressed">
+    <Setter Property="Background" Value="{DynamicResource AccentFillColorTertiaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
   </Style>
   <Style Selector="Button.settings-chip:pressed">
     <Setter Property="Background" Value="{DynamicResource ControlAltFillColorTertiaryBrush}" />

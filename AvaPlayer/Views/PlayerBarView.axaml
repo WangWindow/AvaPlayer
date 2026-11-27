@@ -45,15 +45,18 @@
                   Margin="0,24,0,0"
                   HorizontalAlignment="Center"
                   Spacing="8">
-        <TextBlock Classes="player-title"
+        <TextBlock x:Name="TrackTitle"
+                   Classes="player-title"
                    FontSize="22"
                    FontWeight="SemiBold"
+                   HorizontalAlignment="Center"
                    Text="{Binding TitleDisplay}"
                    TextAlignment="Center"
                    TextTrimming="CharacterEllipsis" />
         <TextBlock x:Name="ArtistText"
                    Classes="player-subtitle"
                    FontSize="13"
+                   HorizontalAlignment="Center"
                    Text="{Binding ArtistDisplay}"
                    TextAlignment="Center"
                    TextWrapping="Wrap" />
@@ -134,7 +137,6 @@
           </Button>
         </StackPanel>
       </Grid>
-      <!--  The volume reveal uses the lower spacer, outside the centered playback group.  -->
       <views:RevealPresenter x:Name="VolumeInlinePanel"
                              Grid.Row="5"
                              Width="292"
@@ -144,30 +146,33 @@
                              Classes="volume-inline-host"
                              ClipToBounds="True"
                              TransitionDuration="0:0:0.22">
-        <Grid Height="24"
-              Margin="16,18,16,8"
-              ColumnDefinitions="38,*,38"
-              ColumnSpacing="14">
-          <fi:FluentIcon HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         FontSize="16"
-                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                         Icon="{Binding VolumeIcon}" />
-          <Slider x:Name="VolumeSlider"
-                  Grid.Column="1"
-                  Height="24"
-                  MinHeight="0"
-                  AutomationProperties.Name="音量"
-                  Maximum="100"
-                  Minimum="0"
-                  Value="{Binding Volume, Mode=TwoWay}" />
-          <TextBlock Grid.Column="2"
-                     VerticalAlignment="Center"
-                     Classes="volume-text"
-                     FontSize="12"
-                     Text="{Binding VolumeText}"
-                     TextAlignment="Center" />
-        </Grid>
+        <Border Margin="0,4"
+                Padding="12,0"
+                Background="Transparent"
+                BorderThickness="0"
+                CornerRadius="8">
+          <Grid VerticalAlignment="Center"
+                ColumnDefinitions="38,*,38"
+                ColumnSpacing="14">
+            <fi:FluentIcon HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontSize="16"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                           Icon="{Binding VolumeIcon}" />
+            <Slider x:Name="VolumeSlider"
+                    Grid.Column="1"
+                    AutomationProperties.Name="音量"
+                    Maximum="100"
+                    Minimum="0"
+                    Value="{Binding Volume, Mode=TwoWay}" />
+            <TextBlock Grid.Column="2"
+                       VerticalAlignment="Center"
+                       Classes="volume-text"
+                       FontSize="12"
+                       Text="{Binding VolumeText}"
+                       TextAlignment="Center" />
+          </Grid>
+        </Border>
       </views:RevealPresenter>
     </Grid>
   </Grid>

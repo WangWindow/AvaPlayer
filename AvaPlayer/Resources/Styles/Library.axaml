@@ -122,4 +122,33 @@
   <Style Selector="fi|FluentIcon.playlist-search-icon">
     <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
   </Style>
+  <!--
+    The playlist selector already shows the current playlist in its closed box.
+    Hide Fluent2's selected-item pill and selected fill in the dropdown so the
+    open popup does not read as a duplicated highlighted row.
+  -->
+  <Style Selector="ComboBoxItem /template/ Rectangle#Pill">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="ComboBoxItem:selected">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="ComboBoxItem:selected:pointerover">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+  </Style>
+  <Style Selector="ComboBoxItem:selected:pressed">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+  </Style>
+  <!-- Keep the selector transparent over the cover-colored drawer; the stock
+       Background brush transition caused a light flash when the drawer opened. -->
+  <Style Selector="ComboBox /template/ Border#Background">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector="ComboBox:pointerover /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+  </Style>
+  <Style Selector="ComboBox:pressed /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource ControlAltFillColorTertiaryBrush}" />
+  </Style>
 </Styles>

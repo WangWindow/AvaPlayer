@@ -59,7 +59,6 @@
   <Style Selector="TextBlock.volume-text">
     <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
   </Style>
-
   <Style Selector="ContentControl.volume-inline-host">
     <Setter Property="Height" Value="0" />
     <Setter Property="Opacity" Value="0" />
